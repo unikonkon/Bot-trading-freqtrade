@@ -3,3 +3,18 @@ node_modules/
 .env
 .env.*
 *.log
+
+# freqtrade runtime
+ft/user_data/*.sqlite*
+ft/user_data/logs/
+ft/user_data/data/
+ft/user_data/backtest_results/
+ft/user_data/hyperopt_results/
+ft/user_data/plot/
+ft/user_data/notebooks/
+ft/user_data/hyperopts/
+ft/user_data/strategies/__pycache__/
+ft/user_data/strategies/ta_port/__pycache__/
+ft/user_data/config.local*.json
+ft/fixtures/*.csv
+__pycache__/

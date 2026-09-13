@@ -8,6 +8,28 @@
 
 ---
 
+## 0. สถานะการทำ (อัปเดต 14 ก.ย. 2026)
+
+| เฟส | สถานะ | หลักฐาน |
+|---|---|---|
+| 0 | ✅ ทำแล้ว (บนเครื่อง dev, ยังไม่ขึ้น VPS) | `ft/docker-compose.yml`, image `freqtradeorg/freqtrade:stable` = 2026.8, `list-strategies` เห็นครบ 11 ตัว |
+| 1 | ✅ ทำแล้ว | `scripts/dump-indicators.ts` + `ft/user_data/scripts/compare_with_ts.py` |
+| 2 | ✅ ทำแล้ว **ครบ 10 ตัว** | harness `--mode ts` PASS 31/31 คอลัมน์ ทั้ง BTC 1h และ ETH 4h (ค่าต่าง ~1e-11); ความต่างของ 3 ตัวที่แก้ lookahead บันทึกใน [`port-diff-notes.md`](./port-diff-notes.md) |
+| 3 | ✅ ทำแล้ว | `BaseSignalStrategy` + subclass 10 ตัว, `config.1h.json` / `config.4h.json`, backtest ด้วย `pair_strategy_map` ได้ enter_tag ถูกต้อง |
+| 4 | 🟡 ทำบนข้อมูล 120 วัน | backtest 7 ตัวรันผ่าน, lookahead-analysis = No bias (Supertrend, Trendlines, S/R, SMC), Supertrend BTC/USDT ได้ 31 trade เทียบ TS 32 trade; ผลใน [`backtest-results-202609.md`](./backtest-results-202609.md) — **ยังไม่ได้ทำ hyperopt และยังไม่ได้ใช้ข้อมูล 2 ปี** |
+| 5 | 🟡 บางส่วน | เพิ่ม `api/freqtrade/route.ts` (proxy อ่านอย่างเดียว); การลบ route/cron ในโปรเจกต์ NextJS_UseBot_Crypto **ยังไม่ได้ทำ** รอตัดสินใจ |
+| 6 | ⬜ ยังไม่เริ่ม | smoke test dry-run บนเครื่อง dev 45 วินาที เปิด trade จำลองได้ + API ตอบ; ยังไม่ได้ dry-run ต่อเนื่องบน VPS |
+
+**สิ่งที่เปลี่ยนจากแผนเดิมระหว่างลงมือทำ**
+
+- **ไม่ใช้ TA-Lib เลย** เขียน EMA/RSI/ATR ด้วย numpy loop ให้ตรง TS ทุกตำแหน่ง เพราะ `talib.ATR` seed จาก TR[1] ส่วน TS seed จาก TR[0]=high−low ทำให้ค่าไม่ตรงกันโดยเฉพาะ ATR ช่วงยาว (ผลพลอยได้: harness รันได้ด้วย numpy+pandas ล้วน)
+- **S/R, Trendlines, SMC มีพารามิเตอร์ `confirmed`** — `False` = พฤติกรรม TS เดิม (ใช้พิสูจน์การพอร์ต), `True` = ยืนยัน pivot ที่ `i + rightBars` (ค่า default ใช้จริง)
+- **freqtrade 2026.8 ไม่รับ `protections` ใน config** ต้องอยู่ใน strategy → `BaseSignalStrategy.protections` อ่านค่าจาก `config["strategy_protections"]`
+- config ต้องมี `entry_pricing.price_side = "other"` และ `exit_pricing.price_side = "other"` เมื่อใช้ market order, และ `api_server.jwt_secret_key` ยาว ≥ 32 ตัวอักษร
+- image ใช้ entrypoint `freqtrade` การรัน Python script ต้องใช้ `docker compose run --rm --entrypoint python freqtrade …`
+
+---
+
 ## 1. เป้าหมายและขอบเขต (อ่านก่อน)
 
 **ทำไมต้องย้าย:** ของที่มีตอนนี้ครบเฉพาะฝั่ง "หาสัญญาณ" ส่วนที่ทำให้เงินจริงปลอดภัย เช่น stop-loss 24 ชม., กู้ position หลังรีสตาร์ท, กันยิงซ้ำ, ปัด LOT_SIZE, kill-switch, dry-run ยังไม่มี freqtrade ให้ทั้งหมดนี้และผ่านการใช้งานจริงมาหลายปี
@@ -225,8 +247,8 @@ docker compose run --rm -v $PWD/fixtures:/fixtures freqtrade \
 ### 6.1 กติกาการพอร์ต
 
 - ไฟล์ `user_data/strategies/ta_port/indicators.py` ใช้ **ชื่อฟังก์ชันและพารามิเตอร์เดียวกับ TS** เพื่อให้ตามโค้ดสองฝั่งได้
-- ใช้ **TA-Lib** สำหรับ EMA/SMA/RSI/ATR/STDDEV/LINEARREG เพราะวิธี seed ตรงกับ TS (EMA seed ด้วย SMA, RSI/ATR แบบ Wilder) **ห้ามใช้** `pandas.ewm` เพราะ seed ต่างกัน
-- **ห้ามใช้** `talib.MACD` กับ CM MACD เพราะ signal line ของ TS เป็น SMA ไม่ใช่ EMA
+- **ไม่ใช้ TA-Lib** (เปลี่ยนจากแผนเดิม) เขียน EMA/RSI/ATR เป็น numpy loop ตาม TS: EMA seed ด้วย SMA, RSI/ATR แบบ Wilder, ATR seed จาก TR[0]=high−low ซึ่ง `talib.ATR` ทำต่างออกไป **ห้ามใช้** `pandas.ewm` เพราะ seed ต่างกัน
+- CM MACD: signal line ของ TS เป็น **SMA** ของ MACD ไม่ใช่ EMA (`talib.MACD` ใช้ EMA จึงใช้ไม่ได้)
 - indicator ที่มีสถานะข้ามแท่ง (Supertrend, UT Bot, MSB, Trendlines, SMC) เขียนเป็น loop บน `numpy` array คัดลอกตรรกะจาก TS บรรทัดต่อบรรทัด ถ้าช้าค่อยใส่ `@numba.njit`
 - **pivot ที่ต้องมองไปข้างหน้า** (`detectPivots`, S/R, Trendlines) ให้ยืนยันที่แท่ง `i + rightBars` เสมอ ห้ามเขียนค่าที่แท่ง `i`
 - ทุกฟังก์ชันคืน `pd.Series` ยาวเท่า dataframe โดยช่วง warm-up เป็น `NaN`
@@ -249,6 +271,8 @@ docker compose run --rm -v $PWD/fixtures:/fixtures freqtrade \
 หยุดพักหลังตัวที่ 7 แล้วข้ามไปทำเฟส 3–4 กับ 7 ตัวนี้ก่อนได้ ตัวที่ 8–10 เป็นงานแยกที่ผลเปลี่ยนแน่นอน ไม่ควรให้ถ่วงตัวอื่น
 
 ### 6.3 ตัวอย่างโครง `indicators.py` (Supertrend และ CDC)
+
+> โค้ดจริงที่ผ่าน harness แล้วอยู่ที่ `ft/user_data/strategies/ta_port/indicators.py` (ไม่ใช้ talib — ดูข้อ 0) ด้านล่างเป็นโครงร่างตอนวางแผน
 
 ```python
 import numpy as np, pandas as pd, talib

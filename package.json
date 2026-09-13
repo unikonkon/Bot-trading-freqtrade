@@ -1,0 +1,16 @@
+{
+  "name": "bot-trading-crypto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Signal library (TypeScript) + freqtrade port — ดู docs/freqtrade-migration-plan-th.md",
+  "scripts": {
+    "dump:btc": "tsx scripts/dump-indicators.ts ft/fixtures/BTCUSDT-1h.json ft/fixtures/BTCUSDT-1h.ts.csv",
+    "dump:eth": "tsx scripts/dump-indicators.ts ft/fixtures/ETHUSDT-4h.json ft/fixtures/ETHUSDT-4h.ts.csv",
+    "dump": "npm run dump:btc && npm run dump:eth"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "tsx": "^4",
+    "typescript": "^5"
+  }
+}

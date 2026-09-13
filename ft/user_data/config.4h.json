@@ -1,0 +1,13 @@
+{
+  "bot_name": "ta-port-4h",
+  "timeframe": "4h",
+  "db_url": "sqlite:////freqtrade/user_data/tradesv3-4h.sqlite",
+  "api_server": { "listen_port": 8080 },
+  "exchange": {
+    "pair_whitelist": ["BTC/USDT", "ETH/USDT"]
+  },
+  "pair_strategy_map": {
+    "BTC/USDT": "cm_macd",
+    "ETH/USDT": "squeeze_momentum"
+  }
+}

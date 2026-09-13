@@ -1,0 +1,9 @@
+{
+  "bot_name": "ta-port-backtest",
+  "timeframe": "1h",
+  "db_url": "sqlite:///:memory:",
+  "api_server": { "listen_port": 8080 },
+  "exchange": {
+    "pair_whitelist": ["BTC/USDT", "ETH/USDT", "SOL/USDT"]
+  }
+}

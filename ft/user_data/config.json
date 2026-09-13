@@ -1,0 +1,133 @@
+{
+  "$schema": "https://schema.freqtrade.io/schema.json",
+  "bot_name": "ta-port",
+  "max_open_trades": 3,
+  "stake_currency": "USDT",
+  "stake_amount": 50,
+  "tradable_balance_ratio": 0.99,
+  "fiat_display_currency": "USD",
+  "dry_run": true,
+  "dry_run_wallet": 1000,
+  "cancel_open_orders_on_exit": false,
+  "trading_mode": "spot",
+  "margin_mode": "",
+  "timeframe": "1h",
+  "unfilledtimeout": {
+    "entry": 10,
+    "exit": 10,
+    "exit_timeout_count": 0,
+    "unit": "minutes"
+  },
+  "entry_pricing": {
+    "price_side": "other",
+    "use_order_book": true,
+    "order_book_top": 1,
+    "price_last_balance": 0.0,
+    "check_depth_of_market": {
+      "enabled": false,
+      "bids_to_ask_delta": 1
+    }
+  },
+  "exit_pricing": {
+    "price_side": "other",
+    "use_order_book": true,
+    "order_book_top": 1
+  },
+  "exchange": {
+    "name": "binance",
+    "key": "",
+    "secret": "",
+    "ccxt_config": {},
+    "ccxt_async_config": {},
+    "pair_whitelist": [
+      "BTC/USDT",
+      "ETH/USDT"
+    ],
+    "pair_blacklist": [
+      "BNB/.*",
+      ".*UP/USDT",
+      ".*DOWN/USDT",
+      ".*BEAR/USDT",
+      ".*BULL/USDT"
+    ]
+  },
+  "pairlists": [
+    {
+      "method": "StaticPairList"
+    }
+  ],
+  "telegram": {
+    "enabled": false,
+    "token": "",
+    "chat_id": ""
+  },
+  "discord": {
+    "enabled": false,
+    "webhook_url": ""
+  },
+  "api_server": {
+    "enabled": true,
+    "listen_ip_address": "0.0.0.0",
+    "listen_port": 8080,
+    "verbosity": "error",
+    "enable_openapi": false,
+    "jwt_secret_key": "dca85a60ef983ccbb7ca39137c26f32ce6e805fe65e46bb17e61166edc4dbdc0",
+    "ws_token": "7fa64d11ce7831b7edbd20161f4bc657",
+    "CORS_origins": [],
+    "username": "ft",
+    "password": "change-me-0aa4096d3cca"
+  },
+  "pair_strategy_map": {},
+  "strategy_params": {
+    "rsi": {
+      "period": 14,
+      "buyThreshold": 30,
+      "sellThreshold": 70
+    },
+    "cdc_actionzone": {
+      "fastPeriod": 12,
+      "slowPeriod": 26
+    },
+    "smc": {
+      "swingSize": 50,
+      "internalSize": 5
+    },
+    "squeeze_momentum": {
+      "bbLength": 20,
+      "bbMult": 2.0,
+      "kcLength": 20,
+      "kcMult": 1.5
+    },
+    "cm_macd": {
+      "fastLength": 12,
+      "slowLength": 26,
+      "signalLength": 9
+    },
+    "supertrend": {
+      "atrPeriod": 10,
+      "multiplier": 3.0
+    },
+    "msb_ob": {
+      "zigzagLen": 9,
+      "fibFactor": 0.33
+    },
+    "support_resistance": {
+      "leftBars": 15,
+      "rightBars": 15,
+      "volumeThresh": 20
+    },
+    "trendlines": {
+      "trendLength": 14,
+      "trendMult": 1.0
+    },
+    "ut_bot": {
+      "keyValue": 1,
+      "utAtrPeriod": 10
+    }
+  },
+  "initial_state": "running",
+  "force_entry_enable": false,
+  "internals": {
+    "process_throttle_secs": 5
+  }
+}
