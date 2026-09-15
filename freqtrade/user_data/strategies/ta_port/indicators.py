@@ -1,7 +1,7 @@
 """
 ta_port.indicators — พอร์ต 1:1 จาก lib/indicators.ts
 
-กติกา (ดู docs/freqtrade-migration-plan-th.md ข้อ 6.1)
+กติกา (ดู freqtrade/freqtrade-migration-plan-th.md ข้อ 6.1)
 - ชื่อฟังก์ชัน/พารามิเตอร์ตาม TS (แปลงเป็น snake_case)
 - ค่า null ของ TS → NaN สำหรับตัวเลข, None สำหรับ string/bool (object array)
 - indicator ที่มีสถานะข้ามแท่งเขียนเป็น loop คัดลอกจาก TS บรรทัดต่อบรรทัด
@@ -857,7 +857,7 @@ def ut_bot(df: pd.DataFrame, key_value: float = 1, atr_period: int = 10) -> dict
     return {"trailingStop": trailing, "pos": pos, "signal": signal}
 
 
-# ─── computeAll: คอลัมน์ชื่อเดียวกับ scripts/dump-indicators.ts ─
+# ─── computeAll: คอลัมน์ชื่อเดียวกับ freqtrade/scripts/dump-indicators.ts ─
 def compute_all(df: pd.DataFrame, confirmed: bool = True) -> pd.DataFrame:
     """
     รวม indicator ทุกตัวเป็น DataFrame คอลัมน์เดียวกับ CSV ที่ TS dump ออกมา

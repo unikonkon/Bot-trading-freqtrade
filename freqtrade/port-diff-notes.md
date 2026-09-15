@@ -1,7 +1,7 @@
 # บันทึกความต่างของ indicator ที่พอร์ตแล้ว "ต่างโดยตั้งใจ" (แผนเฟส 2 ข้อ 6.2)
 
-> อัปเดต: 14 ก.ย. 2026 · harness: `ft/user_data/scripts/compare_with_ts.py`
-> fixture: `ft/fixtures/BTCUSDT-1h.json` (1,000 แท่ง), warm-up 300 แท่ง
+> อัปเดต: 14 ก.ย. 2026 · harness: `freqtrade/user_data/scripts/compare_with_ts.py`
+> fixture: `freqtrade/fixtures/BTCUSDT-1h.json` (1,000 แท่ง), warm-up 300 แท่ง
 
 ## สรุปผล harness
 
@@ -50,3 +50,10 @@
 - ใช้ `confirmed=True` (ค่า default) เสมอบน freqtrade ทั้ง backtest และ live
 - `confirmed=False` มีไว้เฉพาะ harness เพื่อพิสูจน์ความถูกต้องของการพอร์ต ห้ามใช้เทรด
 - ผล backtest ในหน้า Klines ของ Next.js สำหรับ 3 กลยุทธ์นี้ให้ถือว่า "มองโลกในแง่ดีเกินจริง"
+
+## อัปเดต 15 ก.ย. 2026 — ฝั่ง TypeScript มีโหมด confirmed แล้ว
+
+- `lib/indicators.ts` เพิ่ม `pivotEvents(h, l, left, right, confirmed)` ใช้ร่วมกันโดย `supportResistance`, `trendlinesWithBreaks`, `smartMoneyConcepts` (ตรรกะเดียวกับ `pivot_events` ใน Python) และ `computeAll(..., { confirmedPivots })` **default = true**
+- `runBacktest` / `computeSignals` จึงไม่มี lookahead แล้วโดยปริยาย; หน้า Klines ที่ใช้ไลบรารีนี้จะเห็นผล 3 กลยุทธ์นี้ "แย่ลง" กว่าเดิม ซึ่งคือค่าที่ถูกต้อง
+- harness: `npx tsx freqtrade/scripts/dump-indicators.ts <fixture> <csv> --mode live` แล้ว `compare_with_ts.py --mode live` → **PASS 31/31 คอลัมน์ ไม่มี CHANGED** ทั้ง BTC 1h และ ETH 4h (ค่าต่างสูงสุด ~7e-12) · `--mode ts` ทั้งสองฝั่งยัง PASS 31/31 เหมือนเดิม
+- ข้อสรุปเดิมข้อ "ผล backtest ในหน้า Klines มองโลกในแง่ดีเกินจริง" **ยังใช้กับโปรเจกต์ `NextJS_UseBot_Crypto`** ซึ่งมี `lib/indicators.ts` สำเนาแยกที่ยังไม่ได้ sync

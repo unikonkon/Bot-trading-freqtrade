@@ -377,28 +377,53 @@ export interface SMCResult {
   signal: ("BUY" | "SELL" | null)[];
 }
 
+// ─── Pivot events (shared by S/R, Trendlines, SMC) ──────────────
+// pivot ที่แท่ง i ต้องเห็นอีก `right` แท่งข้างหน้าจึงจะรู้ว่าเป็น pivot จริง
+//   confirmed=false → บันทึกที่แท่ง i        (พฤติกรรม TS เดิม มี lookahead — ใช้เฉพาะ harness)
+//   confirmed=true  → บันทึกที่แท่ง i + right (สิ่งที่เห็นจริงในเวลาจริง ตรงกับ ta_port/indicators.py)
+// คืนค่าเป็น array ยาวเท่าข้อมูล: price[k] = ราคา pivot ที่ "รู้" ณ แท่ง k, index[k] = แท่งที่เกิด pivot จริง
+export interface PivotEvents {
+  highPrice: (number | null)[];
+  highIndex: (number | null)[];
+  lowPrice: (number | null)[];
+  lowIndex: (number | null)[];
+}
+
+export function pivotEvents(
+  h: number[], l: number[], left: number, right: number, confirmed: boolean,
+): PivotEvents {
+  const len = h.length;
+  const highPrice: (number | null)[] = new Array(len).fill(null);
+  const highIndex: (number | null)[] = new Array(len).fill(null);
+  const lowPrice: (number | null)[] = new Array(len).fill(null);
+  const lowIndex: (number | null)[] = new Array(len).fill(null);
+
+  for (let i = left; i < len - right; i++) {
+    let isHigh = true, isLow = true;
+    for (let j = 1; j <= left; j++) {
+      if (h[i] <= h[i - j]) isHigh = false;
+      if (l[i] >= l[i - j]) isLow = false;
+    }
+    for (let j = 1; j <= right; j++) {
+      if (h[i] <= h[i + j]) isHigh = false;
+      if (l[i] >= l[i + j]) isLow = false;
+    }
+    const key = confirmed ? i + right : i;
+    if (isHigh) { highPrice[key] = h[i]; highIndex[key] = i; }
+    if (isLow) { lowPrice[key] = l[i]; lowIndex[key] = i; }
+  }
+  return { highPrice, highIndex, lowPrice, lowIndex };
+}
+
 /**
  * Detect swing legs — a pivot high occurs when high[size] > highest(size bars after)
  * and pivot low when low[size] < lowest(size bars after).
+ * confirmed=true → ค่าถูกบันทึกที่แท่ง i + size (ไม่มี lookahead)
  */
 function detectPivots(
-  h: number[], l: number[], size: number
-): { pivotHighs: (number | null)[]; pivotLows: (number | null)[] } {
-  const len = h.length;
-  const pivotHighs: (number | null)[] = new Array(len).fill(null);
-  const pivotLows: (number | null)[] = new Array(len).fill(null);
-
-  for (let i = size; i < len - size; i++) {
-    let isHigh = true;
-    let isLow = true;
-    for (let j = 1; j <= size; j++) {
-      if (h[i] <= h[i - j] || h[i] <= h[i + j]) isHigh = false;
-      if (l[i] >= l[i - j] || l[i] >= l[i + j]) isLow = false;
-    }
-    if (isHigh) pivotHighs[i] = h[i];
-    if (isLow) pivotLows[i] = l[i];
-  }
-  return { pivotHighs, pivotLows };
+  h: number[], l: number[], size: number, confirmed: boolean,
+): PivotEvents {
+  return pivotEvents(h, l, size, size, confirmed);
 }
 
 /**
@@ -408,7 +433,7 @@ function detectPivots(
  */
 function detectStructure(
   c: number[], _h: number[], _l: number[],
-  pivotHighs: (number | null)[], pivotLows: (number | null)[],
+  pv: PivotEvents,
 ): { structures: SMCStructureBreak[]; trend: (SMCBias | null)[] } {
   const len = c.length;
   const structures: SMCStructureBreak[] = [];
@@ -419,12 +444,12 @@ function detectStructure(
   let lastPivotLow: { price: number; index: number; crossed: boolean } | null = null;
 
   for (let i = 0; i < len; i++) {
-    // Update pivots
-    if (pivotHighs[i] !== null) {
-      lastPivotHigh = { price: pivotHighs[i]!, index: i, crossed: false };
+    // Update pivots (ณ แท่งที่ "รู้" ว่ามี pivot; index = แท่งที่เกิด pivot จริง)
+    if (pv.highPrice[i] !== null) {
+      lastPivotHigh = { price: pv.highPrice[i]!, index: pv.highIndex[i]!, crossed: false };
     }
-    if (pivotLows[i] !== null) {
-      lastPivotLow = { price: pivotLows[i]!, index: i, crossed: false };
+    if (pv.lowPrice[i] !== null) {
+      lastPivotLow = { price: pv.lowPrice[i]!, index: pv.lowIndex[i]!, crossed: false };
     }
 
     // Check bullish break (close crosses above pivot high)
@@ -598,28 +623,26 @@ function detectFairValueGaps(
 /**
  * Detect swing point labels (HH, HL, LH, LL)
  */
-function detectSwingPoints(
-  pivotHighs: (number | null)[], pivotLows: (number | null)[],
-): SMCSwingPoint[] {
+function detectSwingPoints(pv: PivotEvents): SMCSwingPoint[] {
   const points: SMCSwingPoint[] = [];
   let lastHigh: number | null = null;
   let lastLow: number | null = null;
 
-  for (let i = 0; i < pivotHighs.length; i++) {
-    if (pivotHighs[i] !== null) {
-      const price = pivotHighs[i]!;
+  for (let i = 0; i < pv.highPrice.length; i++) {
+    if (pv.highPrice[i] !== null) {
+      const price = pv.highPrice[i]!;
       let type: SMCSwingPoint["type"];
       if (lastHigh === null) type = "H";
       else type = price > lastHigh ? "HH" : "LH";
-      points.push({ index: i, price, type });
+      points.push({ index: pv.highIndex[i]!, price, type });
       lastHigh = price;
     }
-    if (pivotLows[i] !== null) {
-      const price = pivotLows[i]!;
+    if (pv.lowPrice[i] !== null) {
+      const price = pv.lowPrice[i]!;
       let type: SMCSwingPoint["type"];
       if (lastLow === null) type = "L";
       else type = price > lastLow ? "HL" : "LL";
-      points.push({ index: i, price, type });
+      points.push({ index: pv.lowIndex[i]!, price, type });
       lastLow = price;
     }
   }
@@ -632,7 +655,7 @@ function detectSwingPoints(
  */
 function detectPremiumDiscount(
   c: number[], h: number[], l: number[],
-  pivotHighs: (number | null)[], pivotLows: (number | null)[],
+  pv: PivotEvents,
 ): ("premium" | "discount" | "equilibrium" | null)[] {
   const len = c.length;
   const result: ("premium" | "discount" | "equilibrium" | null)[] = new Array(len).fill(null);
@@ -641,8 +664,8 @@ function detectPremiumDiscount(
   let trailingLow = Infinity;
 
   for (let i = 0; i < len; i++) {
-    if (pivotHighs[i] !== null) trailingHigh = pivotHighs[i]!;
-    if (pivotLows[i] !== null) trailingLow = pivotLows[i]!;
+    if (pv.highPrice[i] !== null) trailingHigh = pv.highPrice[i]!;
+    if (pv.lowPrice[i] !== null) trailingLow = pv.lowPrice[i]!;
 
     // Also update with price action
     if (h[i] > trailingHigh) trailingHigh = h[i];
@@ -705,6 +728,7 @@ export function smartMoneyConcepts(
   klines: KlineData[],
   swingSize = 50,
   internalSize = 5,
+  confirmed = true,
 ): SMCResult {
   const c = closes(klines);
   const h = highs(klines);
@@ -716,25 +740,26 @@ export function smartMoneyConcepts(
   const atrValues = atr(klines, 200);
 
   // Detect pivots at both swing and internal levels
-  const swingPivots = detectPivots(h, l, swingSize);
-  const internalPivots = detectPivots(h, l, internalSize);
+  // confirmed=true → pivot ถูก "รู้" ที่แท่ง i + size (ตรงกับ Python และเวลาจริง)
+  const swingPivots = detectPivots(h, l, swingSize, confirmed);
+  const internalPivots = detectPivots(h, l, internalSize, confirmed);
 
   // Detect structure
-  const swingResult = detectStructure(c, h, l, swingPivots.pivotHighs, swingPivots.pivotLows);
-  const internalResult = detectStructure(c, h, l, internalPivots.pivotHighs, internalPivots.pivotLows);
+  const swingResult = detectStructure(c, h, l, swingPivots);
+  const internalResult = detectStructure(c, h, l, internalPivots);
 
-  // Order Blocks
+  // Order Blocks (ไม่ได้ใช้ในสัญญาณ เก็บไว้ให้กราฟ)
   const swingOBs = detectOrderBlocks(c, o, h, l, swingResult.structures);
   const internalOBs = detectOrderBlocks(c, o, h, l, internalResult.structures);
 
-  // Fair Value Gaps
+  // Fair Value Gaps (ไม่ได้ใช้ในสัญญาณ)
   const fvgs = detectFairValueGaps(h, l, c, o, atrValues);
 
   // Swing Points
-  const swingPoints = detectSwingPoints(swingPivots.pivotHighs, swingPivots.pivotLows);
+  const swingPoints = detectSwingPoints(swingPivots);
 
   // Premium/Discount
-  const premiumDiscount = detectPremiumDiscount(c, h, l, swingPivots.pivotHighs, swingPivots.pivotLows);
+  const premiumDiscount = detectPremiumDiscount(c, h, l, swingPivots);
 
   // Signals
   const signal = generateSMCSignals(len, internalResult.structures, premiumDiscount, internalResult.trend);
@@ -1240,6 +1265,7 @@ export function supportResistance(
   leftBars = 15,
   rightBars = 15,
   volumeThresh = 20,
+  confirmed = true,
 ): SupportResistanceResult {
   const h = highs(klines);
   const l = lows(klines);
@@ -1248,25 +1274,12 @@ export function supportResistance(
   const v = volumes(klines);
   const len = klines.length;
 
-  // Pivot detection
-  const pivotHighs: (number | null)[] = new Array(len).fill(null);
-  const pivotLows: (number | null)[] = new Array(len).fill(null);
+  // Pivot detection — confirmed=true: level โผล่ที่แท่ง i + rightBars (ตรง Pine fixnan(pivothigh()))
+  const pv = pivotEvents(h, l, leftBars, rightBars, confirmed);
+  const pivotHighs = pv.highPrice;
+  const pivotLows = pv.lowPrice;
 
-  for (let i = leftBars; i < len - rightBars; i++) {
-    let isHigh = true, isLow = true;
-    for (let j = 1; j <= leftBars; j++) {
-      if (h[i] <= h[i - j]) isHigh = false;
-      if (l[i] >= l[i - j]) isLow = false;
-    }
-    for (let j = 1; j <= rightBars; j++) {
-      if (h[i] <= h[i + j]) isHigh = false;
-      if (l[i] >= l[i + j]) isLow = false;
-    }
-    if (isHigh) pivotHighs[i] = h[i];
-    if (isLow) pivotLows[i] = l[i];
-  }
-
-  // fixnan — carry forward last non-null pivot, shifted by 1
+  // fixnan — carry forward last non-null pivot
   const resistance: (number | null)[] = new Array(len).fill(null);
   const support: (number | null)[] = new Array(len).fill(null);
   let lastPivotHigh: number | null = null;
@@ -1342,25 +1355,18 @@ export function trendlinesWithBreaks(
   length = 14,
   mult = 1.0,
   calcMethod: "Atr" | "Stdev" = "Atr",
+  confirmed = true,
 ): TrendlinesResult {
   const h = highs(klines);
   const l = lows(klines);
   const c = closes(klines);
   const len = klines.length;
 
-  // Pivot detection
-  const pivotHighs: (number | null)[] = new Array(len).fill(null);
-  const pivotLows: (number | null)[] = new Array(len).fill(null);
-
-  for (let i = length; i < len - length; i++) {
-    let isHigh = true, isLow = true;
-    for (let j = 1; j <= length; j++) {
-      if (h[i] <= h[i - j] || h[i] <= h[i + j]) isHigh = false;
-      if (l[i] >= l[i - j] || l[i] >= l[i + j]) isLow = false;
-    }
-    if (isHigh) pivotHighs[i] = h[i];
-    if (isLow) pivotLows[i] = l[i];
-  }
+  // Pivot detection — confirmed=true: เส้นเริ่มที่แท่งยืนยัน i + length ด้วยค่า pivot และ slope ณ แท่งนั้น
+  // (ตรง Pine `upper := ph ? ph : upper - slope_ph`; โหมดเดิมเส้นเริ่มที่แท่ง pivot = lookahead)
+  const pv = pivotEvents(h, l, length, length, confirmed);
+  const pivotHighs = pv.highPrice;
+  const pivotLows = pv.lowPrice;
 
   // Slope calculation
   const atrArr = atr(klines, length);
@@ -1551,21 +1557,27 @@ export function computeAll(klines: KlineData[], overrides?: {
   trendCalcMethod?: "Atr" | "Stdev";
   utBotKey?: number;
   utBotAtrPeriod?: number;
+  /**
+   * ยืนยัน pivot ที่แท่ง i + rightBars สำหรับ S/R, Trendlines, SMC (default true = ไม่มี lookahead)
+   * false = พฤติกรรม TS เดิม ใช้เฉพาะ harness `--mode ts` ห้ามใช้เทรดหรือ backtest จริง
+   */
+  confirmedPivots?: boolean;
 }): AllIndicators {
   const c = closes(klines);
+  const confirmed = overrides?.confirmedPivots ?? true;
   return {
     rsi: rsi(c, overrides?.rsiPeriod ?? 14),
     atr: atr(klines, 14),
     obv: obv(klines),
     vwap: vwap(klines),
     cdcActionZone: cdcActionZone(c, 12, 26, 1),
-    smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5),
+    smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
     cmMacd: cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
     supertrend: supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
     squeezeMomentum: squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),
     msbOb: msbOrderBlock(klines, overrides?.msbZigzagLen ?? 9, overrides?.msbFibFactor ?? 0.33),
-    supportResistance: supportResistance(klines, overrides?.srLeftBars ?? 15, overrides?.srRightBars ?? 15, overrides?.srVolumeThresh ?? 20),
-    trendlines: trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr"),
+    supportResistance: supportResistance(klines, overrides?.srLeftBars ?? 15, overrides?.srRightBars ?? 15, overrides?.srVolumeThresh ?? 20, confirmed),
+    trendlines: trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr", confirmed),
     utBot: utBot(klines, overrides?.utBotKey ?? 1, overrides?.utBotAtrPeriod ?? 10),
   };
 }

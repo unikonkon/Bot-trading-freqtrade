@@ -217,7 +217,7 @@ function utBotStrategy(_k: KlineData[], ind: AllIndicators): SignalAction[] {
   });
 }
 
-const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
+export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   rsi: rsiStrategy,
   cdc_actionzone: cdcActionZoneStrategy,
   smc: smcStrategy,
@@ -230,14 +230,24 @@ const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   ut_bot: utBotStrategy,
 };
 
-// ─── Backtest Engine ───────────────────────────────────────────
-export function runBacktest(
+// ─── Signal computation (ใช้ร่วมกันโดย backtest และบอทสัญญาณ signal-bot/) ───
+export interface SignalOptions {
+  /** false = โหมด TS เดิมมี lookahead ใช้เฉพาะ harness; default true */
+  confirmedPivots?: boolean;
+}
+
+/**
+ * คำนวณ indicator เฉพาะที่ strategy ใช้ แล้วแปลงเป็นสัญญาณ BUY/SELL/HOLD ต่อแท่ง
+ * ไม่มีการจำลอง trade — บอทสัญญาณเรียกตัวนี้ตรง ๆ
+ */
+export function computeSignals(
   klines: KlineData[],
   strategyId: StrategyId,
   params: Record<string, number> = {},
-  feesPct = 0.1, // 0.1% per trade (Binance default)
-): BacktestResult {
+  opts: SignalOptions = {},
+): SignalAction[] {
   const indicators = computeAll(klines, {
+    confirmedPivots: opts.confirmedPivots,
     rsiPeriod: strategyId === "rsi" ? (params.period ?? 14) : undefined,
     smcSwingSize: strategyId === "smc" ? (params.swingSize ?? 50) : undefined,
     smcInternalSize: strategyId === "smc" ? (params.internalSize ?? 5) : undefined,
@@ -260,7 +270,18 @@ export function runBacktest(
     utBotKey: strategyId === "ut_bot" ? (params.keyValue ?? 1) : undefined,
     utBotAtrPeriod: strategyId === "ut_bot" ? (params.utAtrPeriod ?? 10) : undefined,
   });
-  const signals = STRATEGY_FNS[strategyId](klines, indicators, params);
+  return STRATEGY_FNS[strategyId](klines, indicators, params);
+}
+
+// ─── Backtest Engine ───────────────────────────────────────────
+export function runBacktest(
+  klines: KlineData[],
+  strategyId: StrategyId,
+  params: Record<string, number> = {},
+  feesPct = 0.1, // 0.1% per trade (Binance default)
+  opts: SignalOptions = {},
+): BacktestResult {
+  const signals = computeSignals(klines, strategyId, params, opts);
 
   const closes = klines.map(k => +k.close);
   const trades: Trade[] = [];

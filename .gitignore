@@ -2,19 +2,24 @@
 node_modules/
 .env
 .env.*
+!.env.example
 *.log
-
-# freqtrade runtime
-ft/user_data/*.sqlite*
-ft/user_data/logs/
-ft/user_data/data/
-ft/user_data/backtest_results/
-ft/user_data/hyperopt_results/
-ft/user_data/plot/
-ft/user_data/notebooks/
-ft/user_data/hyperopts/
-ft/user_data/strategies/__pycache__/
-ft/user_data/strategies/ta_port/__pycache__/
-ft/user_data/config.local*.json
-ft/fixtures/*.csv
 __pycache__/
+
+# freqtrade/ runtime
+freqtrade/user_data/*.sqlite*
+freqtrade/user_data/logs/
+freqtrade/user_data/data/
+freqtrade/user_data/backtest_results/
+freqtrade/user_data/hyperopt_results/
+freqtrade/user_data/plot/
+freqtrade/user_data/notebooks/
+freqtrade/user_data/hyperopts/
+freqtrade/user_data/strategies/__pycache__/
+freqtrade/user_data/strategies/ta_port/__pycache__/
+freqtrade/user_data/config.local*.json
+freqtrade/fixtures/*.csv
+
+# signal-bot/ runtime
+signal-bot/data/
+signal-bot/logs/

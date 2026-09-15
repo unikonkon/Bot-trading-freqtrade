@@ -36,14 +36,14 @@
 
 | ไฟล์ | หน้าที่ | แก้เมื่อ |
 |---|---|---|
-| `ft/user_data/config.json` | ค่ากลาง: dry_run, stake, exchange key, Telegram, Discord, api_server, `strategy_params` | ตั้งค่าครั้งแรก, เปลี่ยน dry→live, เปลี่ยนพารามิเตอร์ indicator |
-| `ft/user_data/config.1h.json` | override ของ instance 1h: `pair_whitelist`, `pair_strategy_map`, `db_url`, พอร์ต | เพิ่ม/ลดคู่, เปลี่ยนว่าคู่ไหนใช้กฎอะไร |
-| `ft/user_data/config.4h.json` | เหมือนด้านบนสำหรับ 4h | |
-| `ft/user_data/strategies/BaseSignalStrategy.py` | strategy แม่: อ่าน map, เรียก ta_port, ตั้ง stoploss/ROI/protections | เปิด stoploss/ROI หลัง hyperopt |
-| `ft/user_data/strategies/ta_port/indicators.py` | สูตร indicator 10 ตัว (พอร์ตจาก `lib/indicators.ts`) | ไม่ควรแก้ ถ้าแก้ต้องรัน harness ใหม่ |
-| `ft/user_data/strategies/ta_port/signals.py` | กฎแปลง indicator → BUY/SELL (พอร์ตจาก `lib/backtest.ts`) | เพิ่มกลยุทธ์ใหม่ |
-| `ft/user_data/strategies/*Strategy.py` | subclass 10 ตัว ใช้ backtest/hyperopt ทีละกลยุทธ์ | ไม่ต้องแก้ |
-| `ft/docker-compose.yml` | รายการ container และพอร์ต | เพิ่ม instance timeframe ใหม่ |
+| `freqtrade/user_data/config.json` | ค่ากลาง: dry_run, stake, exchange key, Telegram, Discord, api_server, `strategy_params` | ตั้งค่าครั้งแรก, เปลี่ยน dry→live, เปลี่ยนพารามิเตอร์ indicator |
+| `freqtrade/user_data/config.1h.json` | override ของ instance 1h: `pair_whitelist`, `pair_strategy_map`, `db_url`, พอร์ต | เพิ่ม/ลดคู่, เปลี่ยนว่าคู่ไหนใช้กฎอะไร |
+| `freqtrade/user_data/config.4h.json` | เหมือนด้านบนสำหรับ 4h | |
+| `freqtrade/user_data/strategies/BaseSignalStrategy.py` | strategy แม่: อ่าน map, เรียก ta_port, ตั้ง stoploss/ROI/protections | เปิด stoploss/ROI หลัง hyperopt |
+| `freqtrade/user_data/strategies/ta_port/indicators.py` | สูตร indicator 10 ตัว (พอร์ตจาก `lib/indicators.ts`) | ไม่ควรแก้ ถ้าแก้ต้องรัน harness ใหม่ |
+| `freqtrade/user_data/strategies/ta_port/signals.py` | กฎแปลง indicator → BUY/SELL (พอร์ตจาก `lib/backtest.ts`) | เพิ่มกลยุทธ์ใหม่ |
+| `freqtrade/user_data/strategies/*Strategy.py` | subclass 10 ตัว ใช้ backtest/hyperopt ทีละกลยุทธ์ | ไม่ต้องแก้ |
+| `freqtrade/docker-compose.yml` | รายการ container และพอร์ต | เพิ่ม instance timeframe ใหม่ |
 
 ### 1.3 กลยุทธ์ที่มีให้เลือก (`strategy_id`)
 
@@ -79,7 +79,7 @@
 
 | สิ่งที่ต้องมี | ใช้ทำอะไร |
 |---|---|
-| Node.js 20+ และ `npm install` ที่ root โปรเจกต์ | รัน `scripts/dump-indicators.ts` (ฝั่ง TypeScript) |
+| Node.js 20+ และ `npm install` ที่ root โปรเจกต์ | รัน `freqtrade/scripts/dump-indicators.ts` (ฝั่ง TypeScript) |
 | Python 3.11+ พร้อม `numpy`, `pandas` (หรือใช้ใน container ก็ได้) | รัน `compare_with_ts.py` |
 
 ### 2.3 เพิ่มเติมสำหรับเทรดจริง
@@ -96,7 +96,7 @@
 
 ## 3. รันอย่างไร
 
-ทุกคำสั่งรันในโฟลเดอร์ `ft/`
+ทุกคำสั่งรันในโฟลเดอร์ `freqtrade/`
 
 ### 3.1 ครั้งแรก
 
@@ -190,13 +190,17 @@ Bot heartbeat. PID=1, version='2026.8', state='RUNNING'
 
 ```bash
 # ที่ root โปรเจกต์
-npm install && npm run dump          # → ft/fixtures/*.ts.csv
+npm install
+npm run dump          # → freqtrade/fixtures/*.ts.csv   (confirmedPivots=false เทียบกับ --mode ts)
+npm run dump:live     # → freqtrade/fixtures/*.live.csv (confirmedPivots=true  เทียบกับ --mode live = ค่าที่ใช้จริง)
 cd ft
 docker compose run --rm --entrypoint python freqtrade \
   /freqtrade/user_data/scripts/compare_with_ts.py /fixtures/BTCUSDT-1h.json /fixtures/BTCUSDT-1h.ts.csv --mode ts
+docker compose run --rm --entrypoint python freqtrade \
+  /freqtrade/user_data/scripts/compare_with_ts.py /fixtures/BTCUSDT-1h.json /fixtures/BTCUSDT-1h.live.csv --mode live
 ```
 
-ต้องได้ `PASS` ทุกคอลัมน์ ถ้าไม่ผ่านห้าม deploy
+ต้องได้ `PASS` ทุกคอลัมน์ทั้งสองโหมด และโหมด live ต้อง**ไม่มี** บรรทัด `CHANGED` (ตั้งแต่ 15 ก.ย. 2026 TS มี confirmed pivot แล้ว) ถ้าไม่ผ่านห้าม deploy ทั้ง freqtrade และบอท TS
 
 ---
 
@@ -232,20 +236,20 @@ curl -s -u $U:$P http://127.0.0.1:8080/api/v1/show_config | jq
 | ที่ | คำสั่ง / path |
 |---|---|
 | log สดของ container | `docker compose logs -f ft-1h` |
-| ไฟล์ log | `ft/user_data/logs/ft-1h.log` (หมุนอัตโนมัติ) |
-| ค้นหาสัญญาณ | `grep "signal found" ft/user_data/logs/ft-1h.log` |
-| ค้นหา error | `grep -i "error\|exception" ft/user_data/logs/ft-1h.log` |
+| ไฟล์ log | `freqtrade/user_data/logs/ft-1h.log` (หมุนอัตโนมัติ) |
+| ค้นหาสัญญาณ | `grep "signal found" freqtrade/user_data/logs/ft-1h.log` |
+| ค้นหา error | `grep -i "error\|exception" freqtrade/user_data/logs/ft-1h.log` |
 
 ### 4.4 ฐานข้อมูล trade
 
-- `ft/user_data/tradesv3-1h.sqlite`, `tradesv3-4h.sqlite` (dry-run และ live ใช้ไฟล์เดียวกันตาม `db_url`; ถ้าอยากแยกให้เปลี่ยน `db_url` ก่อน live)
+- `freqtrade/user_data/tradesv3-1h.sqlite`, `tradesv3-4h.sqlite` (dry-run และ live ใช้ไฟล์เดียวกันตาม `db_url`; ถ้าอยากแยกให้เปลี่ยน `db_url` ก่อน live)
 - ดูด้วย `docker compose run --rm freqtrade show-trades --userdir /freqtrade/user_data --config /freqtrade/user_data/config.json --config /freqtrade/user_data/config.1h.json --print-json`
 - หรือเปิดด้วย DB Browser for SQLite / `sqlite3` ตาราง `trades`, `orders`
 
 ### 4.5 ผล backtest และ hyperopt
 
 - ตารางแสดงใน terminal ทันทีที่รันจบ
-- ไฟล์: `ft/user_data/backtest_results/` (เมื่อใส่ `--export trades`) และ `ft/user_data/hyperopt_results/`
+- ไฟล์: `freqtrade/user_data/backtest_results/` (เมื่อใส่ `--export trades`) และ `freqtrade/user_data/hyperopt_results/`
 - ดูย้อนหลัง: `docker compose run --rm freqtrade backtesting-show --userdir /freqtrade/user_data --export-filename user_data/backtest_results/<ไฟล์>.json`
 - **backtest ผ่านหน้าเว็บ:** แท็บ Backtesting ของ FreqUI ใช้ได้เฉพาะโหมด `webserver` (container `ft-1h` ที่รันโหมด `trade` จะไม่ให้กด) → `docker compose up -d ft-web` แล้วเข้า http://127.0.0.1:8082 ล็อกอินด้วย username/password เดียวกัน
   1. แท็บ **Backtesting** → **Run backtest**
@@ -290,7 +294,7 @@ curl -s -u $U:$P http://127.0.0.1:8080/api/v1/show_config | jq
    - `db_url` ใน config.1h.json ชี้ไฟล์ใหม่ เช่น `tradesv3-1h-live.sqlite`
 4. `telegram.enabled: true` และทดสอบ `/stop` ได้จากมือถือ
 5. `docker compose up -d` แล้วเฝ้า log 1 ชั่วโมงแรก
-6. ตั้ง backup รายวัน: `cp ft/user_data/*.sqlite <ที่เก็บนอกเครื่อง>` ผ่าน cron
+6. ตั้ง backup รายวัน: `cp freqtrade/user_data/*.sqlite <ที่เก็บนอกเครื่อง>` ผ่าน cron
 
 ---
 
@@ -312,7 +316,7 @@ curl -s -u $U:$P http://127.0.0.1:8080/api/v1/show_config | jq
 
 ## 7. ไฟล์ที่ห้าม commit / ห้ามแชร์
 
-- `ft/user_data/config.json` ที่ใส่ key จริงแล้ว (แนะนำคัดลอกเป็น `config.local.json` ซึ่งอยู่ใน `.gitignore` แล้วชี้ใน compose)
-- `ft/user_data/*.sqlite*` ประวัติ trade
-- `ft/user_data/logs/` และ `ft/user_data/data/`
+- `freqtrade/user_data/config.json` ที่ใส่ key จริงแล้ว (แนะนำคัดลอกเป็น `config.local.json` ซึ่งอยู่ใน `.gitignore` แล้วชี้ใน compose)
+- `freqtrade/user_data/*.sqlite*` ประวัติ trade
+- `freqtrade/user_data/logs/` และ `freqtrade/user_data/data/`
 - token ของ Telegram / Discord และ Binance API secret

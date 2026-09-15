@@ -1,6 +1,6 @@
 /**
  * เทียบจำนวน trade ของ backtest.ts กับ freqtrade บนข้อมูลชุดเดียวกัน (แผนเฟส 4 ข้อ 8.3)
- * ใช้:  npx tsx scripts/backtest-count.ts ft/user_data/data/BTCUSDT-1h.full.json supertrend 2026-06-01
+ * ใช้:  npx tsx freqtrade/scripts/backtest-count.ts freqtrade/user_data/data/BTCUSDT-1h.full.json supertrend 2026-06-01
  */
 import fs from "node:fs";
 import { parseKline, type BinanceKlineRaw } from "@/lib/types/kline";

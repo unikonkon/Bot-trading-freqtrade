@@ -12,13 +12,15 @@
 
 | เฟส | สถานะ | หลักฐาน |
 |---|---|---|
-| 0 | ✅ ทำแล้ว (บนเครื่อง dev, ยังไม่ขึ้น VPS) | `ft/docker-compose.yml`, image `freqtradeorg/freqtrade:stable` = 2026.8, `list-strategies` เห็นครบ 11 ตัว |
-| 1 | ✅ ทำแล้ว | `scripts/dump-indicators.ts` + `ft/user_data/scripts/compare_with_ts.py` |
+| 0 | ✅ ทำแล้ว (บนเครื่อง dev, ยังไม่ขึ้น VPS) | `freqtrade/docker-compose.yml`, image `freqtradeorg/freqtrade:stable` = 2026.8, `list-strategies` เห็นครบ 11 ตัว |
+| 1 | ✅ ทำแล้ว | `freqtrade/scripts/dump-indicators.ts` + `freqtrade/user_data/scripts/compare_with_ts.py` |
 | 2 | ✅ ทำแล้ว **ครบ 10 ตัว** | harness `--mode ts` PASS 31/31 คอลัมน์ ทั้ง BTC 1h และ ETH 4h (ค่าต่าง ~1e-11); ความต่างของ 3 ตัวที่แก้ lookahead บันทึกใน [`port-diff-notes.md`](./port-diff-notes.md) |
 | 3 | ✅ ทำแล้ว | `BaseSignalStrategy` + subclass 10 ตัว, `config.1h.json` / `config.4h.json`, backtest ด้วย `pair_strategy_map` ได้ enter_tag ถูกต้อง |
 | 4 | 🟡 ทำบนข้อมูล 120 วัน | backtest 7 ตัวรันผ่าน, lookahead-analysis = No bias (Supertrend, Trendlines, S/R, SMC), Supertrend BTC/USDT ได้ 31 trade เทียบ TS 32 trade; ผลใน [`backtest-results-202609.md`](./backtest-results-202609.md) — **ยังไม่ได้ทำ hyperopt และยังไม่ได้ใช้ข้อมูล 2 ปี** |
 | 5 | 🟡 บางส่วน | เพิ่ม `api/freqtrade/route.ts` (proxy อ่านอย่างเดียว); การลบ route/cron ในโปรเจกต์ NextJS_UseBot_Crypto **ยังไม่ได้ทำ** รอตัดสินใจ |
 | 6 | ⬜ ยังไม่เริ่ม | smoke test dry-run บนเครื่อง dev 45 วินาที เปิด trade จำลองได้ + API ตอบ; ยังไม่ได้ dry-run ต่อเนื่องบน VPS |
+
+**อัปเดต 15 ก.ย. 2026:** เพิ่มบอทสัญญาณ TypeScript (`signal-bot/`) รันคู่ขนานบน VPS เพื่อแจ้งเตือนผ่าน Telegram โดย **ไม่ยิงออเดอร์** — freqtrade ยังเป็นระบบตัดสินใจเดียวตามหลักข้อ 3 · แผนช่วงเงินจริงและกฎการอยู่ร่วมกันอยู่ใน [`live-execution-plan-th.md`](../signal-bot/live-execution-plan-th.md) · คู่มือบอท TS อยู่ใน [`signal-bot-ts-runbook-th.md`](../signal-bot/README.md) · ฝั่ง TS แก้ lookahead ของ S/R, Trendlines, SMC แล้ว (harness `--mode live` PASS 31/31)
 
 **สิ่งที่เปลี่ยนจากแผนเดิมระหว่างลงมือทำ**
 
@@ -158,7 +160,7 @@ curl "https://api.binance.com/api/v3/klines?symbol=ETHUSDT&interval=4h&limit=100
 
 ### 5.2 ฝั่ง TypeScript: dump ทุกคอลัมน์ออก CSV
 
-สร้าง `scripts/dump-indicators.ts` ในโปรเจกต์ Next.js รันด้วย `npx tsx`
+สร้าง `freqtrade/scripts/dump-indicators.ts` ในโปรเจกต์ Next.js รันด้วย `npx tsx`
 
 ```ts
 import fs from "node:fs";
@@ -193,7 +195,7 @@ fs.writeFileSync(out, lines.join("\n"));
 ```
 
 ```bash
-npx tsx scripts/dump-indicators.ts fixtures/BTCUSDT-1h.json fixtures/BTCUSDT-1h.ts.csv
+npx tsx freqtrade/scripts/dump-indicators.ts fixtures/BTCUSDT-1h.json fixtures/BTCUSDT-1h.ts.csv
 ```
 
 ### 5.3 ฝั่ง Python: คำนวณแล้วเทียบ
@@ -272,7 +274,7 @@ docker compose run --rm -v $PWD/fixtures:/fixtures freqtrade \
 
 ### 6.3 ตัวอย่างโครง `indicators.py` (Supertrend และ CDC)
 
-> โค้ดจริงที่ผ่าน harness แล้วอยู่ที่ `ft/user_data/strategies/ta_port/indicators.py` (ไม่ใช้ talib — ดูข้อ 0) ด้านล่างเป็นโครงร่างตอนวางแผน
+> โค้ดจริงที่ผ่าน harness แล้วอยู่ที่ `freqtrade/user_data/strategies/ta_port/indicators.py` (ไม่ใช้ talib — ดูข้อ 0) ด้านล่างเป็นโครงร่างตอนวางแผน
 
 ```python
 import numpy as np, pandas as pd, talib
@@ -329,7 +331,7 @@ def cdc_action_zone(df: pd.DataFrame, fast: int = 12, slow: int = 26) -> pd.Data
 
 `signals.py` พอร์ต `STRATEGY_FNS` จาก `backtest.ts` ให้เป็น dict ชื่อเดียวกัน คืน Series ค่า `1` (BUY) / `-1` (SELL) / `0` (HOLD) และมี `compute_all(df)` ที่รวมทุกคอลัมน์ให้ harness ใช้
 
-**เกณฑ์ผ่านเฟส 2:** harness รายงาน `OK` ทุกคอลัมน์ของตัวที่ 1–7 บน fixture ทั้ง 2 ชุด และสำหรับตัวที่ 8–10 มีไฟล์ `docs/port-diff-notes.md` บันทึกว่าต่างตรงไหนเพราะอะไร
+**เกณฑ์ผ่านเฟส 2:** harness รายงาน `OK` ทุกคอลัมน์ของตัวที่ 1–7 บน fixture ทั้ง 2 ชุด และสำหรับตัวที่ 8–10 มีไฟล์ `freqtrade/port-diff-notes.md` บันทึกว่าต่างตรงไหนเพราะอะไร
 
 ---
 
@@ -476,7 +478,7 @@ docker compose run --rm freqtrade hyperopt --strategy SupertrendStrategy \
 | recursive-analysis | ความต่างของ indicator ที่ startup 300 vs 500 < 0.1% | เพิ่ม `startup_candle_count` |
 | hyperopt | ค่า SL/ROI ที่ได้ไม่ overfit: ทดสอบ out-of-sample ช่วง 20260101- แล้ว profit factor > 1 | ใช้ค่า default แบบระมัดระวัง เช่น SL −5% |
 
-**ผลลัพธ์เฟส 4:** ไฟล์ `docs/backtest-results-YYYYMM.md` ตารางผล 10 strategy พร้อมค่า SL/ROI ที่เลือก และรายชื่อ strategy ที่ "อนุญาตให้ dry-run" กับที่ "ยังไม่อนุญาต"
+**ผลลัพธ์เฟส 4:** ไฟล์ `freqtrade/backtest-results-YYYYMM.md` ตารางผล 10 strategy พร้อมค่า SL/ROI ที่เลือก และรายชื่อ strategy ที่ "อนุญาตให้ dry-run" กับที่ "ยังไม่อนุญาต"
 
 ---
 

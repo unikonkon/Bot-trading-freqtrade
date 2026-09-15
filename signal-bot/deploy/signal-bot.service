@@ -1,0 +1,22 @@
+# systemd — ทางเลือกแทน pm2
+#   sudo cp signal-bot/deploy/signal-bot.service /etc/systemd/system/
+#   แก้ User และ WorkingDirectory ให้ตรงเครื่อง
+#   sudo systemctl daemon-reload && sudo systemctl enable --now signal-bot
+#   journalctl -u signal-bot -f
+[Unit]
+Description=Crypto signal bot (TypeScript, Telegram)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Bot-trading-crypto
+ExecStart=/usr/bin/env node node_modules/.bin/tsx signal-bot/index.ts
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+Environment=NODE_ENV=production
+
+[Install]
+WantedBy=multi-user.target

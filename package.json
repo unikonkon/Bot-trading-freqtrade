@@ -2,15 +2,25 @@
   "name": "bot-trading-crypto",
   "version": "0.1.0",
   "private": true,
-  "description": "Signal library (TypeScript) + freqtrade port — ดู docs/freqtrade-migration-plan-th.md",
+  "description": "Shared signal library (lib/, api/) + signal-bot/ (Telegram bot B, ไม่ยิงออเดอร์) + freqtrade/ (ตัวยิงออเดอร์, Telegram bot A)",
   "scripts": {
-    "dump:btc": "tsx scripts/dump-indicators.ts ft/fixtures/BTCUSDT-1h.json ft/fixtures/BTCUSDT-1h.ts.csv",
-    "dump:eth": "tsx scripts/dump-indicators.ts ft/fixtures/ETHUSDT-4h.json ft/fixtures/ETHUSDT-4h.ts.csv",
-    "dump": "npm run dump:btc && npm run dump:eth"
+    "bot": "tsx signal-bot/index.ts",
+    "bot:once": "tsx signal-bot/index.ts --once",
+    "check:sync": "tsx signal-bot/scripts/check-config-sync.ts",
+    "dump:btc": "tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/BTCUSDT-1h.json freqtrade/fixtures/BTCUSDT-1h.ts.csv --mode ts",
+    "dump:eth": "tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/ETHUSDT-4h.json freqtrade/fixtures/ETHUSDT-4h.ts.csv --mode ts",
+    "dump": "npm run dump:btc && npm run dump:eth",
+    "dump:live": "tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/BTCUSDT-1h.json freqtrade/fixtures/BTCUSDT-1h.live.csv --mode live && tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/ETHUSDT-4h.json freqtrade/fixtures/ETHUSDT-4h.live.csv --mode live",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "tsx": "^4",
     "typescript": "^5"
+  },
+  "dependencies": {
+    "tsx": "^4"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

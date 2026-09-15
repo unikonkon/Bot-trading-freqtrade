@@ -37,7 +37,7 @@
 
 | | freqtrade SupertrendStrategy BTC/USDT | backtest.ts supertrend BTC/USDT |
 |---|---:|---:|
-| ข้อมูล | feather ที่ freqtrade ดาวน์โหลด | ไฟล์เดียวกัน export เป็น kline JSON (`scripts/backtest-count.ts`) |
+| ข้อมูล | feather ที่ freqtrade ดาวน์โหลด | ไฟล์เดียวกัน export เป็น kline JSON (`freqtrade/scripts/backtest-count.ts`) |
 | Trades ตั้งแต่ 1 มิ.ย. | **31** | **32** |
 | Win / Loss | 11 / 20 | 11 / 21 |
 | Tot Profit % | 0.00 | −0.04 |
