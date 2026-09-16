@@ -180,15 +180,37 @@
             aria-labelledby="price-title"
           >
             <div class="section-title">
-              <h2 id="price-title">ราคาและสัญญาณ</h2>
+              <h2 id="price-title">ราคาและสัญญาณซื้อ–ขาย</h2>
               <span id="chart-label"></span>
+            </div>
+            <div class="price-summary">
+              <div class="selected-price">
+                <span>ราคาปิดแท่งที่เลือก</span
+                ><strong id="selected-price">—</strong
+                ><small id="selected-time">—</small>
+              </div>
+              <div class="selected-signal">
+                <span>สัญญาณของแท่งนี้</span
+                ><strong id="selected-signal" class="signal-badge"
+                  >HOLD · รอ</strong
+                ><small>สัญญาณจากกลยุทธ์ ไม่ใช่รายการเทรด</small>
+              </div>
+              <div class="signal-totals">
+                <span>สัญญาณในช่วงกราฟ</span>
+                <div>
+                  <span id="buy-count" class="signal-chip buy">ซื้อ 0</span
+                  ><span id="sell-count" class="signal-chip sell">ขาย 0</span>
+                </div>
+                <small>นับทุกแท่งที่เกิดสัญญาณ</small>
+              </div>
             </div>
             <div class="chart-controls">
               <label>เส้น indicator<select id="overlay"></select></label
               ><label
                 >ช่วงที่แสดง<select id="window">
+                  <option value="50" selected>50 แท่ง · ขยาย</option>
                   <option value="100">100 แท่ง</option>
-                  <option value="200" selected>200 แท่ง</option>
+                  <option value="200">200 แท่ง</option>
                   <option value="500">500 แท่ง</option>
                 </select></label
               >
@@ -212,9 +234,11 @@
               เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
             </p>
             <div class="legend">
-              <span class="buy">▲ BUY</span><span class="sell">▼ SELL</span
+              <span class="signal-chip buy">▲ BUY</span><span class="signal-chip sell">▼ SELL</span
               ><span class="line-key">— Indicator</span
-              ><span>สัญลักษณ์แสดงเวลาเกิดสัญญาณ</span>
+              ><span id="signal-note"
+                >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</span
+              >
             </div>
           </section>
           <section class="panel chart-panel" aria-labelledby="equity-title">

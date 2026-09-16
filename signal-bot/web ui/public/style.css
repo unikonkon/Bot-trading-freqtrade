@@ -764,3 +764,100 @@ footer {
     gap: 10px;
   }
 }
+
+/* Price and actionable signal annotations. */
+#charts {
+  padding-top: 32px;
+}
+#price-title {
+  font-size: 1.3rem;
+}
+#price-chart {
+  height: 540px;
+  cursor: crosshair;
+}
+.price-summary {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr 1fr;
+  gap: 24px;
+  padding: 22px 24px;
+  margin-bottom: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.price-summary > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+.price-summary > div > span {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+.selected-price strong {
+  font-size: 2rem;
+  font-weight: 600;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.signal-badge {
+  display: inline-block;
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 8px 18px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+}
+.signal-badge.hold {
+  color: var(--muted);
+}
+.signal-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 12px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+}
+.signal-totals > div {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+#charts .legend {
+  align-items: center;
+}
+#charts .chart-readout {
+  font-size: 0.875rem;
+}
+@media (max-width: 760px) {
+  #price-chart {
+    height: 450px;
+  }
+  .price-summary {
+    grid-template-columns: 1fr 1fr;
+    padding: 18px;
+    gap: 20px 14px;
+  }
+  .signal-totals {
+    grid-column: 1 / -1;
+  }
+  .selected-price strong {
+    font-size: 1.65rem;
+  }
+  .signal-badge {
+    font-size: 1.0625rem;
+    padding: 8px 12px;
+  }
+}
+@media (max-width: 400px) {
+  .price-summary {
+    grid-template-columns: 1fr;
+  }
+}

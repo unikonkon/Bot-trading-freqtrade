@@ -351,6 +351,20 @@ function renderBar() {
   const i = Number($("bar").value),
     k = result.klines[i],
     signal = detail.signals[i];
+  $("selected-price").textContent = fmt(
+    +k.close,
+    +k.close >= 1000 ? 2 : +k.close >= 1 ? 4 : 6,
+  );
+  $("selected-time").textContent =
+    `${result.config.symbol} · ${time(k.closeTime)} (เวลาไทย)`;
+  $("selected-signal").textContent =
+    signal === "BUY"
+      ? "▲ BUY"
+      : signal === "SELL"
+        ? "▼ SELL"
+        : "HOLD · รอ";
+  $("selected-signal").className =
+    `signal-badge ${signal === "BUY" ? "buy" : signal === "SELL" ? "sell" : "hold"}`;
   $("bar-summary").textContent =
     `${signal} · O ${fmt(+k.open)} / H ${fmt(+k.high)} / L ${fmt(+k.low)} / C ${fmt(+k.close)} · Volume ${fmt(+k.volume)}`;
   $("indicator-values").replaceChildren(
@@ -422,6 +436,111 @@ function line(c, arr, start, end, x, y, color) {
   c.stroke();
 }
 let chartBounds;
+let signalHitAreas = [];
+function chartIndex(event) {
+  if (!chartBounds) return -1;
+  const box = event.currentTarget.getBoundingClientRect();
+  const px = event.clientX - box.left,
+    py = event.clientY - box.top;
+  const hit = signalHitAreas.find(
+    (r) =>
+      px >= r.x && px <= r.x + r.width && py >= r.y && py <= r.y + r.height,
+  );
+  if (hit) return hit.index;
+  const index = Math.floor(px / chartBounds.step) + chartBounds.start;
+  return index >= chartBounds.start && index < chartBounds.end ? index : -1;
+}
+
+// Every signal gets a marker. Text labels are staggered and omitted only when
+// there is no free space; selecting a bar gives its label placement priority.
+function drawSignalLabels(c, start, end, x, y, plotW, top, bottom) {
+  signalHitAreas = [];
+  const signals = [];
+  for (let i = start; i < end; i++) {
+    const action = detail.signals[i];
+    if (action === "HOLD") continue;
+    const buy = action === "BUY";
+    const px = x(i),
+      py = y(+(buy ? result.klines[i].low : result.klines[i].high));
+    const tip = py + (buy ? 8 : -8);
+    c.fillStyle = buy ? chartColors.green : chartColors.red;
+    c.beginPath();
+    c.moveTo(px, tip);
+    c.lineTo(px - 6, tip + (buy ? 10 : -10));
+    c.lineTo(px + 6, tip + (buy ? 10 : -10));
+    c.closePath();
+    c.fill();
+    signals.push({ index: i, buy, px, py: tip });
+    signalHitAreas.push({
+      index: i,
+      x: px - 8,
+      y: tip + (buy ? 0 : -10),
+      width: 16,
+      height: 12,
+    });
+  }
+  const selected = Number($("bar").value);
+  signals.sort(
+    (a, b) =>
+      Number(b.index === selected) - Number(a.index === selected) ||
+      b.index - a.index,
+  );
+  const occupied = [];
+  c.save();
+  c.font = '600 15px "Sarabun", sans-serif';
+  c.textAlign = "center";
+  c.textBaseline = "middle";
+  for (const signal of signals) {
+    const text = signal.buy ? "BUY" : "SELL";
+    const width = Math.ceil(c.measureText(text).width) + 26,
+      height = 32;
+    const left = Math.max(
+      2,
+      Math.min(plotW - width - 2, signal.px - width / 2),
+    );
+    for (let lane = 0; lane < 3; lane++) {
+      const labelY = signal.buy
+        ? signal.py + 16 + lane * 38
+        : signal.py - 16 - height - lane * 38;
+      if (labelY < top || labelY + height > bottom) continue;
+      const rect = { x: left, y: labelY, width, height, index: signal.index };
+      if (
+        occupied.some(
+          (r) =>
+            rect.x < r.x + r.width + 5 &&
+            rect.x + width + 5 > r.x &&
+            rect.y < r.y + r.height + 4 &&
+            rect.y + height + 4 > r.y,
+        )
+      )
+        continue;
+      const color = signal.buy ? chartColors.green : chartColors.red;
+      c.strokeStyle = color;
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(signal.px, signal.py + (signal.buy ? 10 : -10));
+      c.lineTo(left + width / 2, labelY + (signal.buy ? 0 : height));
+      c.stroke();
+      c.beginPath();
+      c.roundRect(left, labelY, width, height, 9);
+      c.fillStyle = chartColors.surface;
+      c.fill();
+      c.stroke();
+      c.fillStyle = color;
+      c.fillText(text, left + width / 2, labelY + height / 2);
+      occupied.push(rect);
+      break;
+    }
+  }
+  c.restore();
+  signalHitAreas = [...occupied, ...signalHitAreas];
+  $("buy-count").textContent = `▲ ซื้อ ${signals.filter((s) => s.buy).length}`;
+  $("sell-count").textContent = `▼ ขาย ${signals.filter((s) => !s.buy).length}`;
+  $("signal-note").textContent =
+    occupied.length < signals.length
+      ? "สัญญาณอยู่ใกล้กัน: แสดงลูกศรครบทุกแท่ง เลือก 50 แท่งเพื่อขยาย หรือกดแท่งเพื่อดูสัญญาณ"
+      : "กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ";
+}
 function drawPrice() {
   const { c, width: w, height: h } = surface("price-chart");
   const end = chartEnd,
@@ -440,7 +559,7 @@ function drawPrice() {
     : [];
   let lo = Math.min(...bars.map((k) => +k.low), ...extra),
     hi = Math.max(...bars.map((k) => +k.high), ...extra);
-  const pad = (hi - lo) * 0.12 || hi * 0.01;
+  const pad = (hi - lo) * 0.24 || hi * 0.01;
   lo -= pad;
   hi += pad;
   const bottom = overlay && !priceLine ? h * 0.6 : h - 26,
@@ -465,18 +584,6 @@ function drawPrice() {
       Math.max(1, step * 0.65),
       Math.max(1, Math.abs(y(+k.open) - y(+k.close))),
     );
-    const sig = detail.signals[i];
-    if (sig !== "HOLD") {
-      const cy = y(sig === "BUY" ? +k.low : +k.high) + (sig === "BUY" ? 9 : -9),
-        direction = sig === "BUY" ? 1 : -1;
-      c.fillStyle = sig === "BUY" ? chartColors.green : chartColors.red;
-      c.beginPath();
-      c.moveTo(cx, cy - direction * 4);
-      c.lineTo(cx - 3, cy + direction * 3);
-      c.lineTo(cx + 3, cy + direction * 3);
-      c.closePath();
-      c.fill();
-    }
   }
   if (overlay) {
     if (priceLine) line(c, overlay, start, end, x, y, chartColors.line);
@@ -515,6 +622,7 @@ function drawPrice() {
     c.stroke();
     c.setLineDash([]);
   }
+  drawSignalLabels(c, start, end, x, y, plotW, top, bottom);
   c.fillStyle = chartColors.muted;
   c.textAlign = "left";
   c.fillText(time(bars[0].openTime), 0, h - 5);
@@ -553,6 +661,7 @@ function drawEquity() {
 function drawCharts() {
   const styles = getComputedStyle(document.documentElement);
   for (const [name, token] of Object.entries({
+    surface: "--surface",
     grid: "--chart-grid",
     muted: "--muted",
     green: "--green",
@@ -663,25 +772,15 @@ async function init() {
       drawPrice();
     });
     $("price-chart").addEventListener("pointermove", (e) => {
-      if (!chartBounds) return;
-      const i =
-        Math.floor(
-          (e.clientX - e.currentTarget.getBoundingClientRect().left) /
-            chartBounds.step,
-        ) + chartBounds.start;
-      if (i < chartBounds.start || i >= chartBounds.end) return;
+      const i = chartIndex(e);
+      if (i < 0) return;
       const k = result.klines[i];
       $("hover").textContent =
         `${time(k.closeTime)} · O ${fmt(+k.open)} H ${fmt(+k.high)} L ${fmt(+k.low)} C ${fmt(+k.close)} · ${detail.signals[i]} · คลิกเพื่อตรวจค่ารายแท่ง`;
     });
     $("price-chart").addEventListener("click", (e) => {
-      if (!chartBounds) return;
-      const i =
-        Math.floor(
-          (e.clientX - e.currentTarget.getBoundingClientRect().left) /
-            chartBounds.step,
-        ) + chartBounds.start;
-      if (i < chartBounds.start || i >= chartBounds.end) return;
+      const i = chartIndex(e);
+      if (i < 0) return;
       $("bar").value = String(i);
       renderBar();
       drawPrice();
