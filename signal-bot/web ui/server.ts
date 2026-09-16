@@ -7,13 +7,17 @@ import { STRATEGIES, type StrategyId } from "../../lib/backtest";
 import { INTERVALS } from "../../lib/types/kline";
 import { validate, loadData, type RequestConfig } from "./data";
 import { analyze } from "./engine";
+import {
+  captureExportSources,
+  createExport,
+  validateExport,
+  type ExportRun,
+} from "./export";
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const port = Number(process.env.WEB_UI_PORT ?? 4310);
-const runs = new Map<
-  string,
-  { at: number; cfg: RequestConfig; data: Awaited<ReturnType<typeof loadData>> }
->();
+const runs = new Map<string, ExportRun>();
+let exportSources: Record<string, string>;
 let busy = false;
 const files: Record<string, [string, string]> = {
   "/": ["index.html", "text/html"],
@@ -65,7 +69,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (
       req.method !== "POST" ||
-      !["/api/backtest", "/api/detail"].includes(url.pathname)
+      !["/api/backtest", "/api/detail", "/api/export"].includes(url.pathname)
     ) {
       json(404, { error: "ไม่พบหน้าที่ขอ" });
       return;
@@ -104,6 +108,29 @@ const server = http.createServer(async (req, res) => {
     try {
       for (const [id, run] of runs)
         if (Date.now() - run.at > 30 * 60000) runs.delete(id);
+      if (url.pathname === "/api/export") {
+        const request = validateExport(input);
+        const run = runs.get(request.runId);
+        if (!run) {
+          json(410, { error: "ผลทดสอบหมดอายุ กรุณารันทดสอบใหม่ก่อน Export" });
+          return;
+        }
+        const archive = createExport(
+          request.runId,
+          run,
+          request.strategies,
+          exportSources,
+        );
+        const stamp = new Date(run.at).toISOString().replace(/[:.]/g, "-");
+        const filename = `signal-export-${run.cfg.symbol}-${run.cfg.interval}-${stamp}.zip`;
+        res.writeHead(200, {
+          "Content-Type": "application/zip",
+          "Content-Disposition": `attachment; filename="${filename}"`,
+          "Content-Length": archive.length,
+        });
+        res.end(archive);
+        return;
+      }
       if (url.pathname === "/api/detail") {
         const { runId, strategy } = input as {
           runId: string;
@@ -183,6 +210,16 @@ const server = http.createServer(async (req, res) => {
   }
 });
 server.requestTimeout = 180000;
-server.listen(port, "127.0.0.1", () =>
-  console.log(`Signal Lab: http://127.0.0.1:${port}`),
-);
+// Capture the same source version for every run in this server process.
+// Export never reads .env, bot state, credentials or arbitrary filesystem paths.
+captureExportSources()
+  .then((sources) => {
+    exportSources = sources;
+    server.listen(port, "127.0.0.1", () =>
+      console.log(`Signal Lab: http://127.0.0.1:${port}`),
+    );
+  })
+  .catch((error) => {
+    console.error("Cannot initialize export sources:", error);
+    process.exitCode = 1;
+  });

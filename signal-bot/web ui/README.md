@@ -85,3 +85,34 @@ npm run web:test
 ผลตรวจระหว่างพัฒนา: `web:check` ผ่าน, ชุดทดสอบ 16 กรณีผ่าน, Binance จริง BTCUSDT 1h 500 แท่งและ ETHUSDT 1h 1,200 แท่ง + warmup 300 แท่งผ่านครบ 10 กลยุทธ์/2 โหมด, harness TypeScript ↔ Python ผ่าน 31/31 คอลัมน์ทั้งสอง fixtures ด้วยค่า default
 
 ยังไม่ได้ทดสอบการคลิก/การจัดวางใน browser อัตโนมัติ ส่วน WebMCP เป็น optional feature-detected API และยังไม่ได้ตรวจใน browser ที่รองรับ WebMCP
+
+## Export ข้อมูลและชุดโค้ด
+
+หลังรันทดสอบ กด **Export** ข้างปุ่มรันทดสอบ เลือกกลยุทธ์ทีละตัวหรือ **เลือกทั้งหมด** แล้วกด **ดาวน์โหลด ZIP** ปุ่มจะไม่ทำงานหากยังไม่มีผลทดสอบหรือไม่ได้เลือกกลยุทธ์
+
+Export ใช้ข้อมูลและพารามิเตอร์ที่บันทึกไว้ในรอบนั้น รวม warmup ไม่อ่านค่าที่แก้ใหม่ในฟอร์มและไม่เรียก Binance เพิ่ม กลยุทธ์ที่ยังไม่ได้รันจะแปลงสัญญาณจากแท่งชุดเดิมด้วยพารามิเตอร์ของรอบเดิม ผลเดิมหมดอายุหลัง 30 นาทีหรือถูกแทนที่เมื่อมีเกิน 3 รอบ ต้องรันใหม่ก่อน Export
+
+ZIP ประกอบด้วย:
+
+- `config.json`, `manifest.json`: ข้อมูลรอบทดสอบ พารามิเตอร์ และ SHA-256 ของไฟล์ทั้งหมด
+- `input-klines.json`, `input-klines.csv`: แท่งจริงที่ใช้คำนวณ รวม warmup (รูปแบบ KlineData ที่แปลงแล้ว)
+- `signals/<strategy>.csv` และ `.json`: BUY/SELL/HOLD ทุกแท่งในช่วงทดสอบ พร้อมค่า indicator ปัจจุบัน/ก่อนหน้าและเหตุการณ์ประกอบ
+- `calculations/<strategy>.json`: indicator แบบเต็ม รวมโครงสร้าง SMC/OB และผลจำลองทั้งโหมดที่เลือกไว้
+- `trades/`, `summary.csv`: รายการเทรดจำลองและผลสรุป แยกจากสัญญาณ
+- `rules.md`, `README.md`: เงื่อนไขจริงและวิธีคำนวณซ้ำ
+- `lib/`, `signal-bot/web ui/`, `package.json`, `package-lock.json`, `tsconfig.json`: ชุดโค้ดที่ใช้งานได้แยกจาก repository เดิม
+
+ไฟล์ผลลัพธ์มีเฉพาะกลยุทธ์ที่เลือก ส่วน shared library แนบทั้งไฟล์เพื่อคง dependency และตรรกะเดิม ไม่แนบ `.env`, Telegram token, state ของบอท หรือโค้ดส่งออเดอร์ Source ถูก snapshot เมื่อเริ่ม server หากแก้ shared library ให้ restart server และรันทดสอบใหม่ก่อน Export
+
+คำนวณซ้ำจากโฟลเดอร์ที่แตก ZIP:
+
+```bash
+npm ci
+npm run replay
+```
+
+`replay` ตรวจ checksum ก่อนคำนวณ ตรวจผลตรงกับ `calculations/*.json` และเขียนผลลง `recomputed/` หลังติดตั้ง dependency แล้วไม่ต้องต่อ Binance/Telegram เรียก `evaluateKlines()` จาก `signal-bot/web ui/evaluate-klines.ts` เพื่อรับ raw response รูปแบบเดียวกับ `api/klines/route.ts` ในโปรเจกต์อื่นได้ ตัวอย่างอยู่ใน README ภายใน ZIP
+
+ข้อสังเกต: สูตรบางกลยุทธ์ต่างจากคำอธิบายย่อเดิม เช่น CM MACD ใช้ SMA ของ MACD เป็น signal line; Squeeze ตรวจจุดตัดศูนย์โดยไม่บังคับ squeeze release; MSB ไม่ได้บังคับว่าต้องพบ Order Block ก่อนส่งสัญญาณ ให้ยึด `rules.md` และโค้ดในชุด Export
+
+ตรวจเพิ่มสำหรับ Export: `npm run web:test` ผ่าน 22 กรณี, ZIP เปิด/ตรวจ CRC ได้, endpoint แบบเลือกหนึ่ง/เลือกทั้งหมดผ่าน, ผล Export ตรงกับผล API รอบเดิม และ replay ในโฟลเดอร์แยกผ่านทั้ง 10 กลยุทธ์บนข้อมูลจริง 500 แท่ง

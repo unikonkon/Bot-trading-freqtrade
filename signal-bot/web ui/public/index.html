@@ -143,6 +143,7 @@
         </div>
         <div class="form-actions">
           <button class="primary" id="run" type="submit">รันทดสอบ</button>
+          <button id="export-open" type="button" disabled>Export</button>
           <p id="status" role="status" aria-live="polite">
             พร้อมโหลดข้อมูลจาก Binance
           </p>
@@ -234,7 +235,8 @@
               เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
             </p>
             <div class="legend">
-              <span class="signal-chip buy">▲ BUY</span><span class="signal-chip sell">▼ SELL</span
+              <span class="signal-chip buy">▲ BUY</span
+              ><span class="signal-chip sell">▼ SELL</span
               ><span class="line-key">— Indicator</span
               ><span id="signal-note"
                 >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</span
@@ -351,5 +353,40 @@
         <span>Signal bot · Backtest</span><span>เวลาแสดงผล Asia/Bangkok</span>
       </footer>
     </main>
+    <dialog
+      id="export-dialog"
+      aria-labelledby="export-title"
+      aria-describedby="export-description"
+    >
+      <div class="section-title">
+        <h2 id="export-title">Export ข้อมูลและชุดโค้ด</h2>
+        <button id="export-close" type="button" aria-label="ปิดหน้าต่าง Export">
+          ปิด
+        </button>
+      </div>
+      <p id="export-description" class="field-help">
+        ใช้ข้อมูลและพารามิเตอร์จากรอบทดสอบเดิม รวม CSV, JSON, วิธีคำนวณ
+        และโค้ดคำนวณซ้ำในไฟล์ ZIP
+      </p>
+      <p id="export-dataset" class="field-help"></p>
+      <fieldset>
+        <legend>กลยุทธ์ที่ส่งออก</legend>
+        <div class="export-select-actions">
+          <button id="export-all" type="button">เลือกทั้งหมด</button
+          ><button id="export-clear" type="button">ล้างการเลือก</button
+          ><span id="export-count" class="muted"></span>
+        </div>
+        <div id="export-options" class="export-options"></div>
+      </fieldset>
+      <p class="field-help">
+        กลยุทธ์ที่ยังไม่ได้แสดงผลจะคำนวณเพิ่มจากแท่งชุดเดิม ไม่ดึงราคาชุดใหม่
+      </p>
+      <p id="export-status" role="status" aria-live="polite"></p>
+      <div class="export-actions">
+        <button id="export-download" class="primary" type="button">
+          ดาวน์โหลด ZIP
+        </button>
+      </div>
+    </dialog>
   </body>
 </html>

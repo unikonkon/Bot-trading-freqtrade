@@ -8,6 +8,7 @@ let metadata,
   active = false;
 const params = {};
 let chartColors = {};
+let exporting = false;
 const parameterLabels = {
   period: "ช่วงคำนวณ RSI",
   buyThreshold: "ระดับซื้อ",
@@ -71,6 +72,7 @@ function busy(value) {
   document
     .querySelectorAll("#config input,#config select,#config button")
     .forEach((e) => (e.disabled = value));
+  $("export-open").disabled = value || !result;
   $("slippage").disabled = value || $("mode").value === "legacy";
   $("run").textContent = value ? "กำลังคำนวณ…" : "รันทดสอบ";
 }
@@ -358,11 +360,7 @@ function renderBar() {
   $("selected-time").textContent =
     `${result.config.symbol} · ${time(k.closeTime)} (เวลาไทย)`;
   $("selected-signal").textContent =
-    signal === "BUY"
-      ? "▲ BUY"
-      : signal === "SELL"
-        ? "▼ SELL"
-        : "HOLD · รอ";
+    signal === "BUY" ? "▲ BUY" : signal === "SELL" ? "▼ SELL" : "HOLD · รอ";
   $("selected-signal").className =
     `signal-badge ${signal === "BUY" ? "buy" : signal === "SELL" ? "sell" : "hold"}`;
   $("bar-summary").textContent =
@@ -676,7 +674,103 @@ function drawCharts() {
     drawEquity();
   }
 }
+function exportSelection() {
+  return [...$("export-options").querySelectorAll("input:checked")].map(
+    (input) => input.value,
+  );
+}
+function updateExportSelection() {
+  const count = exportSelection().length;
+  $("export-count").textContent =
+    `เลือก ${count} / ${metadata.strategies.length}`;
+  $("export-download").disabled = exporting || count === 0;
+}
+function openExport() {
+  if (active || !result) return;
+  const selected = new Set(result.results.map((r) => r.id));
+  $("export-options").replaceChildren(
+    ...metadata.strategies.map((s) => {
+      const label = node("label", undefined, "check");
+      const input = node("input");
+      input.type = "checkbox";
+      input.value = s.id;
+      input.checked = selected.has(s.id);
+      input.addEventListener("change", updateExportSelection);
+      label.append(input, node("span", s.name));
+      return label;
+    }),
+  );
+  $("export-dataset").textContent =
+    `${result.config.symbol} / ${result.config.interval} · ${result.klines.length} แท่ง · ${time(result.klines[0].openTime)} – ${time(result.klines.at(-1).closeTime)}`;
+  $("export-status").textContent = "";
+  updateExportSelection();
+  $("export-dialog").showModal();
+}
+async function downloadExport() {
+  const ids = exportSelection();
+  if (active || exporting || !result || !ids.length) return;
+  const runId = result.runId;
+  exporting = true;
+  busy(true);
+  $("export-dialog")
+    .querySelectorAll("input, button")
+    .forEach((e) => (e.disabled = true));
+  $("export-status").textContent = "กำลังคำนวณและจัดไฟล์ ZIP…";
+  try {
+    const response = await fetch("/api/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ runId, strategies: ids }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Export ไม่สำเร็จ");
+    }
+    const blob = await response.blob();
+    const filename =
+      response.headers
+        .get("Content-Disposition")
+        ?.match(/filename="([^"]+)"/)?.[1] || "signal-export.zip";
+    const url = URL.createObjectURL(blob),
+      link = node("a");
+    link.href = url;
+    link.download = filename;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+    $("export-status").textContent =
+      `พร้อมดาวน์โหลด ${ids.length} กลยุทธ์ · ${filename}`;
+  } catch (error) {
+    $("export-status").textContent = error.message;
+  } finally {
+    exporting = false;
+    busy(false);
+    $("export-dialog")
+      .querySelectorAll("input, button")
+      .forEach((e) => (e.disabled = false));
+    updateExportSelection();
+  }
+}
+
 async function init() {
+  $("export-open").addEventListener("click", openExport);
+  $("export-close").addEventListener("click", () => $("export-dialog").close());
+  $("export-dialog").addEventListener("cancel", (event) => {
+    if (exporting) event.preventDefault();
+  });
+  for (const [id, checked] of [
+    ["export-all", true],
+    ["export-clear", false],
+  ]) {
+    $(id).addEventListener("click", () => {
+      $("export-options")
+        .querySelectorAll("input")
+        .forEach((input) => (input.checked = checked));
+      updateExportSelection();
+    });
+  }
+  $("export-download").addEventListener("click", downloadExport);
   const themeButton = $("theme-toggle");
   function updateThemeButton() {
     const dark = document.documentElement.dataset.theme === "dark";
