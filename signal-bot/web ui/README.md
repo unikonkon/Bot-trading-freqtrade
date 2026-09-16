@@ -1,5 +1,31 @@
 # Signal Lab — Web UI ทดสอบ indicator และสัญญาณ
 
+## SMC Adaptive (เพิ่ม 16 กันยายน 2026)
+
+เลือก **SMC Adaptive** (`smc_adaptive`) ในรายการกลยุทธ์ได้แล้ว สูตรอยู่ใน
+[`../../lib/indicators.ts`](../../lib/indicators.ts) ฟังก์ชัน `smcAdaptive()`:
+confirmed BOS/CHoCH + EMA 200, liquidity reclaim, ATR volatility filter,
+stop/trailing/target ณ **ปิดแท่ง** และ cooldown. โหมด next_open ส่งผลไป fill
+ที่ราคาเปิดแท่งถัดไป จึงมี gap/slippage และไม่ได้รับประกัน fill ที่ระดับ stop.
+
+ค่าเริ่มต้นมาจากการเลือกบนช่วง train/validation ของ export `10-00-08-170Z`.
+ผลสุทธิทั้งช่วง +2.35%, drawdown 12.32%, 18 เทรด; SMC เดิม −17.54%.
+Validation −2.37%, test +1.52% จาก 4 เทรด และชุดล่าสุด 500 แท่ง −1.47%.
+ผลนี้ไม่รับรองกำไรสูงสุดหรือใช้ได้ทุกตลาด ดูผลทั้ง 11 กลยุทธ์และต้นทุนใน
+[รายงานภาษาไทย](smc-adaptive-results/REPORT.th.md).
+
+`npm run web:smc:analyze` สร้างรายงาน/รายละเอียดเทรดจากไฟล์ export ทั้งสองชุดแบบ offline.
+`npm run web:smc:select` คำนวณ grid รุ่นสุดท้ายใหม่ ไม่แก้ default อัตโนมัติ.
+`npm run web:check` และ `npm run web:test` ตรวจทั้งหมด รวม prefix, warmup state และ gap exit.
+
+Restart server เดิมด้วย `npm run web:ui` เพื่อโหลด strategy และ export source ใหม่.
+การเลือกช่วงวันที่สำหรับ SMC Adaptive หรือเปรียบเทียบทั้งหมดจะโหลด warmup 1,000 แท่ง
+ตาม EMA 200; การวิเคราะห์ไฟล์ export นี้ใช้ warmup เดิม 300 แท่งเพื่อให้ตรงกับข้อมูลที่ส่งมา.
+การรันเว็บใหม่จึงอาจต่างจากรายงานเพราะข้อมูล/จุดเริ่ม warmup ต่างกัน.
+การทดสอบกลยุทธ์อื่นตัวเดียวจะคิด warmup เฉพาะตัวที่เลือก.
+ตัวใหม่ใช้สถานะสะสมเริ่มว่างที่ `startIndex`; rolling window ของบอทอาจให้ผลต่างกัน.
+สูตรเดิมทั้ง 10 ตัวคงเดิม; ยังไม่มี Python/Freqtrade port ของ SMC Adaptive.
+
 Dashboard ภาษาไทยสำหรับ Binance Spot public klines → `lib/indicators.ts` → `STRATEGY_FNS` → Backtest / Telegram preview
 
 ## เริ่มใช้งาน

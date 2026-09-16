@@ -109,7 +109,7 @@ for (const file of ["BTCUSDT-1h", "ETHUSDT-4h"]) {
       ),
     ) as BinanceKlineRaw[]
   ).map(parseKline);
-  test(`${file}: 10 strategies, legacy parity, shared indicators, warmup and signal causality samples`, () => {
+  test(`${file}: all strategies, legacy parity, shared indicators, warmup and signal causality samples`, () => {
     for (const s of STRATEGIES) {
       const original = runBacktest(k, s.id, s.params);
       const a = analyze(k, 0, s.id, s.params, 0.1, 0.05, "both", true);

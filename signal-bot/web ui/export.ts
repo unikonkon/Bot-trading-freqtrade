@@ -50,7 +50,7 @@ export function validateExport(input: unknown): {
     !v.strategies.length ||
     v.strategies.length > STRATEGIES.length
   )
-    throw new Error("เลือกอย่างน้อย 1 กลยุทธ์ และไม่เกิน 10 กลยุทธ์");
+    throw new Error(`เลือกอย่างน้อย 1 กลยุทธ์ และไม่เกิน ${STRATEGIES.length} กลยุทธ์`);
   if (
     !v.strategies.every(
       (id) => typeof id === "string" && STRATEGIES.some((s) => s.id === id),

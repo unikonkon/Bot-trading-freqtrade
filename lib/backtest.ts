@@ -1,5 +1,5 @@
 import type { KlineData } from "@/lib/types/kline";
-import { computeAll, type AllIndicators } from "@/lib/indicators";
+import { computeAll, SMC_ADAPTIVE_DEFAULTS, type AllIndicators } from "@/lib/indicators";
 
 // ─── Types ─────────────────────────────────────────────────────
 export type SignalAction = "BUY" | "SELL" | "HOLD";
@@ -41,6 +41,7 @@ export type StrategyId =
   | "rsi"
   | "cdc_actionzone"
   | "smc"
+  | "smc_adaptive"
   | "cm_macd"
   | "supertrend"
   | "squeeze_momentum"
@@ -78,6 +79,13 @@ export const STRATEGIES: StrategyConfig[] = [
     descriptionEn: "Buy on Bullish CHoCH/BOS (discount zone), Sell on Bearish CHoCH/BOS (premium zone)",
     descriptionTh: "ซื้อ เมื่อ CHoCH/BOS ขาขึ้น (โซนส่วนลด), ขาย เมื่อ CHoCH/BOS ขาลง (โซนพรีเมียม)",
     params: { swingSize: 50, internalSize: 5 },
+  },
+  {
+    id: "smc_adaptive",
+    name: "SMC Adaptive",
+    descriptionEn: "Confirmed SMC liquidity reclaim / structure breakout, volatility filter and close-based ATR exits",
+    descriptionTh: "SMC ยืนยันโครงสร้าง + กวาดสภาพคล่อง/ทะลุ BOS พร้อมกรองความผันผวนและออกตาม ATR ณ ปิดแท่ง",
+    params: { ...SMC_ADAPTIVE_DEFAULTS },
   },
   {
     id: "squeeze_momentum",
@@ -221,6 +229,7 @@ export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   rsi: rsiStrategy,
   cdc_actionzone: cdcActionZoneStrategy,
   smc: smcStrategy,
+  smc_adaptive: (_k, ind) => ind.smcAdaptive.signal.map(s => s ?? "HOLD"),
   cm_macd: cmMacdStrategy,
   supertrend: supertrendStrategy,
   squeeze_momentum: squeezeMomentumStrategy,
@@ -234,6 +243,8 @@ export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
 export interface SignalOptions {
   /** false = โหมด TS เดิมมี lookahead ใช้เฉพาะ harness; default true */
   confirmedPivots?: boolean;
+  /** Stateful strategies start flat here; prior bars only warm up features. */
+  startIndex?: number;
 }
 
 /**
@@ -248,6 +259,8 @@ export function computeStrategyIndicators(
 ): AllIndicators {
   return computeAll(klines, {
     confirmedPivots: opts.confirmedPivots,
+    smcAdaptiveParams: strategyId === "smc_adaptive" ? params : undefined,
+    smcAdaptiveStartIndex: opts.startIndex,
     cdcFastPeriod: strategyId === "cdc_actionzone" ? params.fastPeriod : undefined,
     cdcSlowPeriod: strategyId === "cdc_actionzone" ? params.slowPeriod : undefined,
     rsiPeriod: strategyId === "rsi" ? (params.period ?? 14) : undefined,

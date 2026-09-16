@@ -778,6 +778,143 @@ export function smartMoneyConcepts(
   };
 }
 
+// ─── SMC Adaptive: confirmed structure + liquidity reclaim ────────
+export const SMC_ADAPTIVE_DEFAULTS = {
+  swingSize: 30, internalSize: 20, atrPeriod: 14, trendPeriod: 200,
+  stopAtr: 3, trailAtr: 4, rewardRisk: 3,
+  maxHoldBars: 120, cooldownBars: 6, rsiThreshold: 25,
+  trendThreshold: 0.25, maxVolatilityRatio: 2.5,
+};
+export type SMCAdaptiveParams = typeof SMC_ADAPTIVE_DEFAULTS;
+export interface SMCAdaptiveResult {
+  signal: ("BUY" | "SELL" | null)[];
+  reason: string[];
+  regime: ("warmup" | "range" | "uptrend" | "downtrend" | "shock")[];
+  atr: (number | null)[];
+  trendEMA: (number | null)[];
+  rsi: (number | null)[];
+  efficiency: (number | null)[];
+  volatilityRatio: (number | null)[];
+  support: (number | null)[];
+  resistance: (number | null)[];
+  stop: (number | null)[];
+  target: (number | null)[];
+  position: boolean[];
+  structures: SMCStructureBreak[];
+}
+
+/**
+ * Closed bars only. Pivots become available at pivotIndex + size.
+ * Trade state starts flat at startIndex; earlier bars only warm up market features.
+ * Stop/target are CLOSE-triggered signal levels, never assumed intrabar fills.
+ * Risk levels anchor to the BUY signal close; next-open gaps/slippage are borne
+ * by the simulator. No order-block final mitigation/future FVG state is consumed.
+ */
+export function smcAdaptive(
+  klines: KlineData[], overrides: Partial<SMCAdaptiveParams> = {}, startIndex = 0,
+): SMCAdaptiveResult {
+  const p = { ...SMC_ADAPTIVE_DEFAULTS, ...overrides };
+  for (const [key, value] of Object.entries(p)) {
+    const period = /Size|Period|Bars/.test(key);
+    if (!Number.isFinite(value) || value <= 0 ||
+      (period && (!Number.isInteger(value) || value < 2 || value > 200)))
+      throw new Error(`Invalid SMC Adaptive parameter: ${key}`);
+  }
+  if (p.internalSize >= p.swingSize || p.trendThreshold > 1 || p.rsiThreshold >= 70)
+    throw new Error("SMC Adaptive: internalSize < swingSize, trendThreshold <= 1, rsiThreshold < 70 required");
+  if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex > klines.length)
+    throw new Error("Invalid SMC Adaptive startIndex");
+  const c = closes(klines), h = highs(klines), l = lows(klines);
+  const n = c.length;
+  const av = atr(klines, p.atrPeriod), slowAtr = atr(klines, Math.max(50, p.atrPeriod));
+  const trendEMA = ema(c, p.trendPeriod), rv = rsi(c, 14);
+  const pv = detectPivots(h, l, p.internalSize, true);
+  const swing = detectPivots(h, l, p.swingSize, true);
+  const structure = detectStructure(c, h, l, pv);
+  const events = new Map(structure.structures.map(s => [s.index, s]));
+  const result: SMCAdaptiveResult = {
+    signal: new Array(n).fill(null), reason: new Array(n).fill("warmup"),
+    regime: new Array(n).fill("warmup"), atr: av, trendEMA, rsi: rv,
+    efficiency: new Array(n).fill(null), volatilityRatio: new Array(n).fill(null),
+    support: new Array(n).fill(null), resistance: new Array(n).fill(null),
+    stop: new Array(n).fill(null), target: new Array(n).fill(null),
+    position: new Array(n).fill(false), structures: structure.structures,
+  };
+  let support: number | null = null, resistance: number | null = null;
+  let swingHigh: number | null = null, swingLow: number | null = null;
+  let reclaim = -Infinity, reclaimLow = 0;
+  let entry = -1, entryPrice = 0, risk = 0, stop = 0, target = 0, peakClose = 0;
+  let lastExit = -Infinity, entryKind = "";
+  for (let i = 0; i < n; i++) {
+    if (pv.lowPrice[i] !== null) support = pv.lowPrice[i];
+    if (pv.highPrice[i] !== null) resistance = pv.highPrice[i];
+    if (swing.highPrice[i] !== null) swingHigh = swing.highPrice[i];
+    if (swing.lowPrice[i] !== null) swingLow = swing.lowPrice[i];
+    result.support[i] = support; result.resistance[i] = resistance;
+    const a = av[i], slow = slowAtr[i], trend = trendEMA[i], r = rv[i];
+    if (i < 20 || a === null || a <= 0 || slow === null || slow <= 0 || trend === null || r === null) continue;
+    let travel = 0;
+    for (let j = i - 19; j <= i; j++) travel += Math.abs(c[j] - c[j - 1]);
+    const efficiency = travel ? Math.abs(c[i] - c[i - 20]) / travel : 0;
+    const ratio = a / slow;
+    const shock = ratio > p.maxVolatilityRatio || h[i] - l[i] > 4 * a;
+    const trending = efficiency >= p.trendThreshold;
+    const rising = c[i] > trend && trend >= (trendEMA[i - 5] ?? trend);
+    const falling = c[i] < trend && trend < (trendEMA[i - 5] ?? trend);
+    result.efficiency[i] = efficiency; result.volatilityRatio[i] = ratio;
+    result.regime[i] = shock ? "shock" : trending && rising ? "uptrend" : trending && falling ? "downtrend" : "range";
+    const event = events.get(i);
+    // Remember sell-side liquidity taken and reclaimed, using levels known now.
+    if (support !== null && l[i] < support && c[i] > support && r < p.rsiThreshold + 10) {
+      reclaim = i; reclaimLow = l[i];
+    }
+    if (i < startIndex) { result.reason[i] = "warmup (no position)"; continue; }
+    result.reason[i] = "wait for SMC setup";
+    if (entry >= 0) {
+      // Test the previous stop before ratcheting; an expanding ATR never widens it.
+      result.stop[i] = stop; result.target[i] = target;
+      const exitReason = c[i] <= stop ? "ATR close stop" : c[i] >= target ? "risk target (close)" :
+        event?.bias === "bearish" ? "bearish BOS/CHoCH" :
+        entryKind === "liquidity reclaim" && r >= 70 ? "reclaim RSI exit" :
+        i - entry >= p.maxHoldBars ? "time exit" : "";
+      if (exitReason) {
+        result.signal[i] = "SELL"; result.reason[i] = exitReason;
+        entry = -1; lastExit = i; reclaim = -Infinity;
+      } else {
+        peakClose = Math.max(peakClose, c[i]);
+        if (peakClose - entryPrice >= risk)
+          stop = Math.max(stop, peakClose - p.trailAtr * a);
+        result.stop[i] = stop; result.position[i] = true;
+        result.reason[i] = "hold; close-based risk monitoring";
+      }
+      continue;
+    }
+    if (shock || i - lastExit <= p.cooldownBars) {
+      result.reason[i] = shock ? "volatility shock: no entry" : "cooldown"; continue;
+    }
+    const discount = swingHigh !== null && swingLow !== null && swingHigh > swingLow
+      ? c[i] <= (swingHigh + swingLow) / 2 : c[i] <= trend;
+    const recentOversold = rv.slice(Math.max(0, i - 8), i + 1).some(v => v !== null && v < p.rsiThreshold);
+    const sweepEntry = i - reclaim <= 6 && discount && recentOversold &&
+      c[i] > +klines[i].open && c[i] > c[i - 1] && result.regime[i] !== "downtrend";
+    const breakoutEntry = event?.bias === "bullish" && rising &&
+      c[i] > event.level + 0.1 * a && c[i] > +klines[i].open && r < 75;
+    if (!sweepEntry && !breakoutEntry) continue;
+    const adaptiveAtr = a * Math.max(1, Math.min(1.5, ratio));
+    risk = p.stopAtr * adaptiveAtr;
+    // A swept low can strengthen the initial stop, but never increase risk.
+    stop = sweepEntry ? Math.max(c[i] - risk, reclaimLow - 0.25 * a) : c[i] - risk;
+    risk = c[i] - stop;
+    if (risk < 0.5 * a) continue;
+    entry = i; entryPrice = peakClose = c[i]; target = c[i] + risk * p.rewardRisk;
+    entryKind = sweepEntry ? "liquidity reclaim" : "bullish BOS/CHoCH breakout";
+    result.signal[i] = "BUY"; result.reason[i] = entryKind;
+    result.stop[i] = stop; result.target[i] = target; result.position[i] = true;
+    reclaim = -Infinity;
+  }
+  return result;
+}
+
 // ─── Supertrend ──────────────────────────────────────────────────
 // Based on PineScript v4 Supertrend indicator — trend-following
 // overlay using ATR bands that flip on trend change.
@@ -1525,6 +1662,7 @@ export interface AllIndicators {
   vwap: number[];
   cdcActionZone: CDCActionZoneResult;
   smc: SMCResult;
+  smcAdaptive: SMCAdaptiveResult;
   cmMacd: CMMAcDResult;
   supertrend: SupertrendResult;
   squeezeMomentum: SqueezeMomentumResult;
@@ -1540,6 +1678,8 @@ export function computeAll(klines: KlineData[], overrides?: {
   rsiPeriod?: number;
   smcSwingSize?: number;
   smcInternalSize?: number;
+  smcAdaptiveParams?: Partial<SMCAdaptiveParams>;
+  smcAdaptiveStartIndex?: number;
   cmMacdFast?: number;
   cmMacdSlow?: number;
   cmMacdSignal?: number;
@@ -1574,6 +1714,7 @@ export function computeAll(klines: KlineData[], overrides?: {
     vwap: vwap(klines),
     cdcActionZone: cdcActionZone(c, overrides?.cdcFastPeriod ?? 12, overrides?.cdcSlowPeriod ?? 26, 1),
     smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
+    smcAdaptive: smcAdaptive(klines, overrides?.smcAdaptiveParams, overrides?.smcAdaptiveStartIndex),
     cmMacd: cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
     supertrend: supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
     squeezeMomentum: squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),

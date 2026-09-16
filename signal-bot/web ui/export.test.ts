@@ -110,7 +110,7 @@ test("selected export contains requested data only, full warmup, matching proven
   ))
     assert.equal(createHash("sha256").update(files[name]).digest("hex"), sha);
 });
-test("all 10 strategy exports use exact shared-library signals and preserve full structures", () => {
+test("all strategy exports use exact shared-library signals and preserve full structures", () => {
   for (const { id } of STRATEGIES) {
     const c = calculateExport(
       klines,
@@ -123,7 +123,7 @@ test("all 10 strategy exports use exact shared-library signals and preserve full
     );
     assert.deepEqual(
       c.records.map((r) => r.signal),
-      computeSignals(klines, id, cfg.params[id]).slice(300),
+      computeSignals(klines, id, cfg.params[id], { startIndex: 300 }).slice(300),
     );
     assert.equal(c.simulations.length, 2);
   }

@@ -6,7 +6,7 @@
   "scripts": {
     "web:ui": "tsx \"signal-bot/web ui/server.ts\"",
     "web:check": "tsc --noEmit -p \"signal-bot/web ui/tsconfig.json\" && node --check \"signal-bot/web ui/public/app.js\"",
-    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\"",
+    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\" \"signal-bot/web ui/smc-adaptive.test.ts\"",
     "bot": "tsx signal-bot/index.ts",
     "bot:once": "tsx signal-bot/index.ts --once",
     "check:sync": "tsx signal-bot/scripts/check-config-sync.ts",
@@ -14,7 +14,9 @@
     "dump:eth": "tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/ETHUSDT-4h.json freqtrade/fixtures/ETHUSDT-4h.ts.csv --mode ts",
     "dump": "npm run dump:btc && npm run dump:eth",
     "dump:live": "tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/BTCUSDT-1h.json freqtrade/fixtures/BTCUSDT-1h.live.csv --mode live && tsx freqtrade/scripts/dump-indicators.ts freqtrade/fixtures/ETHUSDT-4h.json freqtrade/fixtures/ETHUSDT-4h.live.csv --mode live",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "web:smc:analyze": "tsx \"signal-bot/web ui/research/analyze.ts\"",
+    "web:smc:select": "tsx \"signal-bot/web ui/research/explore.ts\""
   },
   "devDependencies": {
     "@types/node": "^20",

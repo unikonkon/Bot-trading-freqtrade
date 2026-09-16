@@ -17,6 +17,15 @@ const parameterLabels = {
   slowPeriod: "EMA ช้า",
   swingSize: "ช่วง Swing",
   internalSize: "ช่วง Internal",
+  trendPeriod: "EMA กรองทิศทาง",
+  stopAtr: "ระยะ Stop × ATR (ตรวจราคาปิด)",
+  trailAtr: "ระยะ Trailing × ATR",
+  rewardRisk: "เป้าหมายต่อความเสี่ยง",
+  maxHoldBars: "จำนวนแท่งถือสูงสุด",
+  cooldownBars: "พักหลังออก (แท่ง)",
+  rsiThreshold: "RSI สำหรับช่วงฟื้นตัว",
+  trendThreshold: "เกณฑ์ความชัดเจนของเทรนด์ (0–1)",
+  maxVolatilityRatio: "ATR เร็ว/ช้าสูงสุดก่อนงดเข้า",
   bbLength: "ช่วง BB",
   bbMult: "ตัวคูณ BB",
   kcLength: "ช่วง KC",
@@ -204,6 +213,7 @@ function selectDetail(mode) {
     ...numeric.map(([key]) => new Option(key, key)),
   );
   const defaults = {
+    smc_adaptive: "smcAdaptive.stop",
     supertrend: "supertrend.supertrend",
     cdc_actionzone: "cdcActionZone.fastMA",
     rsi: "rsi",

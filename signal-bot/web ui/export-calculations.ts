@@ -8,6 +8,7 @@ import type { KlineData } from "../../lib/types/kline";
 import { analyze } from "./engine";
 
 export const RULES: Record<StrategyId, string> = {
+  smc_adaptive: "Confirmed pivots เท่านั้น: BUY เมื่อ sweep ใต้ support แล้ว reclaim ใน discount พร้อม RSI ฟื้นและไม่ใช่ downtrend หรือเมื่อ bullish BOS/CHoCH ปิดเหนือ level + 0.1 ATR เป็นแท่งเขียว RSI < 75 และราคาเหนือ EMA ที่ไม่ลดลง; งดเข้าเมื่อ volatility shock/cooldown. SELL เมื่อ close <= stop, close >= target, bearish structure, RSI >= 70 สำหรับ reclaim หรือครบ maxHoldBars. ATR stop/target อ้างอิงราคาปิดแท่ง BUY; trailing stop เลื่อนขึ้นเท่านั้นเมื่อกำไร >= initial risk. ทุกทางออกเป็นสัญญาณ ณ ปิดแท่ง ไม่ใช่ stop order ระหว่างแท่ง; next_open fill ที่เปิดแท่งถัดไปจริงพร้อม fee/slippage. Reset สถานะว่างที่ startIndex. ดู reason/regime/stop/target รายแท่ง",
   rsi: "คำนวณ RSI ด้วย period: BUY เมื่อ RSI < buyThreshold; SELL เมื่อ RSI > sellThreshold; เท่ากับเกณฑ์หรือยังไม่มีค่าเป็น HOLD (เกิดซ้ำได้ทุกแท่ง ไม่ใช่เฉพาะจุดตัด)",
   cdc_actionzone:
     "EMA(close, fastPeriod/slowPeriod), smooth=1: BUY เมื่อเข้า green จากโซนอื่นและ trend แท่งก่อนเป็น bearish; SELL เมื่อเข้า red จากโซนอื่นและ trend ก่อนเป็น bullish. green = fastMA > slowMA และ close > fastMA; red = fastMA < slowMA และ close < fastMA. ตรวจ trend ก่อนอัปเดตสถานะ ไม่ใช้ null แทน bearish/bullish",
@@ -28,6 +29,7 @@ export const RULES: Record<StrategyId, string> = {
     "ATR trailing stop ใช้ keyValue * ATR(utAtrPeriod) และ close เป็น src. BUY เมื่อ close > stop ปัจจุบัน และ close ก่อน <= stop ก่อน; SELL เมื่อ close < stop ปัจจุบัน และ close ก่อน >= stop ก่อน. ไม่มีสัญญาณเมื่อยังไม่มีค่าเพียงพอ",
 };
 export const INDICATOR_KEY: Record<StrategyId, string> = {
+  smc_adaptive: "smcAdaptive",
   rsi: "rsi",
   cdc_actionzone: "cdcActionZone",
   smc: "smc",
@@ -72,6 +74,7 @@ export function calculateExport(
 ) {
   const all = computeStrategyIndicators(k, id, params, {
     confirmedPivots: true,
+    startIndex: start,
   });
   const signals = STRATEGY_FNS[id](k, all, params);
   const key = INDICATOR_KEY[id];
@@ -119,7 +122,11 @@ export function calculateExport(
               ? `RSI ${value} > sellThreshold ${params.sellThreshold ?? 70} → SELL`
               : `RSI ${value} อยู่ระหว่างเกณฑ์ (รวมเท่ากับ) → HOLD`;
     }
+    if (id === "smc_adaptive") reason = all.smcAdaptive.reason[index];
     const events =
+      id === "smc_adaptive"
+        ? all.smcAdaptive.structures.filter((e) => e.index === index)
+        :
       id === "smc"
         ? all.smc.internalStructures.filter((e) => e.index === index)
         : id === "msb_ob"

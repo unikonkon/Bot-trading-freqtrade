@@ -1,0 +1,1359 @@
+{
+  "trainEnd": 4014,
+  "valEnd": 5252,
+  "candidates": [
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -21.53030185821042,
+        "dd": 25.16787064363965,
+        "n": 50,
+        "pf": 0.5657558318299898
+      },
+      "score": -34.114237180030244
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.063142832516206,
+        "dd": 27.58329835544068,
+        "n": 51,
+        "pf": 0.5334643216316597
+      },
+      "score": -37.854792010236544
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.257021653823074,
+        "dd": 27.768189662264348,
+        "n": 47,
+        "pf": 0.4835488502101087
+      },
+      "score": -38.14111648495525
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.98590665983521,
+        "dd": 28.463286219884004,
+        "n": 55,
+        "pf": 0.5345899484771468
+      },
+      "score": -39.21754976977721
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -25.477949498137377,
+        "dd": 30.066719663125006,
+        "n": 52,
+        "pf": 0.47816743862331407
+      },
+      "score": -40.511309329699884
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -26.05822462425637,
+        "dd": 29.485895437517517,
+        "n": 57,
+        "pf": 0.536555331571082
+      },
+      "score": -40.801172343015125
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -26.342233633397626,
+        "dd": 29.756738825649677,
+        "n": 52,
+        "pf": 0.48485605471086696
+      },
+      "score": -41.220603046222465
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -27.150632953031064,
+        "dd": 30.17093889413951,
+        "n": 52,
+        "pf": 0.46220105344727896
+      },
+      "score": -42.23610240010082
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -27.146564415435947,
+        "dd": 31.28698723437948,
+        "n": 49,
+        "pf": 0.4333054482559963
+      },
+      "score": -42.79005803262569
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -28.018489068144135,
+        "dd": 30.661204192938225,
+        "n": 49,
+        "pf": 0.41053359505745823
+      },
+      "score": -43.34909116461325
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -27.883368500251265,
+        "dd": 31.981917103910618,
+        "n": 53,
+        "pf": 0.45141933975708404
+      },
+      "score": -43.874327052206574
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.32708465328173,
+        "dd": 32.8850424509387,
+        "n": 55,
+        "pf": 0.4329134532877554
+      },
+      "score": -46.76960587875108
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -29.721754738988494,
+        "dd": 34.48557456931969,
+        "n": 54,
+        "pf": 0.414952666914209
+      },
+      "score": -46.964542023648335
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.33199300209553,
+        "dd": 33.296114511363626,
+        "n": 53,
+        "pf": 0.41841949869671874
+      },
+      "score": -46.98005025777734
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.531607269131428,
+        "dd": 33.353867824312914,
+        "n": 54,
+        "pf": 0.42323683884498464
+      },
+      "score": -47.208541181287885
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.410742664328254,
+        "dd": 34.169457231940534,
+        "n": 65,
+        "pf": 0.48474714792245527
+      },
+      "score": -47.49547128029852
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.587533072680642,
+        "dd": 34.361041945675154,
+        "n": 56,
+        "pf": 0.4264790226475763
+      },
+      "score": -47.76805404551822
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.583344975137138,
+        "dd": 34.85774528197475,
+        "n": 58,
+        "pf": 0.4306707188545366
+      },
+      "score": -48.012217616124516
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -30.748590755004713,
+        "dd": 34.6843024037595,
+        "n": 55,
+        "pf": 0.40923150824075333
+      },
+      "score": -48.090741956884465
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -31.144665486767167,
+        "dd": 33.99358447130958,
+        "n": 68,
+        "pf": 0.4582117711324069
+      },
+      "score": -48.14145772242196
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -31.160269503989753,
+        "dd": 34.22003912643697,
+        "n": 66,
+        "pf": 0.4660731789774902
+      },
+      "score": -48.27028906720824
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -31.39799257810975,
+        "dd": 34.242204669269185,
+        "n": 58,
+        "pf": 0.421423852938939
+      },
+      "score": -48.51909491274434
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -31.348508658341544,
+        "dd": 35.817697473084905,
+        "n": 78,
+        "pf": 0.5268002291924372
+      },
+      "score": -49.257357394884
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -32.62070377065757,
+        "dd": 34.702256314189384,
+        "n": 67,
+        "pf": 0.4277771660324312
+      },
+      "score": -49.97183192775226
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -32.59994016576931,
+        "dd": 35.54321141119229,
+        "n": 63,
+        "pf": 0.42132608064223465
+      },
+      "score": -50.371545871365456
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -32.67267432328485,
+        "dd": 35.40795072847533,
+        "n": 61,
+        "pf": 0.44816265648267456
+      },
+      "score": -50.376649687522516
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -32.81140630896992,
+        "dd": 35.591363177443135,
+        "n": 71,
+        "pf": 0.4537656917349391
+      },
+      "score": -50.607087897691486
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -32.54165122212828,
+        "dd": 36.375459255573034,
+        "n": 60,
+        "pf": 0.4158053321996024
+      },
+      "score": -50.7293808499148
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.32588775846831,
+        "dd": 35.59273776086042,
+        "n": 64,
+        "pf": 0.4019624274912143
+      },
+      "score": -51.12225663889852
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.18517842743438,
+        "dd": 36.24273756476295,
+        "n": 68,
+        "pf": 0.4309532327622878
+      },
+      "score": -51.306547209815854
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.06396505249825,
+        "dd": 36.67937150010251,
+        "n": 67,
+        "pf": 0.45888895644407635
+      },
+      "score": -51.40365080254951
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.39999383811991,
+        "dd": 36.23358301755136,
+        "n": 58,
+        "pf": 0.40360442507959476
+      },
+      "score": -51.51678534689559
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.78491476017618,
+        "dd": 36.728024863960044,
+        "n": 68,
+        "pf": 0.44114709140653086
+      },
+      "score": -52.1489271921562
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -33.9541258752009,
+        "dd": 36.68680223172456,
+        "n": 82,
+        "pf": 0.5107287498173522
+      },
+      "score": -52.29752699106318
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -34.07308235631747,
+        "dd": 38.04178931742062,
+        "n": 74,
+        "pf": 0.4879585657614308
+      },
+      "score": -53.09397701502778
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -34.802525745989385,
+        "dd": 37.78607233706411,
+        "n": 71,
+        "pf": 0.4280648742381829
+      },
+      "score": -53.69556191452144
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -34.78316313777685,
+        "dd": 38.08939584691522,
+        "n": 75,
+        "pf": 0.471789279430143
+      },
+      "score": -53.82786106123446
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -34.57619522799574,
+        "dd": 39.010956189813534,
+        "n": 60,
+        "pf": 0.37736320769007536
+      },
+      "score": -54.0816733229025
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -35.1489748184792,
+        "dd": 38.52131690969986,
+        "n": 77,
+        "pf": 0.4607165474510237
+      },
+      "score": -54.409633273329135
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -35.715711849012294,
+        "dd": 37.98670105776527,
+        "n": 67,
+        "pf": 0.37692074693796324
+      },
+      "score": -54.70906237789493
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -35.715507861723665,
+        "dd": 39.21024176498244,
+        "n": 63,
+        "pf": 0.3817497384228173
+      },
+      "score": -55.320628744214886
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -36.27479521364695,
+        "dd": 38.243461696280136,
+        "n": 76,
+        "pf": 0.44527665404907824
+      },
+      "score": -55.396526061787014
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -36.16490981707209,
+        "dd": 38.952503564711066,
+        "n": 71,
+        "pf": 0.43553287839689353
+      },
+      "score": -55.641161599427626
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -36.8524600976209,
+        "dd": 38.99941033312171,
+        "n": 72,
+        "pf": 0.41892616948551853
+      },
+      "score": -56.35216526418175
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -37.61034811775689,
+        "dd": 40.46540401250507,
+        "n": 81,
+        "pf": 0.44903392293730215
+      },
+      "score": -57.84305012400942
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -37.4800948994641,
+        "dd": 40.85697355953658,
+        "n": 77,
+        "pf": 0.4574428707678845
+      },
+      "score": -57.908581679232384
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -38.15347968154192,
+        "dd": 40.90241699958459,
+        "n": 78,
+        "pf": 0.44221958073749984
+      },
+      "score": -58.60468818133421
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 3,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -39.80254791945616,
+        "dd": 41.92916031575815,
+        "n": 75,
+        "pf": 0.38216851499227233
+      },
+      "score": -60.76712807733524
+    }
+  ],
+  "shortlist": [
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.063142832516206,
+        "dd": 27.58329835544068,
+        "n": 51,
+        "pf": 0.5334643216316597
+      },
+      "score": -37.854792010236544,
+      "validation": {
+        "return": -1.5499018896102115,
+        "dd": 9.250228411256954,
+        "n": 17,
+        "pf": 0.9362445197757209
+      }
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 2,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -27.150632953031064,
+        "dd": 30.17093889413951,
+        "n": 52,
+        "pf": 0.46220105344727896
+      },
+      "score": -42.23610240010082,
+      "validation": {
+        "return": -4.495569281330148,
+        "dd": 6.569517963473557,
+        "n": 15,
+        "pf": 0.7247750477039208
+      }
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -21.53030185821042,
+        "dd": 25.16787064363965,
+        "n": 50,
+        "pf": 0.5657558318299898
+      },
+      "score": -34.114237180030244,
+      "validation": {
+        "return": -4.64846655847893,
+        "dd": 8.286502031884922,
+        "n": 14,
+        "pf": 0.7419689075836093
+      }
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 2,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -25.477949498137377,
+        "dd": 30.066719663125006,
+        "n": 52,
+        "pf": 0.47816743862331407
+      },
+      "score": -40.511309329699884,
+      "validation": {
+        "return": -6.3640196811233665,
+        "dd": 8.286502031884883,
+        "n": 15,
+        "pf": 0.6161250020990615
+      }
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.2,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.257021653823074,
+        "dd": 27.768189662264348,
+        "n": 47,
+        "pf": 0.4835488502101087
+      },
+      "score": -38.14111648495525,
+      "validation": {
+        "return": -6.78261515268224,
+        "dd": 8.41095222552492,
+        "n": 14,
+        "pf": 0.61000798072713
+      }
+    },
+    {
+      "p": {
+        "swingSize": 20,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -24.98590665983521,
+        "dd": 28.463286219884004,
+        "n": 55,
+        "pf": 0.5345899484771468
+      },
+      "score": -39.21754976977721,
+      "validation": {
+        "return": -6.949986042283783,
+        "dd": 9.852693874497485,
+        "n": 16,
+        "pf": 0.6437929859100684
+      }
+    },
+    {
+      "p": {
+        "swingSize": 40,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -26.342233633397626,
+        "dd": 29.756738825649677,
+        "n": 52,
+        "pf": 0.48485605471086696
+      },
+      "score": -41.220603046222465,
+      "validation": {
+        "return": -7.884296452384575,
+        "dd": 9.852693874497517,
+        "n": 15,
+        "pf": 0.5837886554025178
+      }
+    },
+    {
+      "p": {
+        "swingSize": 10,
+        "internalSize": 5,
+        "atrPeriod": 14,
+        "trendPeriod": 100,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "rewardRisk": 4,
+        "maxHoldBars": 120,
+        "cooldownBars": 6,
+        "rsiThreshold": 40,
+        "trendThreshold": 0.35,
+        "maxVolatilityRatio": 2.5
+      },
+      "train": {
+        "return": -26.05822462425637,
+        "dd": 29.485895437517517,
+        "n": 57,
+        "pf": 0.536555331571082
+      },
+      "score": -40.801172343015125,
+      "validation": {
+        "return": -8.065622469893128,
+        "dd": 11.62955217183083,
+        "n": 21,
+        "pf": 0.6738162712886527
+      }
+    }
+  ],
+  "selected": {
+    "swingSize": 10,
+    "internalSize": 5,
+    "atrPeriod": 14,
+    "trendPeriod": 100,
+    "stopAtr": 3,
+    "trailAtr": 4,
+    "rewardRisk": 4,
+    "maxHoldBars": 120,
+    "cooldownBars": 6,
+    "rsiThreshold": 40,
+    "trendThreshold": 0.2,
+    "maxVolatilityRatio": 2.5
+  },
+  "prototype": "Rejected retest-entry prototype before final breakout implementation; archived outcomes, not reproduced by current smcAdaptive"
+}

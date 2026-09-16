@@ -99,6 +99,9 @@ export function validate(input: unknown): RequestConfig {
       throw new Error("MACD fastLength ต้องน้อยกว่า slowLength");
     if (s.id === "msb_ob" && p.fibFactor > 1)
       throw new Error("fibFactor ต้องไม่เกิน 1");
+    if (s.id === "smc_adaptive" &&
+      (p.internalSize >= p.swingSize || p.trendThreshold > 1 || p.rsiThreshold >= 70))
+      throw new Error("SMC Adaptive: Internal ต้องน้อยกว่า Swing, trendThreshold ไม่เกิน 1 และ RSI ต่ำกว่า 70");
   }
   const result: RequestConfig = {
     symbol,
@@ -125,7 +128,10 @@ export function validate(input: unknown): RequestConfig {
 }
 
 export function warmupBars(cfg: RequestConfig) {
-  const periods = Object.values(cfg.params).flatMap((p) =>
+  const active = cfg.strategy === "all"
+    ? Object.values(cfg.params)
+    : [cfg.params[cfg.selected]];
+  const periods = active.flatMap((p) =>
     Object.entries(p)
       .filter(([key]) => /period|length|size|bars|len/i.test(key))
       .map(([, v]) => v),

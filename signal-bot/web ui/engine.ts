@@ -138,6 +138,7 @@ export function analyze(
 ) {
   const ind = computeStrategyIndicators(k, id, params, {
     confirmedPivots: true,
+    startIndex: start,
   });
   const signals = STRATEGY_FNS[id](k, ind, params);
   const simulations: Simulation[] = [];

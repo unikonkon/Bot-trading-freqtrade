@@ -4,7 +4,10 @@
     "./*.ts",
     "../../lib/backtest.ts",
     "../../lib/indicators.ts",
-    "../../lib/types/kline.ts"
+    "../../lib/types/kline.ts",
+    "./research/*.ts"
   ],
-  "exclude": ["./*.test.ts"]
+  "exclude": [
+    "./*.test.ts"
+  ]
 }
