@@ -36,7 +36,7 @@ test("validation rejects unknown strategies/params, invalid ranges and unusable 
   for (const patch of [
     { interval: "bogus" },
     { fee: -1 },
-    { limit: 1001 },
+    { limit: 10001 },
     { params: { rsi: { period: 0 } } },
     { params: { rsi: { period: 2.5 } } },
     { params: { supertrend: { atrPeriod: Infinity } } },
@@ -48,6 +48,29 @@ test("validation rejects unknown strategies/params, invalid ranges and unusable 
     { source: "range", from: epoch, to: epoch - 1 },
   ])
     assert.throws(() => validate({ ...base, ...patch }));
+});
+test("latest 10,000 candles paginate within the API cap and exclude the open candle", async () => {
+  const rows = bars(10001), calls: Record<string, string>[] = [];
+  const data = await loadData(
+    validate({ ...base, limit: 10000 }),
+    async (p) => {
+      calls.push(p);
+      assert.ok(+p.limit <= 1000);
+      return rows.filter(b => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit));
+    },
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.deepEqual(data.klines, rows.slice(0,10000));
+  assert.equal(data.start, 0);
+  assert.equal(calls.length, 11);
+  assert.ok(!data.warnings.some(w => w.includes("ประวัติอาจมีไม่เพียงพอ")));
+});
+test("latest pagination reports limited history and rejects a non-progressing page", async () => {
+  const rows = bars(600);
+  const data = await loadData(validate({ ...base, limit: 1500 }), async p => p.endTime ? [] : rows);
+  assert.equal(data.klines.length, 600);
+  assert.ok(data.warnings.some(w => w.includes("600") && w.includes("1,500")));
+  await assert.rejects(loadData(validate({ ...base, limit: 1500 }), async () => rows), /ไม่ถอยหลัง/);
 });
 test("latest 1000 candles backfill the missing closed candle without duplicates", async () => {
   const rows = bars(1001),

@@ -112,7 +112,7 @@ export function validate(input: unknown): RequestConfig {
     symbol,
     interval: String(v.interval),
     source: v.source as RequestConfig["source"],
-    limit: number(v.limit ?? 500, "จำนวนแท่ง", 300, 1000, true),
+    limit: number(v.limit ?? 500, "จำนวนแท่ง", 300, 10000, true),
     strategy: v.strategy as RequestConfig["strategy"],
     selected: v.selected as StrategyId,
     params,
@@ -216,16 +216,24 @@ export async function loadData(
     k = (
       await page({ ...base, limit: String(Math.min(cfg.limit + 1, 1000)) })
     ).filter((b) => b.closeTime < now);
-    // Binance's 1000-row cap can leave only 999 closed candles.
-    if (k.length && k.length < cfg.limit) {
-      const earlier = await page({
+    // Page backwards: each Binance request is capped at 1000 rows, and the
+    // newest page may include an unfinished candle that was filtered out.
+    while (k.length && k.length < cfg.limit) {
+      const firstOpen = k[0].openTime;
+      await pause(80);
+      const earlier = (await page({
         ...base,
-        limit: String(cfg.limit - k.length),
-        endTime: String(k[0].openTime - 1),
-      });
+        limit: String(Math.min(cfg.limit - k.length, 1000)),
+        endTime: String(firstOpen - 1),
+      })).filter((b) => b.closeTime < now);
+      if (!earlier.length) break;
+      if (earlier[0].openTime >= firstOpen)
+        throw new Error("ข้อมูล Binance ไม่ถอยหลังตามช่วงที่ขอ");
       k = [...earlier, ...k];
     }
     k = k.slice(-cfg.limit);
+    if (k.length < cfg.limit)
+      warnings.push(`พบแท่งที่ปิดแล้ว ${k.length.toLocaleString("en-US")} จากที่ขอ ${cfg.limit.toLocaleString("en-US")} แท่ง; ประวัติอาจมีไม่เพียงพอ`);
     warnings.push(
       "โหมดแท่งล่าสุดคำนวณจากหน้าต่างข้อมูลนี้เท่านั้น เริ่มจำลองด้วยสถานะว่าง; ช่วงต้นอาจยังเตรียม indicator ไม่ครบ",
     );

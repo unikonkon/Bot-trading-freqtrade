@@ -865,7 +865,13 @@ async function init() {
       render();
     });
     $("overlay").addEventListener("change", drawPrice);
-    $("window").addEventListener("change", drawPrice);
+    $("window").addEventListener("change", () => {
+      chartEnd = Math.min(
+        result.klines.length,
+        Math.max(chartEnd, Number($("window").value)),
+      );
+      drawPrice();
+    });
     $("chart-prev").addEventListener("click", () => {
       chartEnd = Math.max(
         Number($("window").value),
