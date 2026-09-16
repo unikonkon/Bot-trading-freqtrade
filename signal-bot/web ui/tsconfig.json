@@ -5,7 +5,9 @@
     "../../lib/backtest.ts",
     "../../lib/indicators.ts",
     "../../lib/types/kline.ts",
-    "./research/*.ts"
+    "./research/*.ts",
+    "./research-v2/*.ts",
+    "./research-mtf/*.ts"
   ],
   "exclude": [
     "./*.test.ts"

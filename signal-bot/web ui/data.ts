@@ -102,6 +102,8 @@ export function validate(input: unknown): RequestConfig {
     if (s.id === "smc_adaptive" &&
       (p.internalSize >= p.swingSize || p.trendThreshold > 1 || p.rsiThreshold >= 70))
       throw new Error("SMC Adaptive: Internal ต้องน้อยกว่า Swing, trendThreshold ไม่เกิน 1 และ RSI ต่ำกว่า 70");
+    if (s.id === "smc_adaptive_v2" && p.fastPeriod >= p.trendPeriod)
+      throw new Error("SMC Adaptive V2: EMA เร็วต้องมี period น้อยกว่า EMA เทรนด์");
   }
   const result: RequestConfig = {
     symbol,

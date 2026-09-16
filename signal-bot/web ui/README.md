@@ -1,5 +1,75 @@
 # Signal Lab — Web UI ทดสอบ indicator และสัญญาณ
 
+## SMC Adaptive V2 — เพิ่มจำนวนเทรด / ทดสอบ 8 timeframe
+
+แก้ V2 ตัวเดิมใน `lib/indicators.ts` และ registry ใน `lib/backtest.ts` แล้ว:
+confirmed SMC + Trendlines, เพิ่ม fresh SMC breakout และ EMA pullback reclaim,
+EMA21/100, internal 7 / trendline 10, ADX25, cooldown 2, trailing 6 ATR
+พร้อมระยะขั้นต่ำ 0.6%. แก้ profit protection ไม่ให้ตั้ง buffer เหนือกำไรที่ยังไม่เกิด.
+
+ทดสอบ BTCUSDT 1,000 แท่งปิดต่อ timeframe, next-open, fee 0.10% และ slippage
+0.05% ต่อขา: จำนวนเทรดรวม 5 → 33 และเพิ่มครบทั้ง 8 timeframe.
+**ยังไม่ผ่านเป้าหมายกำไรทุก timeframe**: 1h +14.50%, 2h +4.86%; อีก 6 ช่วงขาดทุน.
+กำไรสองช่วงพึ่งตลาดขึ้นรอบเดียวกัน จึงยังไม่ใช่หลักฐานความสม่ำเสมอ.
+
+- [รายงานละเอียด 8 timeframe](smc-adaptive-v2-mtf-results/REPORT.th.md)
+- [ผล / ต้นทุน / stress / warmup / checksum](smc-adaptive-v2-mtf-results/analysis.json)
+- [ข้อมูลแท่งปิดที่ตรึงไว้](research-mtf/data/manifest.json)
+- [ผลเลือกค่าครบ 68 ชุด](research-mtf/selection.json)
+
+```bash
+npm run web:ui                    # restart server เพื่อโหลดสูตรและ export source ใหม่
+npm run web:smc:v2:mtf            # ทดสอบข้อมูล 1,000 แท่งทั้ง 8 ช่วงซ้ำแบบ offline
+npm run web:smc:v2:mtf:select     # ทำขั้นตอนเลือกค่าบนข้อมูลก่อนหน้าซ้ำ
+npm run web:check
+npm run web:test
+```
+
+ในเว็บเลือก SMC Adaptive V2 → แท่งล่าสุด → 1000 → ราคาเปิดแท่งถัดไป.
+ผลล่าสุดในเว็บจะเลื่อนไปตามเวลา; รายงานใช้ข้อมูลที่ตรึงวันที่ 16 กันยายน 2026.
+สูตรยังเป็น Long-only Spot หนึ่งสถานะ ไม่ใช้ leverage. SELL คือปิด Long.
+
+## SMC Adaptive V2 — ผลรุ่นก่อนเพิ่มจำนวนเทรด (เก็บเป็นประวัติ)
+
+**ตัวเลขและ ZIP ด้านล่างเป็นสูตร V2 รุ่นก่อนการแก้รอบ 8 timeframe**.
+หากต้องการ replay ตัวเลขเก่า ให้ใช้ source ใน ZIP เก่า;
+คำสั่ง `web:smc:v2:analyze` / `web:smc:v2:select` เดิมอ้างอิง workflow รุ่นเก่า
+และไม่ใช่คำสั่งทดสอบสูตรปัจจุบัน ใช้ `web:smc:v2:mtf` ด้านบนแทน.
+
+เลือก **SMC Adaptive V2** (`smc_adaptive_v2`) ได้แล้ว สูตรใน
+[`../../lib/indicators.ts`](../../lib/indicators.ts) ใช้ SMC bullish + confirmed
+Trendlines, Wilder ADX/DI, EMA50/200, จำกัดการไล่ราคา และเลื่อน stop ตามราคาปิด.
+SMC Adaptive V1 และ Trendlines เดิมยังแยกให้เปรียบเทียบได้.
+
+ผลบน export `signal-bot/signal-export-BTCUSDT-1h-2026-09-16T10-36-11-055Z`
+จำนวน 8,399 แท่ง + warmup 1,000: V2 **+9.08%**, DD **4.36%**, 13 เทรด;
+V1 −8.84%, Trendlines −14.38%. ใช้ next_open, fee 0.10% + slippage 0.05% ต่อขา.
+ผลส่วนใหญ่มาจาก train; validation ไม่เข้าเทรด และ test +0.22% จาก 4 เทรด
+ซึ่งพลิกขาดทุนเมื่อ slippage เพิ่ม. ETH 4h fixture ขาดทุน −2.90%.
+ยังไม่ใช่หลักฐานว่าทำกำไรสูงสุดหรือรองรับทุกตลาด.
+
+- [รายงาน V2 พร้อมแหล่งความรู้และข้อจำกัด](smc-adaptive-v2-results/REPORT.th.md)
+- [ผลทุกช่วงและต้นทุน](smc-adaptive-v2-results/analysis.json)
+- [เทรด V2 พร้อมเหตุผล](smc-adaptive-v2-results/trades.json)
+- [แพ็กเกจ replay V2](smc-adaptive-v2-results/SMC-Adaptive-V2.zip)
+
+รันจาก repository root:
+
+```bash
+npm run web:ui                 # restart server เดิมเพื่อโหลด V2 และ Export snapshot
+npm run web:smc:v2:analyze     # วิเคราะห์ export เดิม offline พร้อมสร้าง ZIP
+npm run web:check
+npm run web:test
+```
+
+เลือกช่วงวันที่ตรง export, **SMC Adaptive V2**, โหมด **เปิดแท่งถัดไป**.
+ดู `smcAdaptiveV2.stop`, `adx`, `plusDI`, `minusDI`, `reason`, `regime` รายแท่ง.
+Stop เป็นสัญญาณเมื่อปิดแท่ง แล้ว fill เปิดแท่งถัดไป ไม่ใช่ stop order ระหว่างแท่ง.
+Buffer เหนือราคาเข้าไม่รับประกัน break-even เมื่อรวม gap และต้นทุน.
+ZIP สำหรับคำนวณซ้ำมีโค้ดและ input เดิม: แตกไฟล์แล้ว `npm ci && npm run replay`;
+ไม่รวมเว็บ server ทั้งแอป. `npm run web:smc:v2:select` รัน grid รุ่นสุดท้ายซ้ำ
+และเขียน selection.json แต่ไม่แก้ default อัตโนมัติ.
+
 ## SMC Adaptive (เพิ่ม 16 กันยายน 2026)
 
 เลือก **SMC Adaptive** (`smc_adaptive`) ในรายการกลยุทธ์ได้แล้ว สูตรอยู่ใน

@@ -1,0 +1,81 @@
+{
+  "symbol": "BTCUSDT",
+  "asOf": "2026-09-16T11:07:40.920Z",
+  "source": "Binance Spot GET /api/v3/klines",
+  "feePct": 0.1,
+  "slippagePct": 0.05,
+  "records": [
+    {
+      "interval": "1m",
+      "file": "BTCUSDT-1m.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-09-15T18:27:00.000Z",
+      "testTo": "2026-09-16T11:06:59.999Z",
+      "sha256": "e394eec63a7fbd8f3bc6667c21558258f1fffa88fb345d837a2b8ac3689a2886"
+    },
+    {
+      "interval": "3m",
+      "file": "BTCUSDT-3m.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-09-14T09:06:00.000Z",
+      "testTo": "2026-09-16T11:05:59.999Z",
+      "sha256": "76d4bd720e7fd87353c6d69459090c4ed6564bc8c98b00f4cf28b95601f07a8d"
+    },
+    {
+      "interval": "5m",
+      "file": "BTCUSDT-5m.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-09-12T23:45:00.000Z",
+      "testTo": "2026-09-16T11:04:59.999Z",
+      "sha256": "a87e37f04dc158073686bb53631adc7ad45615a75da16d606bf310d86e2485fa"
+    },
+    {
+      "interval": "15m",
+      "file": "BTCUSDT-15m.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-09-06T01:00:00.000Z",
+      "testTo": "2026-09-16T10:59:59.999Z",
+      "sha256": "e1ac683a44f73e935ff61c3f8b657c5b3a0c1a579efc1abdf4675e4ecda31c96"
+    },
+    {
+      "interval": "30m",
+      "file": "BTCUSDT-30m.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-08-26T15:00:00.000Z",
+      "testTo": "2026-09-16T10:59:59.999Z",
+      "sha256": "634665583c76fb8dd0aa68c735ed01a573b9b6169522f36f2c7a7fa6762fb00c"
+    },
+    {
+      "interval": "1h",
+      "file": "BTCUSDT-1h.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-08-05T19:00:00.000Z",
+      "testTo": "2026-09-16T10:59:59.999Z",
+      "sha256": "16f4ab177018ce0ec3cc582723923603053058705db100ebc97c21880ed9ec1a"
+    },
+    {
+      "interval": "2h",
+      "file": "BTCUSDT-2h.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-06-25T02:00:00.000Z",
+      "testTo": "2026-09-16T09:59:59.999Z",
+      "sha256": "395054a41ffe82c4df1648fefc824e642c7bca9dd8becc081b1e66f80c979f79"
+    },
+    {
+      "interval": "4h",
+      "file": "BTCUSDT-4h.json",
+      "bars": 3300,
+      "testBars": 1000,
+      "testFrom": "2026-04-02T16:00:00.000Z",
+      "testTo": "2026-09-16T07:59:59.999Z",
+      "sha256": "14197d5a31772acd637c43994045c5a613b464bdf31ac13075f2695fa4b3ca74"
+    }
+  ]
+}

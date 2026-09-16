@@ -8,6 +8,7 @@ import type { KlineData } from "../../lib/types/kline";
 import { analyze } from "./engine";
 
 export const RULES: Record<StrategyId, string> = {
+  smc_adaptive_v2: "SMC internal pivots + Trendlines pivots ใช้ confirmed เท่านั้น รอ pivot จริงก่อนใช้เส้น. BUY มี 3 จังหวะ: bullish SMC break ใหม่, ราคาปิดตัดกลับเหนือ EMA เร็วหลังย่อ, หรือ Trendlines breakUp อายุ <= confluenceBars. ทุกจังหวะต้อง SMC bullish, close > upper และ EMA เทรนด์, EMA เร็ว > EMA เทรนด์และไม่ลดจาก 2 แท่งก่อน, EMA เทรนด์เพิ่มจาก trendSlopeBars แท่งก่อน, +DI > -DI, ADX >= adxThreshold, แท่งเขียวและระยะจาก EMA เร็ว <= maxExtensionAtr×ATR. งดเข้าเมื่อ ATR ratio > maxVolatilityRatio หรือ range > 4 ATR หรือ cooldown. Risk เริ่ม max(stopAtr×ATR×clamp(ratio,1,1.5), close×minStopPct/100). Trailing ใช้ peak CLOSE − max(trailAtr×ATR, peak×minStopPct/100), stop ไม่ลด. เลื่อนถึง signal-entry close + breakEvenBufferPct เมื่อ peak เพิ่ม >= max(breakEvenAtr×entryATR, entry×bufferPct/100 + entryATR) จึงไม่ตั้ง buffer เหนือกำไรที่ยังไม่เคยเกิด. Buffer/ระยะขั้นต่ำเป็นค่าตั้ง ไม่รับประกันคุ้มต้นทุน/gap. ไม่มี fixed target. SELL เมื่อ CLOSE <= stop (รวม stop ที่เพิ่งเลื่อน), bearish SMC/Trendlines breakdown พร้อม close < fast EMA หรือ maxHoldBars. Fill ตาม engine ไม่สมมติ fill ที่ stop ระหว่างแท่ง. Reset position ที่ startIndex; ดู reason/regime/stop/ADX/DI รายแท่ง",
   smc_adaptive: "Confirmed pivots เท่านั้น: BUY เมื่อ sweep ใต้ support แล้ว reclaim ใน discount พร้อม RSI ฟื้นและไม่ใช่ downtrend หรือเมื่อ bullish BOS/CHoCH ปิดเหนือ level + 0.1 ATR เป็นแท่งเขียว RSI < 75 และราคาเหนือ EMA ที่ไม่ลดลง; งดเข้าเมื่อ volatility shock/cooldown. SELL เมื่อ close <= stop, close >= target, bearish structure, RSI >= 70 สำหรับ reclaim หรือครบ maxHoldBars. ATR stop/target อ้างอิงราคาปิดแท่ง BUY; trailing stop เลื่อนขึ้นเท่านั้นเมื่อกำไร >= initial risk. ทุกทางออกเป็นสัญญาณ ณ ปิดแท่ง ไม่ใช่ stop order ระหว่างแท่ง; next_open fill ที่เปิดแท่งถัดไปจริงพร้อม fee/slippage. Reset สถานะว่างที่ startIndex. ดู reason/regime/stop/target รายแท่ง",
   rsi: "คำนวณ RSI ด้วย period: BUY เมื่อ RSI < buyThreshold; SELL เมื่อ RSI > sellThreshold; เท่ากับเกณฑ์หรือยังไม่มีค่าเป็น HOLD (เกิดซ้ำได้ทุกแท่ง ไม่ใช่เฉพาะจุดตัด)",
   cdc_actionzone:
@@ -29,6 +30,7 @@ export const RULES: Record<StrategyId, string> = {
     "ATR trailing stop ใช้ keyValue * ATR(utAtrPeriod) และ close เป็น src. BUY เมื่อ close > stop ปัจจุบัน และ close ก่อน <= stop ก่อน; SELL เมื่อ close < stop ปัจจุบัน และ close ก่อน >= stop ก่อน. ไม่มีสัญญาณเมื่อยังไม่มีค่าเพียงพอ",
 };
 export const INDICATOR_KEY: Record<StrategyId, string> = {
+  smc_adaptive_v2: "smcAdaptiveV2",
   smc_adaptive: "smcAdaptive",
   rsi: "rsi",
   cdc_actionzone: "cdcActionZone",
@@ -123,7 +125,11 @@ export function calculateExport(
               : `RSI ${value} อยู่ระหว่างเกณฑ์ (รวมเท่ากับ) → HOLD`;
     }
     if (id === "smc_adaptive") reason = all.smcAdaptive.reason[index];
+    if (id === "smc_adaptive_v2") reason = all.smcAdaptiveV2.reason[index];
     const events =
+      id === "smc_adaptive_v2"
+        ? all.smcAdaptiveV2.structures.filter((e) => e.index === index)
+        :
       id === "smc_adaptive"
         ? all.smcAdaptive.structures.filter((e) => e.index === index)
         :

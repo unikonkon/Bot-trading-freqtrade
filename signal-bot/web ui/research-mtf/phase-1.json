@@ -1,0 +1,5742 @@
+{
+  "createdAt": "2026-09-16T11:12:51.021Z",
+  "method": "36 global candidates; equal-weight train/validation net - 0.25*DD - 0.5*trade shortfall below max(3, old+1); final 1000 bars excluded",
+  "sourceSha256": "64435ad539f993df3ff73cbe0c15cbd3ec835e825dee3fa312bcaca3e8356966",
+  "selected": {
+    "params": {
+      "internalSize": 7,
+      "trendLength": 10,
+      "trendMult": 1,
+      "fastPeriod": 21,
+      "trendPeriod": 72,
+      "trendSlopeBars": 6,
+      "atrPeriod": 14,
+      "adxPeriod": 14,
+      "adxThreshold": 12,
+      "confluenceBars": 12,
+      "stopAtr": 3,
+      "trailAtr": 4,
+      "breakEvenAtr": 2,
+      "breakEvenBufferPct": 0.35,
+      "minStopPct": 0.6,
+      "maxHoldBars": 200,
+      "cooldownBars": 2,
+      "maxVolatilityRatio": 2.5,
+      "maxExtensionAtr": 3
+    },
+    "score": -2.9404774588634437,
+    "positive": 3,
+    "results": [
+      {
+        "interval": "1m",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 7,
+        "net": -2.4083440425425664,
+        "dd": 2.4406301479844346
+      },
+      {
+        "interval": "1m",
+        "split": "validation",
+        "oldTrades": 0,
+        "trades": 5,
+        "net": -2.1818863144098515,
+        "dd": 2.1818863144098515
+      },
+      {
+        "interval": "3m",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 8,
+        "net": -2.2391692644759473,
+        "dd": 2.2391692644759473
+      },
+      {
+        "interval": "3m",
+        "split": "validation",
+        "oldTrades": 0,
+        "trades": 9,
+        "net": -3.1638312804298323,
+        "dd": 3.1638312804298323
+      },
+      {
+        "interval": "5m",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 10,
+        "net": -4.454560830092618,
+        "dd": 4.682662009473617
+      },
+      {
+        "interval": "5m",
+        "split": "validation",
+        "oldTrades": 0,
+        "trades": 8,
+        "net": -2.351435525626769,
+        "dd": 2.9014724386520396
+      },
+      {
+        "interval": "15m",
+        "split": "train",
+        "oldTrades": 4,
+        "trades": 9,
+        "net": 9.139813248182975,
+        "dd": 6.340981001588442
+      },
+      {
+        "interval": "15m",
+        "split": "validation",
+        "oldTrades": 2,
+        "trades": 10,
+        "net": -3.2248105341109436,
+        "dd": 4.34318851530423
+      },
+      {
+        "interval": "30m",
+        "split": "train",
+        "oldTrades": 1,
+        "trades": 12,
+        "net": -5.021482165415435,
+        "dd": 6.8001336458243955
+      },
+      {
+        "interval": "30m",
+        "split": "validation",
+        "oldTrades": 0,
+        "trades": 9,
+        "net": 16.316344253380905,
+        "dd": 3.6150039032676338
+      },
+      {
+        "interval": "1h",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 8,
+        "net": -5.677112306556765,
+        "dd": 6.040661595736395
+      },
+      {
+        "interval": "1h",
+        "split": "validation",
+        "oldTrades": 3,
+        "trades": 11,
+        "net": -3.74709975470563,
+        "dd": 8.582863039195985
+      },
+      {
+        "interval": "2h",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 6,
+        "net": -9.4667157041725,
+        "dd": 10.612398254905742
+      },
+      {
+        "interval": "2h",
+        "split": "validation",
+        "oldTrades": 1,
+        "trades": 10,
+        "net": -6.146652806225248,
+        "dd": 8.32536335574388
+      },
+      {
+        "interval": "4h",
+        "split": "train",
+        "oldTrades": 0,
+        "trades": 10,
+        "net": 6.338258590617286,
+        "dd": 11.867065010470359
+      },
+      {
+        "interval": "4h",
+        "split": "validation",
+        "oldTrades": 0,
+        "trades": 6,
+        "net": -5.214147984470429,
+        "dd": 10.041917905584114
+      }
+    ]
+  },
+  "candidates": [
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -2.9404774588634437,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4083440425425664,
+          "dd": 2.4406301479844346
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1818863144098515,
+          "dd": 2.1818863144098515
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.2391692644759473,
+          "dd": 2.2391692644759473
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.1638312804298323,
+          "dd": 3.1638312804298323
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.454560830092618,
+          "dd": 4.682662009473617
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.351435525626769,
+          "dd": 2.9014724386520396
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 9,
+          "net": 9.139813248182975,
+          "dd": 6.340981001588442
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 10,
+          "net": -3.2248105341109436,
+          "dd": 4.34318851530423
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 12,
+          "net": -5.021482165415435,
+          "dd": 6.8001336458243955
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": 16.316344253380905,
+          "dd": 3.6150039032676338
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -5.677112306556765,
+          "dd": 6.040661595736395
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.74709975470563,
+          "dd": 8.582863039195985
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -9.4667157041725,
+          "dd": 10.612398254905742
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -6.146652806225248,
+          "dd": 8.32536335574388
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 6.338258590617286,
+          "dd": 11.867065010470359
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -5.214147984470429,
+          "dd": 10.041917905584114
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.0426159215934847,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4083440425425664,
+          "dd": 2.4406301479844346
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1818863144098515,
+          "dd": 2.1818863144098515
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.1335565313192433,
+          "dd": 2.1335565313192433
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.1638312804298323,
+          "dd": 3.1638312804298323
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.454560830092618,
+          "dd": 4.682662009473617
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.4020293936608113,
+          "dd": 2.9517813204690158
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 9,
+          "net": 9.844885653550705,
+          "dd": 5.630580576160453
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -4.535181021397605,
+          "dd": 4.985156386594763
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 12,
+          "net": -4.721194948850922,
+          "dd": 6.590315956861477
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 13.417628863337626,
+          "dd": 6.087950016585329
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -5.203101728418858,
+          "dd": 5.568477999500345
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.2349041602447812,
+          "dd": 8.096400244929807
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -7.080291000569943,
+          "dd": 10.148264099955995
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -5.757957329481684,
+          "dd": 8.154704911520913
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": 2.841098750677034,
+          "dd": 14.624474812884843
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -3.137981802976398,
+          "dd": 10.041917905584109
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.1315696742765624,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.752696492740199,
+          "dd": 2.7848686765623634
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1529543194100285,
+          "dd": 2.1529543194100285
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -1.9924545147475783,
+          "dd": 2.06357627080589
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.250767010945836,
+          "dd": 3.250767010945836
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.229946363180957,
+          "dd": 4.458583777731889
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.351435525626769,
+          "dd": 2.9014724386520396
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 10,
+          "net": 8.16011503103715,
+          "dd": 6.340981001588425
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 10,
+          "net": -3.2454627003473746,
+          "dd": 4.34318851530423
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 12,
+          "net": -5.021482165415435,
+          "dd": 6.8001336458243955
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 14.389981240206254,
+          "dd": 4.411373188502181
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -5.677112306556765,
+          "dd": 6.040661595736395
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.74709975470563,
+          "dd": 8.582863039195985
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -9.4667157041725,
+          "dd": 10.612398254905742
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -6.146652806225248,
+          "dd": 8.32536335574388
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 6.338258590617286,
+          "dd": 11.867065010470359
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -5.214147984470429,
+          "dd": 10.041917905584114
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.2860798677893577,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.5827697185566336,
+          "dd": 3.6146672904621315
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1529543194100285,
+          "dd": 2.1529543194100285
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -1.8865752513370637,
+          "dd": 1.9577738414708197
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.199891197940346,
+          "dd": 3.199891197940346
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.081874704847067,
+          "dd": 4.31086561947285
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -2.4020293936608113,
+          "dd": 2.9517813204690158
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 10,
+          "net": 8.975162231197459,
+          "dd": 5.630580576160449
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -4.536401936740191,
+          "dd": 4.985156386594763
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 13,
+          "net": -5.243251204368022,
+          "dd": 6.811845731139451
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": 11.690871450567926,
+          "dd": 6.087950016585339
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -5.203101728418858,
+          "dd": 5.568477999500345
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.2349041602447812,
+          "dd": 8.096400244929807
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -7.080291000569943,
+          "dd": 10.148264099955995
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -5.757957329481684,
+          "dd": 8.154704911520913
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": 2.841098750677034,
+          "dd": 14.624474812884843
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -3.137981802976398,
+          "dd": 10.041917905584109
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.3027056439815055,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.892996159631366,
+          "dd": 2.9251219283190166
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1922120743128914,
+          "dd": 2.1922120743128914
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.523925428500263,
+          "dd": 2.685372787283152
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4111166195381912,
+          "dd": 2.7285692882925896
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.612874456238245,
+          "dd": 4.840597684299439
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -1.8483022268172817,
+          "dd": 2.497642304969341
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 7,
+          "net": 7.498762942660576,
+          "dd": 7.0942994739782606
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 8,
+          "net": -0.7848731903332009,
+          "dd": 3.720913970379109
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -4.875564622484788,
+          "dd": 5.679681273713087
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": 13.7117346173861,
+          "dd": 4.71931667780935
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -4.292745354069723,
+          "dd": 4.820194769016815
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -4.035498232557913,
+          "dd": 8.85677232485825
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -14.978371635538068,
+          "dd": 14.978371635538068
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -5.4152363066539095,
+          "dd": 7.6109259505932965
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": 9.202418764718132,
+          "dd": 11.684905338210601
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -7.869876359904509,
+          "dd": 11.055558365980911
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.419536418437886,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.892996159631366,
+          "dd": 2.9251219283190166
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1922120743128914,
+          "dd": 2.1922120743128914
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.493846050438279,
+          "dd": 2.6553432289965673
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4111166195381912,
+          "dd": 2.7285692882925896
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.612874456238245,
+          "dd": 4.840597684299439
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -1.8991567792746906,
+          "dd": 2.5481604200566763
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 7,
+          "net": 8.31413734807417,
+          "dd": 6.38961294315423
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 8,
+          "net": -0.8346726680058651,
+          "dd": 3.4115531859344954
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -4.789160991497923,
+          "dd": 5.679681273713095
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 10.877928609471127,
+          "dd": 7.163929481024001
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -3.8117777732832963,
+          "dd": 4.820194769016839
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.524837308007605,
+          "dd": 8.371767098406096
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -12.737232193313957,
+          "dd": 12.737232193313957
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -5.02351165414305,
+          "dd": 7.249719679764564
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": 3.4206059776184645,
+          "dd": 14.178880928998778
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -5.8518806049358005,
+          "dd": 9.107341012591878
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.430691197498565,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.627701799805209,
+          "dd": 2.667509748757347
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.163283133398039,
+          "dd": 2.163283133398039
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.277929305498091,
+          "dd": 2.439784101947137
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.498728107880808,
+          "dd": 2.8158957800267355
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.388632163352412,
+          "dd": 4.61689073807085
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -1.8483022268172817,
+          "dd": 2.497642304969341
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 8,
+          "net": 6.533795684004701,
+          "dd": 7.09429947397829
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 8,
+          "net": -0.8284255839647443,
+          "dd": 3.720913970379109
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -4.875564622484788,
+          "dd": 5.679681273713087
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 11.828507620037428,
+          "dd": 4.719316677809354
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -4.292745354069723,
+          "dd": 4.820194769016815
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -4.035498232557913,
+          "dd": 8.85677232485825
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -14.978371635538068,
+          "dd": 14.978371635538068
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -5.4152363066539095,
+          "dd": 7.6109259505932965
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": 9.202418764718132,
+          "dd": 11.684905338210601
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -7.869876359904509,
+          "dd": 11.055558365980911
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.468169173334332,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.892996159631366,
+          "dd": 2.9251219283190166
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1922120743128914,
+          "dd": 2.1922120743128914
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.320250036173107,
+          "dd": 2.4820347377786818
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4111166195381912,
+          "dd": 2.7285692882925896
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.612874456238245,
+          "dd": 4.840597684299439
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -4.0973889499055645,
+          "dd": 4.0973889499055645
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 9,
+          "net": 6.590175469507827,
+          "dd": 5.725454608840275
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 9,
+          "net": -1.301593198262296,
+          "dd": 3.2590576415024026
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -5.324054016620622,
+          "dd": 6.006888229795431
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": 11.303304642998242,
+          "dd": 6.540692716148072
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.2828239589266275,
+          "dd": 3.332495912741061
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.8496507616571165,
+          "dd": 6.93957969952312
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -14.275326119591114,
+          "dd": 14.275326119591114
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -7.8486796356664,
+          "dd": 10.403418006639512
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 7.2318715098034545,
+          "dd": 12.163278476821407
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -4.3215756319082885,
+          "dd": 7.629951034397409
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.5680849794591647,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -3.370065859778336,
+          "dd": 3.4020338001917247
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.163283133398039,
+          "dd": 2.163283133398039
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.07373990645614,
+          "dd": 2.235932897065257
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4474568334394036,
+          "dd": 2.7647912889559163
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.176914031832297,
+          "dd": 4.405678053549735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -4.0973889499055645,
+          "dd": 4.0973889499055645
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 10,
+          "net": 5.978091046440056,
+          "dd": 5.725454608840231
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 9,
+          "net": -0.9607395070328408,
+          "dd": 2.923722504252792
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 11,
+          "net": -5.470074391778539,
+          "dd": 6.049680697925703
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": 9.672938294060003,
+          "dd": 6.540692716148061
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.2828239589266275,
+          "dd": 3.332495912741061
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.7458687992969573,
+          "dd": 6.840166850134896
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -14.275326119591114,
+          "dd": 14.275326119591114
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -7.8486796356664,
+          "dd": 10.403418006639512
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": 7.2318715098034545,
+          "dd": 12.163278476821407
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -4.3215756319082885,
+          "dd": 7.629951034397409
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.577797878342713,
+      "positive": 4,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4083440425425664,
+          "dd": 2.4406301479844346
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1818863144098515,
+          "dd": 2.1818863144098515
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -1.8121032171258094,
+          "dd": 2.0461603693309343
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.1638312804298323,
+          "dd": 3.1638312804298323
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.454560830092618,
+          "dd": 4.682662009473617
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -4.588993253822792,
+          "dd": 4.588993253822792
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 11,
+          "net": 6.532753852865298,
+          "dd": 5.994516264035578
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 13,
+          "net": -4.984677686185435,
+          "dd": 5.2529738860596895
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 13,
+          "net": -5.354637474013998,
+          "dd": 7.010813682584482
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": 14.616834470768893,
+          "dd": 4.3794131253205055
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -3.118806539454482,
+          "dd": 4.088763120465032
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.457837088705716,
+          "dd": 6.564260975810895
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -15.341237267478306,
+          "dd": 15.341237267478306
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 11,
+          "net": -7.685677490797389,
+          "dd": 10.244934818551588
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 2.866982066742807,
+          "dd": 12.619337618382525
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": 0.8910414994861213,
+          "dd": 7.798727699010841
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.611144304545979,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -3.458841942073164,
+          "dd": 3.4907805128245104
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.163283133398039,
+          "dd": 2.163283133398039
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.2477740174200704,
+          "dd": 2.409678759372512
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.4474568334394036,
+          "dd": 2.7647912889559163
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.240805851749485,
+          "dd": 4.469417340812271
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -1.8991567792746906,
+          "dd": 2.5481604200566763
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 8,
+          "net": 7.4565339952814895,
+          "dd": 6.389612943154294
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 8,
+          "net": -0.8359409097611916,
+          "dd": 3.4115531859344954
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 10,
+          "net": -5.310844844173616,
+          "dd": 5.89142745966752
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": 9.189837551160835,
+          "dd": 7.163929481023974
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -3.8117777732832963,
+          "dd": 4.820194769016839
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 11,
+          "net": -3.524837308007605,
+          "dd": 8.371767098406096
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -12.737232193313957,
+          "dd": 12.737232193313957
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 9,
+          "net": -5.02351165414305,
+          "dd": 7.249719679764564
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": 3.4206059776184645,
+          "dd": 14.178880928998778
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -5.8518806049358005,
+          "dd": 9.107341012591878
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 7,
+        "trendLength": 10,
+        "trendMult": 1,
+        "fastPeriod": 21,
+        "trendPeriod": 72,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -3.729167292391313,
+      "positive": 4,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.4941075961801005,
+          "dd": 3.5260345000464466
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 5,
+          "net": -2.1529543194100285,
+          "dd": 2.1529543194100285
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -1.5643106994182148,
+          "dd": 1.79895853146202
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -3.199891197940346,
+          "dd": 3.199891197940346
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.017876843935042,
+          "dd": 4.247020544373299
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -4.588993253822792,
+          "dd": 4.588993253822792
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 12,
+          "net": 5.920999168227311,
+          "dd": 5.994516264035591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 13,
+          "net": -4.656543480340787,
+          "dd": 4.925766237725273
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 14,
+          "net": -5.500610679768229,
+          "dd": 7.064944901393535
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": 12.937931669613619,
+          "dd": 4.37941312532049
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 8,
+          "net": -3.118806539454482,
+          "dd": 4.088763120465032
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.353636566945738,
+          "dd": 6.464447187939477
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -15.341237267478306,
+          "dd": 15.341237267478306
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 11,
+          "net": -7.685677490797389,
+          "dd": 10.244934818551588
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 2.866982066742807,
+          "dd": 12.619337618382525
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": 0.8910414994861213,
+          "dd": 7.798727699010841
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.253409948867841,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.6722946128020055,
+          "dd": 3.725895677120335
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.503212633025697,
+          "dd": 5.503212633025697
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.770056515739526,
+          "dd": 3.770056515739526
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.581515500004016,
+          "dd": 4.808618135530466
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -4.020734585218165,
+          "dd": 4.020734585218165
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 14,
+          "net": 8.547848662962394,
+          "dd": 6.985554396027788
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 18,
+          "net": -5.151985026969129,
+          "dd": 6.875772083833451
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -5.694132184983744,
+          "dd": 7.255262869364968
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 10.439056312724588,
+          "dd": 6.355667688589913
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -7.576286856582442,
+          "dd": 8.495346290840683
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 14,
+          "net": -3.0209288909016436,
+          "dd": 8.915786902721399
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -11.424510559816127,
+          "dd": 13.24646282792038
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -7.852762394542125,
+          "dd": 12.422878870592804
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -6.98095419386344,
+          "dd": 16.00981728462488
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -27.971163407755625,
+          "dd": 28.484348348582174
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.368538757218656,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -2.8870146079378003,
+          "dd": 2.9731625075750423
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -5.015238619848418,
+          "dd": 5.015238619848418
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -2.947210416616045,
+          "dd": 2.947210416616045
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.2734343373237635,
+          "dd": 4.501270227464005
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -6.0564912156309845,
+          "dd": 6.0564912156309845
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 15,
+          "net": 3.5001524897745924,
+          "dd": 9.128338085397628
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -2.7132488665165653,
+          "dd": 5.653301369363143
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -8.558917506202832,
+          "dd": 9.081943349910343
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": 8.31204041263102,
+          "dd": 6.279570698554614
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.530648692036081,
+          "dd": 5.396407069939412
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 13,
+          "net": -3.1900781075916598,
+          "dd": 7.287174963714421
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -11.113445359783213,
+          "dd": 12.941796079087794
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -11.79945743807157,
+          "dd": 16.173834394272408
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -4.727855267830108,
+          "dd": 14.50888617643214
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -25.08624483492372,
+          "dd": 25.619983998713348
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.402675870481715,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.439725764130017,
+          "dd": 4.492899795266823
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.0482116051113195,
+          "dd": 5.0482116051113195
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.024870855178349,
+          "dd": 4.024870855178349
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.070940141242289,
+          "dd": 5.070940141242289
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -4.020734585218165,
+          "dd": 4.020734585218165
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 14,
+          "net": 8.547848662962394,
+          "dd": 6.985554396027788
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 18,
+          "net": -5.132953092008535,
+          "dd": 6.857086039118018
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -6.371297217140523,
+          "dd": 7.921218173701172
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 10.202749268659502,
+          "dd": 6.627840995466321
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -7.576286856582442,
+          "dd": 8.495346290840683
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 14,
+          "net": -3.0209288909016436,
+          "dd": 8.915786902721399
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -11.424510559816127,
+          "dd": 13.24646282792038
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -7.852762394542125,
+          "dd": 12.422878870592804
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -6.98095419386344,
+          "dd": 16.00981728462488
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -27.971163407755625,
+          "dd": 28.484348348582174
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.440386617580221,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.56377474917241,
+          "dd": 3.6493223020641534
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.557888002241285,
+          "dd": 4.557888002241285
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -2.975822367879431,
+          "dd": 2.975822367879431
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.659593708994748,
+          "dd": 4.659593708994748
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -5.864440018675907,
+          "dd": 5.864440018675907
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 15,
+          "net": 3.5001524897745924,
+          "dd": 9.128338085397628
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -2.4166589151710554,
+          "dd": 5.38465975638353
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -9.059033352346276,
+          "dd": 9.579198627201723
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 7.86735222778492,
+          "dd": 6.586866482412498
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -4.530648692036081,
+          "dd": 5.396407069939412
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 13,
+          "net": -3.0866598106045444,
+          "dd": 7.188133436909207
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -11.113445359783213,
+          "dd": 12.941796079087794
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -11.79945743807157,
+          "dd": 16.173834394272408
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -4.727855267830108,
+          "dd": 14.50888617643214
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -25.08624483492372,
+          "dd": 25.619983998713348
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.488477381100986,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.6722946128020055,
+          "dd": 3.725895677120335
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.192827332373909,
+          "dd": 5.192827332373909
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.770056515739526,
+          "dd": 3.770056515739526
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.581515500004016,
+          "dd": 4.808618135530466
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -5.245634325102557,
+          "dd": 5.245634325102557
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 4.103620002802188,
+          "dd": 8.598502191429187
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 18,
+          "net": -4.494314688564501,
+          "dd": 6.230054379517662
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 19,
+          "net": -7.947426398456855,
+          "dd": 9.471256257140892
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": 10.87414253915098,
+          "dd": 6.269163983654566
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.594983979454327,
+          "dd": 6.106693070282105
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 15,
+          "net": -4.297387641931451,
+          "dd": 7.699001398292095
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -15.147447204288625,
+          "dd": 16.892820580125104
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 18,
+          "net": -10.121023400426722,
+          "dd": 14.578643644747036
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -8.772905769051093,
+          "dd": 19.33772413603437
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -18.981983820430443,
+          "dd": 19.55921410493949
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.507799473822767,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.6722946128020055,
+          "dd": 3.725895677120335
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.503212633025697,
+          "dd": 5.503212633025697
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.770056515739526,
+          "dd": 3.770056515739526
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.581515500004016,
+          "dd": 4.808618135530466
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.970979838698028,
+          "dd": 3.9709798386980277
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 14,
+          "net": 7.730714909885776,
+          "dd": 7.6857547589360085
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 17,
+          "net": -5.207261219595281,
+          "dd": 6.93004367572622
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -5.774717633950658,
+          "dd": 7.33451431420243
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 12.533997525610388,
+          "dd": 6.531360619755801
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -7.576286856582442,
+          "dd": 8.495346290840683
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 14,
+          "net": -3.2053889244121336,
+          "dd": 9.089034561294044
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -12.962467666310928,
+          "dd": 14.75278494762442
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -8.928138004415132,
+          "dd": 13.444920360851
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.437708199482259,
+          "dd": 16.97558580675271
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -27.851493576890036,
+          "dd": 28.36553113116943
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.579055670749776,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.351851670423912,
+          "dd": 4.405074598655574
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -4.736331802532163,
+          "dd": 4.736331802532163
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.024870855178349,
+          "dd": 4.024870855178349
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -4.9664320773954955,
+          "dd": 4.9664320773954955
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -5.051925471983594,
+          "dd": 5.051925471983594
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 4.103620002802188,
+          "dd": 8.598502191429187
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 18,
+          "net": -4.203154523077288,
+          "dd": 5.944185817917827
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -8.45088665374793,
+          "dd": 9.966382277552272
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 10.418935334076878,
+          "dd": 6.576493889631167
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.594983979454327,
+          "dd": 6.106693070282105
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 15,
+          "net": -4.1951522409124635,
+          "dd": 7.600399809746207
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -15.147447204288625,
+          "dd": 16.892820580125104
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 18,
+          "net": -10.121023400426722,
+          "dd": 14.578643644747036
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -8.772905769051093,
+          "dd": 19.33772413603437
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -18.981983820430443,
+          "dd": 19.55921410493949
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.580879190512824,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.6272822502366893,
+          "dd": 3.6809083614564453
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 7,
+          "net": -2.879202675587237,
+          "dd": 2.891481369393432
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.116139674951057,
+          "dd": 5.116139674951057
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.07531307868382,
+          "dd": 4.07531307868382
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.3202828691581345,
+          "dd": 5.3202828691581345
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 11,
+          "net": -3.970979838698028,
+          "dd": 3.9709798386980277
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 14,
+          "net": 7.730714909885776,
+          "dd": 7.6857547589360085
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 17,
+          "net": -5.207261219595281,
+          "dd": 6.93004367572622
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -5.774717633950658,
+          "dd": 7.33451431420243
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 12.140791591429647,
+          "dd": 6.803023282529236
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -7.576286856582442,
+          "dd": 8.495346290840683
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 14,
+          "net": -3.2053889244121336,
+          "dd": 9.089034561294044
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -12.962467666310928,
+          "dd": 14.75278494762442
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 16,
+          "net": -8.928138004415132,
+          "dd": 13.444920360851
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.437708199482259,
+          "dd": 16.97558580675271
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -27.851493576890036,
+          "dd": 28.36553113116943
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.746837103144408,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -2.8870146079378003,
+          "dd": 2.9731625075750423
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -5.015238619848418,
+          "dd": 5.015238619848418
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -2.947210416616045,
+          "dd": 2.947210416616045
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.2734343373237635,
+          "dd": 4.501270227464005
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.9031646172146566,
+          "dd": 3.948784201153614
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 13,
+          "net": 5.238478668531727,
+          "dd": 8.78835282075727
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -3.320944451236599,
+          "dd": 6.025312520768291
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 13,
+          "net": -6.559592548614532,
+          "dd": 7.0940541561414285
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 8.611057274672135,
+          "dd": 6.36606479918648
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -6.959396607338576,
+          "dd": 7.489604531427736
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -1.898850324553365,
+          "dd": 8.509389493219524
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -13.54316356020999,
+          "dd": 15.321536225607105
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 15,
+          "net": -8.511621725222739,
+          "dd": 13.049061542039903
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -5.923587091765938,
+          "dd": 15.055083172564817
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -33.398139281304836,
+          "dd": 33.87265856509321
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.827268815590725,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.211696165024122,
+          "dd": 5.211696165024122
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.545345237266943,
+          "dd": 4.570213399134602
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -8.928090450153917,
+          "dd": 8.928090450153917
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 20,
+          "net": 5.438431046875749,
+          "dd": 9.087695953981468
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.080039820141167,
+          "dd": 7.935067801564916
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 19,
+          "net": -9.042464150097132,
+          "dd": 9.403278650301793
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 5.650638696561899,
+          "dd": 6.692701599545078
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -2.946905221363835,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 21,
+          "net": -7.122284442017332,
+          "dd": 7.801850734520897
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -11.5238362359011,
+          "dd": 16.375252430482988
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 21,
+          "net": -9.937965728576145,
+          "dd": 13.003407100226076
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 4.653857228598099,
+          "dd": 9.430174086902818
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -25.193705438191614,
+          "dd": 26.552221854609975
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.877847274916703,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.652372866776915,
+          "dd": 3.737841825217946
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.557888002241285,
+          "dd": 4.557888002241285
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -2.975822367879431,
+          "dd": 2.975822367879431
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.764439201862672,
+          "dd": 4.764439201862672
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.9031646172146566,
+          "dd": 3.948784201153614
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 13,
+          "net": 5.238478668531727,
+          "dd": 8.78835282075727
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -3.3015451048424893,
+          "dd": 6.025312520768291
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 14,
+          "net": -7.230543126585687,
+          "dd": 7.761167022631497
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 8.378661610001828,
+          "dd": 6.638207887298934
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -6.959396607338576,
+          "dd": 7.489604531427736
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -1.898850324553365,
+          "dd": 8.509389493219524
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -13.54316356020999,
+          "dd": 15.321536225607105
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 15,
+          "net": -8.511621725222739,
+          "dd": 13.049061542039903
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -5.923587091765938,
+          "dd": 15.055083172564817
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -33.398139281304836,
+          "dd": 33.87265856509321
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.930468089376719,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.396753528946633,
+          "dd": 5.396753528946633
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.8040852270210905,
+          "dd": 4.828885981092213
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -9.12332081010986,
+          "dd": 9.12332081010986
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 20,
+          "net": 5.438431046875749,
+          "dd": 9.087695953981468
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.3467070384667466,
+          "dd": 8.196468033503622
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 19,
+          "net": -9.19897120197605,
+          "dd": 9.559164862871746
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 5.325713987409273,
+          "dd": 6.692701599545062
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -2.946905221363835,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 21,
+          "net": -7.122284442017332,
+          "dd": 7.801850734520897
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -11.5238362359011,
+          "dd": 16.375252430482988
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 21,
+          "net": -9.937965728576145,
+          "dd": 13.003407100226076
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": 4.653857228598099,
+          "dd": 9.430174086902818
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -25.193705438191614,
+          "dd": 26.552221854609975
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -7.999463336849837,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.396753528946633,
+          "dd": 5.396753528946633
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.8040852270210905,
+          "dd": 4.828885981092213
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -9.402306699432842,
+          "dd": 9.402306699432842
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 5.430775716221191,
+          "dd": 9.888780765633417
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.654481717952436,
+          "dd": 8.49816380663834
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -7.618363085183532,
+          "dd": 7.984826774421036
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": 5.289047266877489,
+          "dd": 6.549855784825673
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -3.119681216296584,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 18,
+          "net": -2.890540518816877,
+          "dd": 5.858264204212843
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -12.513542337876899,
+          "dd": 17.31068994748935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -10.789423986064122,
+          "dd": 13.569414173435534
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 0.8102986602365263,
+          "dd": 12.295191435679262
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -25.118094782919954,
+          "dd": 26.477984323311965
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.000371698320809,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.396753528946633,
+          "dd": 5.396753528946633
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.815712859703368,
+          "dd": 4.8405105845052105
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -9.402306699432842,
+          "dd": 9.402306699432842
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 5.430775716221191,
+          "dd": 9.888780765633417
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.654481717952436,
+          "dd": 8.49816380663834
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -7.618363085183532,
+          "dd": 7.984826774421036
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": 5.289047266877489,
+          "dd": 6.549855784825673
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -3.119681216296584,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 18,
+          "net": -2.890540518816877,
+          "dd": 5.858264204212843
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -12.513542337876899,
+          "dd": 17.31068994748935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -10.789423986064122,
+          "dd": 13.569414173435534
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 0.8102986602365263,
+          "dd": 12.295191435679262
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -25.118094782919954,
+          "dd": 26.477984323311965
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.055158931317637,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -2.8870146079378003,
+          "dd": 2.9731625075750423
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -5.015238619848418,
+          "dd": 5.015238619848418
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -2.947210416616045,
+          "dd": 2.947210416616045
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.2734343373237635,
+          "dd": 4.501270227464005
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.8533489235313,
+          "dd": 3.948784201153614
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 13,
+          "net": 4.44625741217601,
+          "dd": 9.474981957141974
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -3.533384252767746,
+          "dd": 6.2318098209717485
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 13,
+          "net": -6.639438451744169,
+          "dd": 7.1734433556788515
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 10.671322797183649,
+          "dd": 6.54173822357824
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -6.959396607338576,
+          "dd": 7.489604531427736
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.085444619070742,
+          "dd": 8.683410144139057
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -15.044333995146474,
+          "dd": 16.79182835666935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 15,
+          "net": -9.787337795790762,
+          "dd": 14.26150744646547
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -6.319709243345358,
+          "dd": 15.055083172564817
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -34.67827028914718,
+          "dd": 35.14366900419405
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.098516521173028,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.211696165024122,
+          "dd": 5.211696165024122
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.815712859703368,
+          "dd": 4.8405105845052105
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -9.402306699432842,
+          "dd": 9.402306699432842
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 6.230464509921589,
+          "dd": 9.205290278924272
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.654481717952436,
+          "dd": 8.49816380663834
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -7.618363085183532,
+          "dd": 7.984826774421036
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 4.036893085952656,
+          "dd": 7.834458838915226
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -3.119681216296584,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 19,
+          "net": -3.9185220992449814,
+          "dd": 6.8548300471763675
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -12.513542337876899,
+          "dd": 17.31068994748935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -10.789423986064122,
+          "dd": 13.569414173435534
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 0.8102986602365263,
+          "dd": 12.295191435679262
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -25.055284490450262,
+          "dd": 26.41631469439124
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "trendLength": 7,
+        "trendMult": 1,
+        "fastPeriod": 12,
+        "trendPeriod": 48,
+        "trendSlopeBars": 6,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.108326797759124,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 9,
+          "net": -2.833235360429981,
+          "dd": 2.9194309670674543
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 6,
+          "net": -2.732240908819989,
+          "dd": 2.7445381825656483
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.626166847316554,
+          "dd": 4.626166847316554
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.0268159460820527,
+          "dd": 3.0268159460820527
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -5.014586991794786,
+          "dd": 5.014586991794786
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -3.8533489235313,
+          "dd": 3.948784201153614
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 13,
+          "net": 4.44625741217601,
+          "dd": 9.474981957141974
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 12,
+          "net": -3.5140275339445566,
+          "dd": 6.2318098209717485
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 13,
+          "net": -6.639438451744169,
+          "dd": 7.1734433556788515
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 10.28462524955961,
+          "dd": 6.813370724283374
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -6.959396607338576,
+          "dd": 7.489604531427736
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 12,
+          "net": -2.085444619070742,
+          "dd": 8.683410144139057
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 10,
+          "net": -15.044333995146474,
+          "dd": 16.79182835666935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 15,
+          "net": -9.787337795790762,
+          "dd": 14.26150744646547
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -6.319709243345358,
+          "dd": 15.055083172564817
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -34.67827028914718,
+          "dd": 35.14366900419405
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 18,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.112065766258503,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -4.035103952459792,
+          "dd": 4.06685187928931
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -5.396753528946633,
+          "dd": 5.396753528946633
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -4.7936225874518215,
+          "dd": 4.831771993784879
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.446313839961036,
+          "dd": 5.446313839961036
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 15,
+          "net": -4.8040852270210905,
+          "dd": 4.828885981092213
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -9.402306699432842,
+          "dd": 9.402306699432842
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 18,
+          "net": 6.230464509921589,
+          "dd": 9.205290278924272
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 19,
+          "net": -6.654481717952436,
+          "dd": 8.49816380663834
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 17,
+          "net": -7.618363085183532,
+          "dd": 7.984826774421036
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": 4.036893085952656,
+          "dd": 7.834458838915226
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 12,
+          "net": -3.119681216296584,
+          "dd": 5.350831072041733
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 19,
+          "net": -3.9185220992449814,
+          "dd": 6.8548300471763675
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 13,
+          "net": -12.513542337876899,
+          "dd": 17.31068994748935
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -10.789423986064122,
+          "dd": 13.569414173435534
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": 0.8102986602365263,
+          "dd": 12.295191435679262
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -25.055284490450262,
+          "dd": 26.41631469439124
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.149537152065967,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.4154001836674155,
+          "dd": 5.4154001836674155
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.3436304156446965,
+          "dd": 6.3436304156446965
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.756816348806822,
+          "dd": 4.781629417522183
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.997744340698134,
+          "dd": 8.997744340698134
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 23,
+          "net": 4.534843078452752,
+          "dd": 10.153326667416387
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -7.4208199819941,
+          "dd": 9.103372772324267
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -7.356528261344067,
+          "dd": 8.79003528783526
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": 8.686755199023466,
+          "dd": 5.18425724588873
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.3908212198019214,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 20,
+          "net": -5.227766316699402,
+          "dd": 7.549893042734507
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.8405919881844,
+          "dd": 13.839138596694495
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.163767311479589,
+          "dd": 11.96406756441861
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -3.665239507368426,
+          "dd": 16.674241112953073
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": -24.692597647978687,
+          "dd": 27.079775403818797
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.150445964577594,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.4154001836674155,
+          "dd": 5.4154001836674155
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.3436304156446965,
+          "dd": 6.3436304156446965
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.768449755110339,
+          "dd": 4.793259793052272
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.997744340698134,
+          "dd": 8.997744340698134
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 23,
+          "net": 4.534843078452752,
+          "dd": 10.153326667416387
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -7.4208199819941,
+          "dd": 9.103372772324267
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -7.356528261344067,
+          "dd": 8.79003528783526
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": 8.686755199023466,
+          "dd": 5.18425724588873
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.3908212198019214,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 20,
+          "net": -5.227766316699402,
+          "dd": 7.549893042734507
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.8405919881844,
+          "dd": 13.839138596694495
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.163767311479589,
+          "dd": 11.96406756441861
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -3.665239507368426,
+          "dd": 16.674241112953073
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": -24.692597647978687,
+          "dd": 27.079775403818797
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.343252962337807,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.23037929524547,
+          "dd": 5.23037929524547
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.3436304156446965,
+          "dd": 6.3436304156446965
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.768449755110339,
+          "dd": 4.793259793052272
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.997744340698134,
+          "dd": 8.997744340698134
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 23,
+          "net": 5.327736254028622,
+          "dd": 9.471842752238588
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -7.157365241095533,
+          "dd": 8.844706111308655
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -7.356528261344067,
+          "dd": 8.79003528783526
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": 7.192703597066995,
+          "dd": 6.48763236361187
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.3908212198019214,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 22,
+          "net": -7.531967237814385,
+          "dd": 9.797636008463986
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.8405919881844,
+          "dd": 13.839138596694495
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.163767311479589,
+          "dd": 11.96406756441861
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -3.665239507368426,
+          "dd": 16.674241112953073
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": -24.629430452203508,
+          "dd": 27.01861055203562
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 3,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.356798906734145,
+      "positive": 2,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.4154001836674155,
+          "dd": 5.4154001836674155
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.3436304156446965,
+          "dd": 6.3436304156446965
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.756816348806822,
+          "dd": 4.781629417522183
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.997744340698134,
+          "dd": 8.997744340698134
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 23,
+          "net": 5.327736254028622,
+          "dd": 9.471842752238588
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -7.157365241095533,
+          "dd": 8.844706111308655
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 20,
+          "net": -7.356528261344067,
+          "dd": 8.79003528783526
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": 7.192703597066995,
+          "dd": 6.48763236361187
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -3.3908212198019214,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 22,
+          "net": -7.531967237814385,
+          "dd": 9.797636008463986
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -8.8405919881844,
+          "dd": 13.839138596694495
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.163767311479589,
+          "dd": 11.96406756441861
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -3.665239507368426,
+          "dd": 16.674241112953073
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 18,
+          "net": -24.629430452203508,
+          "dd": 27.01861055203562
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.50105141392119,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.23037929524547,
+          "dd": 5.23037929524547
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.036005561494875,
+          "dd": 6.036005561494875
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.497947883486333,
+          "dd": 4.522828393469126
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.802244204826707,
+          "dd": 8.802244204826707
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 26,
+          "net": 2.6014593151417955,
+          "dd": 10.57059056158347
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -6.5795507654057985,
+          "dd": 8.277392953066059
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.784665618143208,
+          "dd": 10.196074542120044
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": 8.584244847227751,
+          "dd": 5.054384070513031
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -2.638207101527499,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 24,
+          "net": -10.615242055669839,
+          "dd": 11.60281089374038
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -11.907169647367525,
+          "dd": 16.73756650927049
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 23,
+          "net": -7.082379887993596,
+          "dd": 11.583611940325868
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 21,
+          "net": 0.37545551601752436,
+          "dd": 15.28155044567666
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -24.768637941319668,
+          "dd": 27.153405287410642
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 3,
+        "trendLength": 5,
+        "trendMult": 1,
+        "fastPeriod": 8,
+        "trendPeriod": 32,
+        "trendSlopeBars": 4,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 12,
+        "confluenceBars": 12,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 2,
+        "breakEvenBufferPct": 0.35,
+        "minStopPct": 0.6,
+        "maxHoldBars": 200,
+        "cooldownBars": 2,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 3
+      },
+      "score": -8.600760064064675,
+      "positive": 3,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -5.610039293660066,
+          "dd": 5.610039293660066
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -5.4154001836674155,
+          "dd": 5.4154001836674155
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 20,
+          "net": -6.036005561494875,
+          "dd": 6.036005561494875
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -5.571602817770639,
+          "dd": 5.571602817770639
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 16,
+          "net": -4.756816348806822,
+          "dd": 4.781629417522183
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 22,
+          "net": -8.997744340698134,
+          "dd": 8.997744340698134
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "oldTrades": 4,
+          "trades": 26,
+          "net": 2.431860335332516,
+          "dd": 10.718416301167892
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "oldTrades": 2,
+          "trades": 24,
+          "net": -6.844799720839902,
+          "dd": 8.537821220198419
+        },
+        {
+          "interval": "30m",
+          "split": "train",
+          "oldTrades": 1,
+          "trades": 22,
+          "net": -8.941616253809315,
+          "dd": 10.350596622003225
+        },
+        {
+          "interval": "30m",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": 8.520619039191942,
+          "dd": 5.054384070513033
+        },
+        {
+          "interval": "1h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 14,
+          "net": -2.638207101527499,
+          "dd": 5.585154138685999
+        },
+        {
+          "interval": "1h",
+          "split": "validation",
+          "oldTrades": 3,
+          "trades": 24,
+          "net": -10.615242055669839,
+          "dd": 11.60281089374038
+        },
+        {
+          "interval": "2h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 17,
+          "net": -11.907169647367525,
+          "dd": 16.73756650927049
+        },
+        {
+          "interval": "2h",
+          "split": "validation",
+          "oldTrades": 1,
+          "trades": 23,
+          "net": -7.082379887993596,
+          "dd": 11.583611940325868
+        },
+        {
+          "interval": "4h",
+          "split": "train",
+          "oldTrades": 0,
+          "trades": 21,
+          "net": 0.37545551601752436,
+          "dd": 15.28155044567666
+        },
+        {
+          "interval": "4h",
+          "split": "validation",
+          "oldTrades": 0,
+          "trades": 19,
+          "net": -24.768637941319668,
+          "dd": 27.153405287410642
+        }
+      ]
+    }
+  ]
+}

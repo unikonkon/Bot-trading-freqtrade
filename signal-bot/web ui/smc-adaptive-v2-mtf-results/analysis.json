@@ -1,0 +1,554 @@
+{
+  "createdAt": "2026-09-16T11:18:46.540Z",
+  "manifest": {
+    "symbol": "BTCUSDT",
+    "asOf": "2026-09-16T11:07:40.920Z",
+    "source": "Binance Spot GET /api/v3/klines",
+    "feePct": 0.1,
+    "slippagePct": 0.05,
+    "records": [
+      {
+        "interval": "1m",
+        "file": "BTCUSDT-1m.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-09-15T18:27:00.000Z",
+        "testTo": "2026-09-16T11:06:59.999Z",
+        "sha256": "e394eec63a7fbd8f3bc6667c21558258f1fffa88fb345d837a2b8ac3689a2886"
+      },
+      {
+        "interval": "3m",
+        "file": "BTCUSDT-3m.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-09-14T09:06:00.000Z",
+        "testTo": "2026-09-16T11:05:59.999Z",
+        "sha256": "76d4bd720e7fd87353c6d69459090c4ed6564bc8c98b00f4cf28b95601f07a8d"
+      },
+      {
+        "interval": "5m",
+        "file": "BTCUSDT-5m.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-09-12T23:45:00.000Z",
+        "testTo": "2026-09-16T11:04:59.999Z",
+        "sha256": "a87e37f04dc158073686bb53631adc7ad45615a75da16d606bf310d86e2485fa"
+      },
+      {
+        "interval": "15m",
+        "file": "BTCUSDT-15m.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-09-06T01:00:00.000Z",
+        "testTo": "2026-09-16T10:59:59.999Z",
+        "sha256": "e1ac683a44f73e935ff61c3f8b657c5b3a0c1a579efc1abdf4675e4ecda31c96"
+      },
+      {
+        "interval": "30m",
+        "file": "BTCUSDT-30m.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-08-26T15:00:00.000Z",
+        "testTo": "2026-09-16T10:59:59.999Z",
+        "sha256": "634665583c76fb8dd0aa68c735ed01a573b9b6169522f36f2c7a7fa6762fb00c"
+      },
+      {
+        "interval": "1h",
+        "file": "BTCUSDT-1h.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-08-05T19:00:00.000Z",
+        "testTo": "2026-09-16T10:59:59.999Z",
+        "sha256": "16f4ab177018ce0ec3cc582723923603053058705db100ebc97c21880ed9ec1a"
+      },
+      {
+        "interval": "2h",
+        "file": "BTCUSDT-2h.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-06-25T02:00:00.000Z",
+        "testTo": "2026-09-16T09:59:59.999Z",
+        "sha256": "395054a41ffe82c4df1648fefc824e642c7bca9dd8becc081b1e66f80c979f79"
+      },
+      {
+        "interval": "4h",
+        "file": "BTCUSDT-4h.json",
+        "bars": 3300,
+        "testBars": 1000,
+        "testFrom": "2026-04-02T16:00:00.000Z",
+        "testTo": "2026-09-16T07:59:59.999Z",
+        "sha256": "14197d5a31772acd637c43994045c5a613b464bdf31ac13075f2695fa4b3ca74"
+      }
+    ]
+  },
+  "selectionMethod": "68 global candidates (36 faster + 32 slower); equal-weight train/validation net - 0.25*DD - 0.5*trade shortfall below max(3, old+1). Added activity eligibility before opening final test: pooled train/validation trades >= max(4, old+1) in every timeframe. Final 1000 bars excluded. Phase 2 motivated by phase 1 fee/chop losses; validation participates in selection and is not held out.",
+  "params": {
+    "internalSize": 7,
+    "trendLength": 10,
+    "trendMult": 1,
+    "fastPeriod": 21,
+    "trendPeriod": 100,
+    "trendSlopeBars": 6,
+    "atrPeriod": 14,
+    "adxPeriod": 14,
+    "adxThreshold": 25,
+    "confluenceBars": 12,
+    "stopAtr": 3,
+    "trailAtr": 6,
+    "breakEvenAtr": 2,
+    "breakEvenBufferPct": 0.35,
+    "minStopPct": 0.6,
+    "maxHoldBars": 200,
+    "cooldownBars": 2,
+    "maxVolatilityRatio": 2.5,
+    "maxExtensionAtr": 3
+  },
+  "sourceHashes": {
+    "lib/indicators.ts": "050864232105dcc0c3306aac668999ae82284c65292bb74bc6054db6a69a8da9",
+    "lib/backtest.ts": "eee6ac9cc83bb65597c6f60e0212c65d007fc2f44cf4d96f21d368bddf417f56",
+    "signal-bot/web ui/engine.ts": "76eee2491676a31aca5ed670d41fa25b9f834efa91a30f3e6ec8e584038db218",
+    "signal-bot/web ui/research-mtf/select.ts": "05cd09c18a50569ae1211f8d45d11829b8fc82171676c21c123a61f07a9b2c61",
+    "signal-bot/web ui/research-mtf/analyze.ts": "83cfbb5d2d7e9d522ee0182661808a87f924c257fd52bbde43d9bf1ef8c4c016"
+  },
+  "prefixChecks": 8008,
+  "unchangedStrategyChecks": 88,
+  "results": [
+    {
+      "interval": "1m",
+      "from": "2026-09-15T18:27:00.000Z",
+      "to": "2026-09-16T11:06:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": 0,
+        "ddPct": 0,
+        "trades": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -0.8619217439348903
+      },
+      "updated": {
+        "netPct": -0.9550174053231331,
+        "ddPct": 1.1091029636242815,
+        "trades": 3,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -0.8619217439348903
+      },
+      "grossPct": -0.0595889542193504,
+      "costDragPp": 0.8954284511037827,
+      "stress": {
+        "netPct": -1.2517072688634698,
+        "ddPct": 1.3560585648934829,
+        "trades": 3,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -0.8619217439348903
+      },
+      "warmed": {
+        "netPct": -0.9550174053231331,
+        "ddPct": 1.1091029636242815,
+        "trades": 3,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -0.8619217439348903
+      },
+      "medianAtrPct": 0.04630501563522878,
+      "entryGroups": {
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 2,
+          "wins": 0,
+          "sumTradeNetPct": -0.6243780487414696
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.3336941543374494
+        }
+      },
+      "withoutBestTradePct": -0.6477160873641918
+    },
+    {
+      "interval": "3m",
+      "from": "2026-09-14T09:06:00.000Z",
+      "to": "2026-09-16T11:05:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": 0,
+        "ddPct": 0,
+        "trades": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.3298766312048302
+      },
+      "updated": {
+        "netPct": -2.8616614510781346,
+        "ddPct": 3.099581657075349,
+        "trades": 4,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.3298766312048302
+      },
+      "grossPct": -1.688979073211513,
+      "costDragPp": 1.1726823778666216,
+      "stress": {
+        "netPct": -3.249438959423827,
+        "ddPct": 3.4381767059024173,
+        "trades": 4,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.3298766312048302
+      },
+      "warmed": {
+        "netPct": -3.5147909768576255,
+        "ddPct": 3.5147909768576255,
+        "trades": 5,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.3298766312048302
+      },
+      "medianAtrPct": 0.09758646675368449,
+      "entryGroups": {
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.2710572661221322
+        },
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 3,
+          "wins": 0,
+          "sumTradeNetPct": -2.619486257889736
+        }
+      },
+      "withoutBestTradePct": -2.5976452912660597
+    },
+    {
+      "interval": "5m",
+      "from": "2026-09-12T23:45:00.000Z",
+      "to": "2026-09-16T11:04:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": -0.021809248122934832,
+        "ddPct": 0.22438283634598327,
+        "trades": 1,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -1.6673222112080222
+      },
+      "updated": {
+        "netPct": -2.6032190250728746,
+        "ddPct": 2.6885098405868337,
+        "trades": 7,
+        "winRate": 14.285714285714285,
+        "profitFactor": 0.13691226300049905,
+        "buyHoldPct": -1.6673222112080222
+      },
+      "grossPct": -0.5362589877091182,
+      "costDragPp": 2.0669600373637564,
+      "stress": {
+        "netPct": -3.282616223812269,
+        "ddPct": 3.319019890172445,
+        "trades": 7,
+        "winRate": 14.285714285714285,
+        "profitFactor": 0.08689564657056117,
+        "buyHoldPct": -1.6673222112080222
+      },
+      "warmed": {
+        "netPct": -2.6032190250728746,
+        "ddPct": 2.6885098405868337,
+        "trades": 7,
+        "winRate": 14.285714285714285,
+        "profitFactor": 0.13691226300049905,
+        "buyHoldPct": -1.6673222112080222
+      },
+      "medianAtrPct": 0.11705424771288588,
+      "entryGroups": {
+        "EMA pullback reclaim + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.2220530899448181
+        },
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 5,
+          "wins": 1,
+          "sumTradeNetPct": -1.7431370081423814
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.6614103353151934
+        }
+      },
+      "withoutBestTradePct": -3.007348240233665
+    },
+    {
+      "interval": "15m",
+      "from": "2026-09-06T01:00:00.000Z",
+      "to": "2026-09-16T10:59:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": 0,
+        "ddPct": 0,
+        "trades": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -4.967121261709151
+      },
+      "updated": {
+        "netPct": -0.09058774469040998,
+        "ddPct": 1.0049061545985538,
+        "trades": 2,
+        "winRate": 50,
+        "profitFactor": 0.011816264554087562,
+        "buyHoldPct": -4.967121261709151
+      },
+      "grossPct": 0.5106708511685127,
+      "costDragPp": 0.6012585958589227,
+      "stress": {
+        "netPct": -0.29020699985066756,
+        "ddPct": 1.054428462675269,
+        "trades": 2,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -4.967121261709151
+      },
+      "warmed": {
+        "netPct": -0.09058774469040998,
+        "ddPct": 1.0049061545985538,
+        "trades": 2,
+        "winRate": 50,
+        "profitFactor": 0.011816264554087562,
+        "buyHoldPct": -4.967121261709151
+      },
+      "medianAtrPct": 0.21026685167142709,
+      "entryGroups": {
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 2,
+          "wins": 1,
+          "sumTradeNetPct": -0.09058675172487485
+        }
+      },
+      "withoutBestTradePct": -0.09166994808308404
+    },
+    {
+      "interval": "30m",
+      "from": "2026-08-26T15:00:00.000Z",
+      "to": "2026-09-16T10:59:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": 0,
+        "ddPct": 0,
+        "trades": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.7756524978876596
+      },
+      "updated": {
+        "netPct": -0.16640507136011706,
+        "ddPct": 1.2158358971713885,
+        "trades": 2,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.7756524978876596
+      },
+      "grossPct": 0.43439725297899656,
+      "costDragPp": 0.6008023243391136,
+      "stress": {
+        "netPct": -0.3658728433123599,
+        "ddPct": 1.2652526876180192,
+        "trades": 2,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": -2.7756524978876596
+      },
+      "warmed": {
+        "netPct": -0.14079467068592066,
+        "ddPct": 2.019169761203763,
+        "trades": 3,
+        "winRate": 33.33333333333333,
+        "profitFactor": 0.15410352639774175,
+        "buyHoldPct": -2.7756524978876596
+      },
+      "medianAtrPct": 0.34689105911750745,
+      "entryGroups": {
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.11108663041359268
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.05537996067875861
+        }
+      },
+      "withoutBestTradePct": -0.11108663041359268
+    },
+    {
+      "interval": "1h",
+      "from": "2026-08-05T19:00:00.000Z",
+      "to": "2026-09-16T10:59:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": 0.04808973842288822,
+        "ddPct": 1.098584956761323,
+        "trades": 1,
+        "winRate": 100,
+        "profitFactor": null,
+        "buyHoldPct": 17.195977562095656
+      },
+      "updated": {
+        "netPct": 14.503123149553659,
+        "ddPct": 5.44645662750372,
+        "trades": 3,
+        "winRate": 33.33333333333333,
+        "profitFactor": 5.200591207423913,
+        "buyHoldPct": 17.195977562095656
+      },
+      "grossPct": 15.538302837836582,
+      "costDragPp": 1.0351796882829234,
+      "stress": {
+        "netPct": 14.160128329500964,
+        "ddPct": 5.540962964960659,
+        "trades": 3,
+        "winRate": 33.33333333333333,
+        "profitFactor": 4.900852277188923,
+        "buyHoldPct": 17.195977562095656
+      },
+      "warmed": {
+        "netPct": 13.31296577369271,
+        "ddPct": 5.446456627503722,
+        "trades": 4,
+        "winRate": 25,
+        "profitFactor": 4.037042315558229,
+        "buyHoldPct": 17.195977562095656
+      },
+      "medianAtrPct": 0.44151758520774176,
+      "entryGroups": {
+        "EMA pullback reclaim + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -1.1751400953075142
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 2,
+          "wins": 1,
+          "sumTradeNetPct": 16.3204086701499
+        }
+      },
+      "withoutBestTradePct": -3.5769485655394506
+    },
+    {
+      "interval": "2h",
+      "from": "2026-06-25T02:00:00.000Z",
+      "to": "2026-09-16T09:59:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": -2.58222018400204,
+        "ddPct": 2.655327501918346,
+        "trades": 2,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": 24.816761150161003
+      },
+      "updated": {
+        "netPct": 4.859882693663835,
+        "ddPct": 9.26670734419826,
+        "trades": 7,
+        "winRate": 14.285714285714285,
+        "profitFactor": 1.575101380448577,
+        "buyHoldPct": 24.816761150161003
+      },
+      "grossPct": 7.085225101091524,
+      "costDragPp": 2.2253424074276893,
+      "stress": {
+        "netPct": 4.128426172728524,
+        "ddPct": 9.628915826200975,
+        "trades": 7,
+        "winRate": 14.285714285714285,
+        "profitFactor": 1.4828945698672233,
+        "buyHoldPct": 24.816761150161003
+      },
+      "warmed": {
+        "netPct": 5.766974608622448,
+        "ddPct": 9.266707344198258,
+        "trades": 7,
+        "winRate": 28.57142857142857,
+        "profitFactor": 1.7003481797797533,
+        "buyHoldPct": 24.816761150161003
+      },
+      "medianAtrPct": 0.7072781688750173,
+      "entryGroups": {
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 3,
+          "wins": 0,
+          "sumTradeNetPct": -5.003370866881774
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 3,
+          "wins": 1,
+          "sumTradeNetPct": 11.586908148609478
+        },
+        "EMA pullback reclaim + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 0,
+          "sumTradeNetPct": -0.4073775196970719
+        }
+      },
+      "withoutBestTradePct": -10.311327326853025
+    },
+    {
+      "interval": "4h",
+      "from": "2026-04-02T16:00:00.000Z",
+      "to": "2026-09-16T07:59:59.999Z",
+      "bars": 1000,
+      "baseline": {
+        "netPct": -0.014438954907220136,
+        "ddPct": 1.998529706160487,
+        "trades": 1,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": 13.125061682552207
+      },
+      "updated": {
+        "netPct": -7.265108199401354,
+        "ddPct": 9.0315721282444,
+        "trades": 5,
+        "winRate": 20,
+        "profitFactor": 0.004092007314303614,
+        "buyHoldPct": 13.125061682552207
+      },
+      "grossPct": -5.8635994344756455,
+      "costDragPp": 1.4015087649257083,
+      "stress": {
+        "netPct": -7.727625670949209,
+        "ddPct": 9.440044576096282,
+        "trades": 5,
+        "winRate": 0,
+        "profitFactor": 0,
+        "buyHoldPct": 13.125061682552207
+      },
+      "warmed": {
+        "netPct": -6.8287393473995195,
+        "ddPct": 12.145817320817622,
+        "trades": 6,
+        "winRate": 33.33333333333333,
+        "profitFactor": 0.06709621832865244,
+        "buyHoldPct": 13.125061682552207
+      },
+      "medianAtrPct": 1.0740327467021753,
+      "entryGroups": {
+        "Trendlines breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 4,
+          "wins": 0,
+          "sumTradeNetPct": -7.46863088297558
+        },
+        "SMC structure breakout + bullish SMC/Trendlines + ADX/DI": {
+          "trades": 1,
+          "wins": 1,
+          "sumTradeNetPct": 0.030561692200969937
+        }
+      },
+      "withoutBestTradePct": -7.293440892645853
+    }
+  ]
+}

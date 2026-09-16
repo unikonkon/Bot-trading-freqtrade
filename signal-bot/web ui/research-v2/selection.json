@@ -1,0 +1,2091 @@
+{
+  "trainEnd": 6039,
+  "valEnd": 7719,
+  "candidates": [
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 7.38856993854516,
+        "dd": 4.910703800962538,
+        "trades": 17,
+        "pf": 2.13237585392625
+      },
+      "score": 4.933218038063892
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 8.404680570739785,
+        "dd": 7.625992046325433,
+        "trades": 24,
+        "pf": 1.7016774481885564
+      },
+      "score": 4.591684547577069
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 8.833193144719687,
+        "dd": 4.363610376495186,
+        "trades": 9,
+        "pf": 4.037120721948731
+      },
+      "score": 3.651387956472094
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 8.987410130342397,
+        "dd": 3.316876303234055,
+        "trades": 8,
+        "pf": 11.068312821337814
+      },
+      "score": 3.3289719787253693
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 6.125831113913833,
+        "dd": 7.299559081464473,
+        "trades": 21,
+        "pf": 1.6352525186745541
+      },
+      "score": 2.4760515731815964
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.09336303953701,
+        "dd": 6.666055407847226,
+        "trades": 16,
+        "pf": 1.3903069356635473
+      },
+      "score": -0.23966466438660294
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.047068491528151,
+        "dd": 7.821011298441537,
+        "trades": 12,
+        "pf": 1.3880826316959962
+      },
+      "score": -0.8634371576926174
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 1.7147630831344571,
+        "dd": 6.559766861802213,
+        "trades": 13,
+        "pf": 1.231373345160494
+      },
+      "score": -1.5651203477666495
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 2.1756058409158783,
+        "dd": 7.821011298441537,
+        "trades": 12,
+        "pf": 1.2624052369610204
+      },
+      "score": -1.73489980830489
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 4.725096589783888,
+        "dd": 5.009916916960872,
+        "trades": 8,
+        "pf": 2.765579104510411
+      },
+      "score": -1.779861868696548
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 0.7316607413741139,
+        "dd": 7.226029212985314,
+        "trades": 32,
+        "pf": 1.0647776545156542
+      },
+      "score": -2.8813538651185433
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 1.1458862869522903,
+        "dd": 8.070968143055381,
+        "trades": 32,
+        "pf": 1.0834970247556914
+      },
+      "score": -2.8895977845754004
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.4791748173196595,
+        "dd": 7.202568985418821,
+        "trades": 9,
+        "pf": 1.766175283302469
+      },
+      "score": -3.122109675389751
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 0.205581851490777,
+        "dd": 7.601494180075504,
+        "trades": 18,
+        "pf": 1.0389189002286316
+      },
+      "score": -3.595165238546975
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 0.205581851490777,
+        "dd": 7.601494180075504,
+        "trades": 18,
+        "pf": 1.0389189002286316
+      },
+      "score": -3.595165238546975
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -0.026421540302237645,
+        "dd": 6.411297853473413,
+        "trades": 11,
+        "pf": 1.023110038214675
+      },
+      "score": -4.232070467038945
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -0.026421540302237645,
+        "dd": 6.411297853473413,
+        "trades": 11,
+        "pf": 1.023110038214675
+      },
+      "score": -4.232070467038945
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 0.41388976787160914,
+        "dd": 9.3584617130971,
+        "trades": 19,
+        "pf": 1.0596659166288585
+      },
+      "score": -4.265341088676941
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 4.644122635622793,
+        "dd": 2.378291979739888,
+        "trades": 4,
+        "pf": 5.1994035397536305
+      },
+      "score": -4.545023354247151
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 4.644122635622793,
+        "dd": 2.378291979739888,
+        "trades": 4,
+        "pf": 5.1994035397536305
+      },
+      "score": -4.545023354247151
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -0.44653274038132906,
+        "dd": 8.545240548300086,
+        "trades": 14,
+        "pf": 0.9811464656254175
+      },
+      "score": -4.719153014531372
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0.5152024570926272,
+        "dd": 4.5533760991006735,
+        "trades": 9,
+        "pf": 1.144891376124356
+      },
+      "score": -4.76148559245771
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0.5152024570926272,
+        "dd": 4.5533760991006735,
+        "trades": 9,
+        "pf": 1.144891376124356
+      },
+      "score": -4.76148559245771
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -1.4522868667133366,
+        "dd": 8.289060125934876,
+        "trades": 17,
+        "pf": 0.8866617793674001
+      },
+      "score": -5.596816929680775
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 4.478091169993377,
+        "dd": 2.0695915661405513,
+        "trades": 2,
+        "pf": 18.72423300674772
+      },
+      "score": -6.556704613076899
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 4.478091169993377,
+        "dd": 2.0695915661405513,
+        "trades": 2,
+        "pf": 18.72423300674772
+      },
+      "score": -6.556704613076899
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -1.817865413115328,
+        "dd": 9.483872022793287,
+        "trades": 13,
+        "pf": 0.8322889717103131
+      },
+      "score": -6.559801424511972
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -2.0989008809710015,
+        "dd": 10.427390252134018,
+        "trades": 23,
+        "pf": 0.8927547299902012
+      },
+      "score": -7.31259600703801
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.847604438473496,
+        "dd": 2.660565448209375,
+        "trades": 2,
+        "pf": 16.229131403300567
+      },
+      "score": -7.4826782856311915
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.847604438473496,
+        "dd": 2.660565448209375,
+        "trades": 2,
+        "pf": 16.229131403300567
+      },
+      "score": -7.4826782856311915
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -3.1305664111096547,
+        "dd": 10.42739025213402,
+        "trades": 24,
+        "pf": 0.8393144046774229
+      },
+      "score": -8.344261537176664
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 1.5260487968763528,
+        "dd": 3.9319042615574222,
+        "trades": 4,
+        "pf": 1.8189347989514675
+      },
+      "score": -8.439903333902357
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 1.5260487968763528,
+        "dd": 3.9319042615574222,
+        "trades": 4,
+        "pf": 1.8189347989514675
+      },
+      "score": -8.439903333902357
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -3.3942298112061735,
+        "dd": 10.270011240167957,
+        "trades": 13,
+        "pf": 0.6933914090474618
+      },
+      "score": -8.529235431290152
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0.9900301870235069,
+        "dd": 7.195730112119778,
+        "trades": 6,
+        "pf": 1.2175924319991123
+      },
+      "score": -8.607834869036381
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0.9900301870235069,
+        "dd": 7.195730112119778,
+        "trades": 6,
+        "pf": 1.2175924319991123
+      },
+      "score": -8.607834869036381
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -3.012581127059235,
+        "dd": 11.289799101282098,
+        "trades": 22,
+        "pf": 0.8427107611753373
+      },
+      "score": -8.657480677700285
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -3.8493237512651888,
+        "dd": 8.008731634678067,
+        "trades": 10,
+        "pf": 0.6042830902104663
+      },
+      "score": -9.853689568604223
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -3.8493237512651888,
+        "dd": 8.008731634678067,
+        "trades": 10,
+        "pf": 0.6042830902104663
+      },
+      "score": -9.853689568604223
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -3.178391774604947,
+        "dd": 7.354541661209835,
+        "trades": 9,
+        "pf": 0.5713831311934839
+      },
+      "score": -9.855662605209865
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -3.178391774604947,
+        "dd": 7.354541661209835,
+        "trades": 9,
+        "pf": 0.5713831311934839
+      },
+      "score": -9.855662605209865
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -1.7531925602790182,
+        "dd": 6.377611423642754,
+        "trades": 7,
+        "pf": 0.7009608490726943
+      },
+      "score": -9.941998272100395
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -1.7531925602790182,
+        "dd": 6.377611423642754,
+        "trades": 7,
+        "pf": 0.7009608490726943
+      },
+      "score": -9.941998272100395
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -6.161638567289998,
+        "dd": 8.68387713766832,
+        "trades": 25,
+        "pf": 0.6653594737228009
+      },
+      "score": -10.503577136124157
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": -5.011335787996316,
+        "dd": 11.200724039335629,
+        "trades": 16,
+        "pf": 0.636733392696767
+      },
+      "score": -10.61169780766413
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      },
+      "score": -12
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      },
+      "score": -12
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      },
+      "score": -12
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      },
+      "score": -12
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -8.295529074130883,
+        "dd": 9.793579711688126,
+        "trades": 26,
+        "pf": 0.5747120431203152
+      },
+      "score": -13.192318929974945
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -7.988219901471524,
+        "dd": 13.08780681965235,
+        "trades": 27,
+        "pf": 0.6388013940752887
+      },
+      "score": -14.532123311297699
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -8.563333607512334,
+        "dd": 13.027755189949467,
+        "trades": 20,
+        "pf": 0.5191812820602522
+      },
+      "score": -15.077211202487067
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -8.563333607512334,
+        "dd": 13.027755189949467,
+        "trades": 20,
+        "pf": 0.5191812820602522
+      },
+      "score": -15.077211202487067
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -10.128314236683536,
+        "dd": 14.151561988585426,
+        "trades": 13,
+        "pf": 0.3806296542719781
+      },
+      "score": -17.20409523097625
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -10.993606017864735,
+        "dd": 14.216418671521586,
+        "trades": 17,
+        "pf": 0.41650199746923705
+      },
+      "score": -18.10181535362553
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -10.993606017864735,
+        "dd": 14.216418671521586,
+        "trades": 17,
+        "pf": 0.41650199746923705
+      },
+      "score": -18.10181535362553
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -10.915498620753652,
+        "dd": 15.186900662683811,
+        "trades": 13,
+        "pf": 0.3276580115663476
+      },
+      "score": -18.508948952095558
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -10.95784873351505,
+        "dd": 16.75613667177414,
+        "trades": 28,
+        "pf": 0.5625164789541679
+      },
+      "score": -19.33591706940212
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -15.788887239437031,
+        "dd": 18.306825898655735,
+        "trades": 22,
+        "pf": 0.32570173263606506
+      },
+      "score": -24.942300188764897
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -17.702175883781848,
+        "dd": 20.106113238073675,
+        "trades": 23,
+        "pf": 0.2983821058112355
+      },
+      "score": -27.755232502818686
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -19.226520280324166,
+        "dd": 19.40790605706868,
+        "trades": 19,
+        "pf": 0.21328742760593972
+      },
+      "score": -28.930473308858506
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -19.226520280324166,
+        "dd": 19.40790605706868,
+        "trades": 19,
+        "pf": 0.21328742760593972
+      },
+      "score": -28.930473308858506
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -18.794712249535223,
+        "dd": 21.724164376180266,
+        "trades": 23,
+        "pf": 0.2852852106435074
+      },
+      "score": -29.656794437625358
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 25,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": -19.12109695714726,
+        "dd": 22.03877487053226,
+        "trades": 23,
+        "pf": 0.25842746024089464
+      },
+      "score": -30.14048439241339
+    }
+  ],
+  "shortlist": [
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 8.833193144719687,
+        "dd": 4.363610376495186,
+        "trades": 9,
+        "pf": 4.037120721948731
+      },
+      "score": 3.651387956472094,
+      "validation": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      }
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 8.987410130342397,
+        "dd": 3.316876303234055,
+        "trades": 8,
+        "pf": 11.068312821337814
+      },
+      "score": 3.3289719787253693,
+      "validation": {
+        "return": 0,
+        "dd": 0,
+        "trades": 0,
+        "pf": 0
+      }
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 1.7147630831344571,
+        "dd": 6.559766861802213,
+        "trades": 13,
+        "pf": 1.231373345160494
+      },
+      "score": -1.5651203477666495,
+      "validation": {
+        "return": -2.6248198225088544,
+        "dd": 3.247839353502128,
+        "trades": 3,
+        "pf": 0
+      }
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 7.38856993854516,
+        "dd": 4.910703800962538,
+        "trades": 17,
+        "pf": 2.13237585392625
+      },
+      "score": 4.933218038063892,
+      "validation": {
+        "return": -3.080966575793326,
+        "dd": 4.677605762069343,
+        "trades": 5,
+        "pf": 0.10274320522850434
+      }
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.09336303953701,
+        "dd": 6.666055407847226,
+        "trades": 16,
+        "pf": 1.3903069356635473
+      },
+      "score": -0.23966466438660294,
+      "validation": {
+        "return": -3.080966575793326,
+        "dd": 4.677605762069343,
+        "trades": 5,
+        "pf": 0.10274320522850434
+      }
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 8.404680570739785,
+        "dd": 7.625992046325433,
+        "trades": 24,
+        "pf": 1.7016774481885564
+      },
+      "score": 4.591684547577069,
+      "validation": {
+        "return": -4.551148175228732,
+        "dd": 4.551148175228732,
+        "trades": 7,
+        "pf": 0.29352010124160133
+      }
+    },
+    {
+      "p": {
+        "internalSize": 10,
+        "trendLength": 14,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 6,
+        "stopAtr": 3,
+        "trailAtr": 2,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 4
+      },
+      "train": {
+        "return": 6.125831113913833,
+        "dd": 7.299559081464473,
+        "trades": 21,
+        "pf": 1.6352525186745541
+      },
+      "score": 2.4760515731815964,
+      "validation": {
+        "return": -4.551148175228732,
+        "dd": 4.551148175228732,
+        "trades": 7,
+        "pf": 0.29352010124160133
+      }
+    },
+    {
+      "p": {
+        "internalSize": 20,
+        "trendLength": 28,
+        "trendMult": 1,
+        "fastPeriod": 50,
+        "trendPeriod": 200,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "adxThreshold": 15,
+        "confluenceBars": 24,
+        "stopAtr": 3,
+        "trailAtr": 4,
+        "breakEvenAtr": 1.5,
+        "breakEvenBufferPct": 0.35,
+        "maxHoldBars": 200,
+        "cooldownBars": 6,
+        "maxVolatilityRatio": 2.5,
+        "maxExtensionAtr": 2
+      },
+      "train": {
+        "return": 3.047068491528151,
+        "dd": 7.821011298441537,
+        "trades": 12,
+        "pf": 1.3880826316959962
+      },
+      "score": -0.8634371576926174,
+      "validation": {
+        "return": -5.262170097318716,
+        "dd": 5.8683155056835945,
+        "trades": 3,
+        "pf": 0
+      }
+    }
+  ],
+  "selected": {
+    "internalSize": 20,
+    "trendLength": 14,
+    "trendMult": 1,
+    "fastPeriod": 50,
+    "trendPeriod": 200,
+    "atrPeriod": 14,
+    "adxPeriod": 14,
+    "adxThreshold": 15,
+    "confluenceBars": 6,
+    "stopAtr": 3,
+    "trailAtr": 2,
+    "breakEvenAtr": 1.5,
+    "breakEvenBufferPct": 0.35,
+    "maxHoldBars": 200,
+    "cooldownBars": 6,
+    "maxVolatilityRatio": 2.5,
+    "maxExtensionAtr": 2
+  }
+}

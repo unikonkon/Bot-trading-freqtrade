@@ -950,11 +950,11 @@ export function directionalMovement(k: KlineData[], period = 14): DirectionalMov
 }
 
 export const SMC_ADAPTIVE_V2_DEFAULTS = {
-  internalSize: 7, trendLength: 10, trendMult: 1,
-  fastPeriod: 21, trendPeriod: 100, trendSlopeBars: 6, atrPeriod: 14, adxPeriod: 14,
-  adxThreshold: 25, confluenceBars: 12, stopAtr: 3, trailAtr: 6,
-  breakEvenAtr: 2, breakEvenBufferPct: 0.35, minStopPct: 0.6,
-  maxHoldBars: 200, cooldownBars: 2, maxVolatilityRatio: 2.5, maxExtensionAtr: 3,
+  internalSize: 20, trendLength: 14, trendMult: 1,
+  fastPeriod: 50, trendPeriod: 200, atrPeriod: 14, adxPeriod: 14,
+  adxThreshold: 15, confluenceBars: 6, stopAtr: 3, trailAtr: 2,
+  breakEvenAtr: 1.5, breakEvenBufferPct: 0.35,
+  maxHoldBars: 200, cooldownBars: 6, maxVolatilityRatio: 2.5, maxExtensionAtr: 2,
 };
 export type SMCAdaptiveV2Params = typeof SMC_ADAPTIVE_V2_DEFAULTS;
 export interface SMCAdaptiveV2Result extends DirectionalMovementResult {
@@ -976,8 +976,7 @@ export interface SMCAdaptiveV2Result extends DirectionalMovementResult {
 
 /**
  * Long-only, confirmed-bar signals. The V1 structure/ATR model is combined with
- * confirmed Trendlines, Wilder ADX/DI and trend/extension filters. Fresh SMC
- * breaks and EMA pullback reclaims allow another entry in an established trend.
+ * confirmed Trendlines events, Wilder ADX/DI and trend/extension filters.
  * Stops use CLOSED prices and trigger a SELL signal, filled by the caller's
  * next-open engine. Neither a high/low touch nor a plotted stop implies a fill.
  * No fixed profit cap: ratchet the stop with peak CLOSE, never widen it.
@@ -1031,8 +1030,8 @@ export function smcAdaptiveV2(
     if (a === null || a <= 0 || slowATR === null || slowATR <= 0 || f === null || t === null || adx === null) continue;
     const ratio = a / slowATR;
     const shock = ratio > p.maxVolatilityRatio || h[i] - l[i] > 4 * a;
-    const up = c[i] > t && f > t && t > (trend[i - p.trendSlopeBars] ?? t) &&
-      f >= (fast[i - 2] ?? f) && dm.plusDI[i]! > dm.minusDI[i]!;
+    const up = c[i] > t && f > t && t > (trend[i - 24] ?? t) &&
+      f >= (fast[i - 5] ?? f) && dm.plusDI[i]! > dm.minusDI[i]!;
     r.volatilityRatio[i] = ratio;
     r.regime[i] = shock ? "shock" : adx < p.adxThreshold ? "range" : up ? "uptrend" :
       c[i] < t && dm.minusDI[i]! > dm.plusDI[i]! ? "downtrend" : "range";
@@ -1048,12 +1047,8 @@ export function smcAdaptiveV2(
         lastExit = i; lastTLBuy = -Infinity;
       } else {
         peak = Math.max(peak, c[i]);
-        // A percentage floor prevents tiny low-timeframe ATR from forcing churn.
-        // This is a configured price distance, not an assumed execution fee.
-        stop = Math.max(stop, peak - Math.max(p.trailAtr * a, peak * p.minStopPct / 100));
-        // Never "protect" +0.35% after price has advanced only +0.05%.
-        const buffer = entryPrice * p.breakEvenBufferPct / 100;
-        if (peak - entryPrice >= Math.max(p.breakEvenAtr * initialATR, buffer + initialATR))
+        stop = Math.max(stop, peak - p.trailAtr * a);
+        if (peak - entryPrice >= p.breakEvenAtr * initialATR)
           stop = Math.max(stop, entryPrice * (1 + p.breakEvenBufferPct / 100));
         // A newly tightened close-stop can trigger on this same CLOSED candle.
         if (c[i] <= stop) {
@@ -1067,18 +1062,13 @@ export function smcAdaptiveV2(
     r.reason[i] = "wait for SMC + Trendlines confluence";
     if (shock) { r.reason[i] = "volatility shock: no entry"; continue; }
     if (i - lastExit <= p.cooldownBars) { r.reason[i] = "cooldown"; continue; }
-    const freshLineBreak = i - lastTLBuy <= p.confluenceBars;
-    const freshStructureBreak = e?.bias === "bullish";
-    const pullbackReclaim = i > 0 && fast[i - 1] !== null &&
-      c[i - 1] <= fast[i - 1]! && c[i] > f;
-    const setup = freshStructureBreak ? "SMC structure breakout" :
-      pullbackReclaim ? "EMA pullback reclaim" : freshLineBreak ? "Trendlines breakout" : "";
-    if (!setup || structure.trend[i] !== "bullish" || !up || adx < p.adxThreshold || c[i] <= +k[i].open ||
+    const confluence = i - lastTLBuy <= p.confluenceBars && structure.trend[i] === "bullish";
+    if (!confluence || !up || adx < p.adxThreshold || c[i] <= +k[i].open ||
       c[i] <= (r.trendlineUpper[i] ?? Infinity) || (c[i] - f) / a > p.maxExtensionAtr) continue;
     entry = i; entryPrice = peak = c[i]; initialATR = a;
-    risk = Math.max(p.stopAtr * a * Math.max(1, Math.min(1.5, ratio)), c[i] * p.minStopPct / 100);
+    risk = p.stopAtr * a * Math.max(1, Math.min(1.5, ratio));
     stop = c[i] - risk;
-    r.signal[i] = "BUY"; r.reason[i] = `${setup} + bullish SMC/Trendlines + ADX/DI`;
+    r.signal[i] = "BUY"; r.reason[i] = "SMC bullish + Trendlines breakout + ADX/DI";
     r.stop[i] = stop; r.initialRisk[i] = risk; r.position[i] = true;
     lastTLBuy = -Infinity;
   }
