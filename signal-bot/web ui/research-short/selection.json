@@ -1,0 +1,2182 @@
+{
+  "createdAt": "2026-09-16T11:46:59.368Z",
+  "method": "24 shared candidates; mean(net - 0.5*DD) over 4 timeframes x 2 prior 1000-bar development windows. Eligibility: >=4 trades total across >=2 timeframes. All development ends before earliest final test. Validation participates in selection, not independent OOS.",
+  "sourceSha256": "911ed97a398d8f77396b37a1d8f24dee999d82e3b4551dd3946a6d2b43ae080b",
+  "selected": {
+    "params": {
+      "internalSize": 5,
+      "swingSize": 20,
+      "fastPeriod": 21,
+      "trendPeriod": 55,
+      "atrPeriod": 14,
+      "adxPeriod": 14,
+      "volumePeriod": 20,
+      "adxThreshold": 25,
+      "rsiThreshold": 65,
+      "minVolumeRatio": 0.8,
+      "setupBars": 5,
+      "cooldownBars": 3,
+      "shockBars": 3,
+      "stopAtr": 1.2,
+      "targetAtr": 14,
+      "trailAtr": 2,
+      "minRiskPct": 0.08,
+      "costPct": 0.31,
+      "minNetProfitPct": 0.08,
+      "minNetRewardRisk": 0.75,
+      "maxHoldBars": 48,
+      "maxExtensionAtr": 1.5,
+      "maxVolatilityRatio": 2.2,
+      "shockAtr": 3.5
+    },
+    "score": -0.2003772948092021,
+    "results": [
+      {
+        "interval": "1m",
+        "split": "train",
+        "trades": 0,
+        "net": 0,
+        "dd": 0
+      },
+      {
+        "interval": "1m",
+        "split": "validation",
+        "trades": 0,
+        "net": 0,
+        "dd": 0
+      },
+      {
+        "interval": "3m",
+        "split": "train",
+        "trades": 2,
+        "net": 0.5100204667262176,
+        "dd": 0.38434354470426685
+      },
+      {
+        "interval": "3m",
+        "split": "validation",
+        "trades": 2,
+        "net": -0.8409276678215178,
+        "dd": 0.8409276678215178
+      },
+      {
+        "interval": "5m",
+        "split": "train",
+        "trades": 3,
+        "net": -0.3680457376738957,
+        "dd": 1.1754016283523203
+      },
+      {
+        "interval": "5m",
+        "split": "validation",
+        "trades": 2,
+        "net": -0.15709898902119335,
+        "dd": 0.7342710725213556
+      },
+      {
+        "interval": "15m",
+        "split": "train",
+        "trades": 3,
+        "net": 1.3860436525692137,
+        "dd": 1.560276855647332
+      },
+      {
+        "interval": "15m",
+        "split": "validation",
+        "trades": 6,
+        "net": 1.4173407791577404,
+        "dd": 2.4054809557735704
+      }
+    ]
+  },
+  "candidates": [
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.2003772948092021,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 2,
+          "net": 0.5100204667262176,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.8409276678215178,
+          "dd": 0.8409276678215178
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 1.3860436525692137,
+          "dd": 1.560276855647332
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 1.4173407791577404,
+          "dd": 2.4054809557735704
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.22180014777640428,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": 0.6018260219588569,
+          "dd": 0.17422040084522114
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.9070500343899681,
+          "dd": 0.9070500343899681
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 1.434217265403717,
+          "dd": 1.56027685564733
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 1.1001007652761245,
+          "dd": 2.405480955773556
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.25119708216305947,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 2,
+          "net": 0.5100204667262176,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.9070500343899681,
+          "dd": 0.9070500343899681
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 1.3860436525692137,
+          "dd": 1.560276855647332
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 1.1099660301795495,
+          "dd": 2.4054809557735553
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.2933335006971887,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": 0.6018260219588569,
+          "dd": 0.17422040084522114
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.8409276678215178,
+          "dd": 0.8409276678215178
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 1.434217265403717,
+          "dd": 1.56027685564733
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 0.4286503920571647,
+          "dd": 2.4054809557735384
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.3282979070986734,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.9908623395589444,
+          "dd": 1.5602768556473374
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -0.2669557219558101,
+          "dd": 2.1803407388738516
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.39498443325794513,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.3680457376738957,
+          "dd": 1.1754016283523203
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.9908623395589444,
+          "dd": 1.5602768556473374
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -0.8004479312299821,
+          "dd": 2.1803407388738547
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5034063847279767,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.038067482872975233,
+          "dd": 1.1753163782888674
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -0.2669557219558101,
+          "dd": 2.1803407388738516
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5330539882906749,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 3,
+          "net": -1.718318222238409,
+          "dd": 2.4783142410597945
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5354183764282298,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 2,
+          "net": 0.06853769694230039,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.8409276678215178,
+          "dd": 0.8409276678215178
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.11968201797255063,
+          "dd": 1.1753163782888618
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 0.9036472536834594,
+          "dd": 2.426916473271375
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5631605324510636,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": 0.15994000311962964,
+          "dd": 0.18138925922651694
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.9070500343899681,
+          "dd": 0.9070500343899681
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.11968201797255063,
+          "dd": 1.1753163782888618
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 0.5880141064372566,
+          "dd": 2.4269164732713686
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5700929108872484,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.038067482872975233,
+          "dd": 1.1753163782888674
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -0.8004479312299821,
+          "dd": 2.1803407388738547
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5860435515771726,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 2,
+          "net": 0.06853769694230039,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.9070500343899681,
+          "dd": 0.9070500343899681
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.11968201797255063,
+          "dd": 1.1753163782888618
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": 0.5978294023445869,
+          "dd": 2.4269164732713655
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.5870255162875713,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.4226695155209512,
+          "dd": 0.42266951552095117
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 3,
+          "net": -1.5831484408332415,
+          "dd": 2.3441897052576195
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.598612106174697,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": 0.049692331262932044,
+          "dd": 0.39297834301573176
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -1.9837591222209596,
+          "dd": 2.7027686467491794
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.6083343469658893,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 3,
+          "net": -1.718318222238409,
+          "dd": 2.4783142410597945
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 5,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.6342687611934381,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": 0.15994000311962964,
+          "dd": 0.18138925922651694
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.8409276678215178,
+          "dd": 0.8409276678215178
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 3,
+          "net": -0.9263681391717284,
+          "dd": 1.33986323141204
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.15709898902119335,
+          "dd": 0.7342710725213556
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 3,
+          "net": 0.11968201797255063,
+          "dd": 1.1753163782888618
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 6,
+          "net": -0.08003527335442584,
+          "dd": 2.4269164732713477
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.648391726607071,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.09125635076703986,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": 0.049692331262932044,
+          "dd": 0.39297834301573176
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.004393419890590167,
+          "dd": 0.220830840898459
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -1.9837591222209596,
+          "dd": 2.7027686467491794
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 6,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.6623058749627857,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.4226695155209512,
+          "dd": 0.42266951552095117
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 3,
+          "net": -1.5831484408332415,
+          "dd": 2.3441897052576195
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.7140972548119953,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.42559092463859827,
+          "dd": 0.4255909246385982
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.4226695155209512,
+          "dd": 0.42266951552095117
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -1.8489544097460282,
+          "dd": 2.5689528099070356
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 48,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.7548605712873339,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.09125635076703986,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.42559092463859827,
+          "dd": 0.4255909246385982
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.37080932725739046,
+          "dd": 0.9389856961223735
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.42704436576498495,
+          "dd": 0.4992766323999547
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -1.8489544097460282,
+          "dd": 2.5689528099070356
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.760725918637147,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.19236743663417144,
+          "dd": 0.2838909227811257
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -2.480225583907071,
+          "dd": 2.7241388684131262
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.8,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.8105055390695212,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.09125635076703986,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.19236743663417144,
+          "dd": 0.2838909227811257
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.004393419890590167,
+          "dd": 0.220830840898459
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -2.480225583907071,
+          "dd": 2.7241388684131262
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 10,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.8528587476717227,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.42559092463859827,
+          "dd": 0.4255909246385982
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.4226695155209512,
+          "dd": 0.42266951552095117
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -2.3461036768327688,
+          "dd": 2.590352422685762
+        }
+      ]
+    },
+    {
+      "params": {
+        "internalSize": 8,
+        "swingSize": 20,
+        "fastPeriod": 21,
+        "trendPeriod": 55,
+        "atrPeriod": 14,
+        "adxPeriod": 14,
+        "volumePeriod": 20,
+        "adxThreshold": 25,
+        "rsiThreshold": 65,
+        "minVolumeRatio": 0.8,
+        "setupBars": 5,
+        "cooldownBars": 3,
+        "shockBars": 3,
+        "stopAtr": 1.2,
+        "targetAtr": 14,
+        "trailAtr": 2,
+        "minRiskPct": 0.08,
+        "costPct": 0.31,
+        "minNetProfitPct": 0.08,
+        "minNetRewardRisk": 0.75,
+        "maxHoldBars": 24,
+        "maxExtensionAtr": 1.5,
+        "maxVolatilityRatio": 2.2,
+        "shockAtr": 3.5
+      },
+      "score": -0.8936220641470614,
+      "results": [
+        {
+          "interval": "1m",
+          "split": "train",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "1m",
+          "split": "validation",
+          "trades": 0,
+          "net": 0,
+          "dd": 0
+        },
+        {
+          "interval": "3m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.09125635076703986,
+          "dd": 0.38434354470426685
+        },
+        {
+          "interval": "3m",
+          "split": "validation",
+          "trades": 1,
+          "net": -0.42559092463859827,
+          "dd": 0.4255909246385982
+        },
+        {
+          "interval": "5m",
+          "split": "train",
+          "trades": 2,
+          "net": -0.8906246761754488,
+          "dd": 1.1038407370896886
+        },
+        {
+          "interval": "5m",
+          "split": "validation",
+          "trades": 2,
+          "net": -0.42704436576498495,
+          "dd": 0.4992766323999547
+        },
+        {
+          "interval": "15m",
+          "split": "train",
+          "trades": 1,
+          "net": -0.1246292995232352,
+          "dd": 0.6840501774305591
+        },
+        {
+          "interval": "15m",
+          "split": "validation",
+          "trades": 5,
+          "net": -2.3461036768327688,
+          "dd": 2.590352422685762
+        }
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 import type { KlineData } from "@/lib/types/kline";
-import { computeAll, SMC_ADAPTIVE_DEFAULTS, SMC_ADAPTIVE_V2_DEFAULTS, type AllIndicators } from "@/lib/indicators";
+import { computeAll, SMC_ADAPTIVE_DEFAULTS, SMC_ADAPTIVE_V2_DEFAULTS, SMC_ADAPTIVE_SHORT_DEFAULTS, type AllIndicators } from "@/lib/indicators";
 
 // ─── Types ─────────────────────────────────────────────────────
 export type SignalAction = "BUY" | "SELL" | "HOLD";
@@ -43,6 +43,7 @@ export type StrategyId =
   | "smc"
   | "smc_adaptive"
   | "smc_adaptive_v2"
+  | "smc_adaptive_short"
   | "cm_macd"
   | "supertrend"
   | "squeeze_momentum"
@@ -94,6 +95,13 @@ export const STRATEGIES: StrategyConfig[] = [
     descriptionEn: "Confirmed SMC + Trendlines breakouts and EMA pullback re-entry; ADX/DI filters, ATR/percentage close stops",
     descriptionTh: "SMC + Trendlines เข้าเมื่อทะลุหรือย่อกลับเหนือ EMA เพิ่มจังหวะเข้า กรอง ADX/DI พร้อม Stop ตาม ATR และระยะขั้นต่ำ %",
     params: { ...SMC_ADAPTIVE_V2_DEFAULTS },
+  },
+  {
+    id: "smc_adaptive_short",
+    name: "SMC Adaptive Short trade",
+    descriptionEn: "Short-duration SPOT longs: confirmed SMC sweep/retest, cost-adjusted target gate, volatility cooldown and time exits",
+    descriptionTh: "Spot ซื้อแล้วขายระยะสั้น: SMC sweep/retest กรองระยะเป้าหมายหลังต้นทุน พักเมื่อผันผวนสูง และจำกัดเวลาถือ (ไม่ใช่เปิด Short)",
+    params: { ...SMC_ADAPTIVE_SHORT_DEFAULTS },
   },
   {
     id: "squeeze_momentum",
@@ -239,6 +247,7 @@ export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   smc: smcStrategy,
   smc_adaptive: (_k, ind) => ind.smcAdaptive.signal.map(s => s ?? "HOLD"),
   smc_adaptive_v2: (_k, ind) => ind.smcAdaptiveV2.signal.map(s => s ?? "HOLD"),
+  smc_adaptive_short: (_k, ind) => ind.smcAdaptiveShort.signal.map(s => s ?? "HOLD"),
   cm_macd: cmMacdStrategy,
   supertrend: supertrendStrategy,
   squeeze_momentum: squeezeMomentumStrategy,
@@ -270,6 +279,7 @@ export function computeStrategyIndicators(
     confirmedPivots: opts.confirmedPivots,
     smcAdaptiveParams: strategyId === "smc_adaptive" ? params : undefined,
     smcAdaptiveV2Params: strategyId === "smc_adaptive_v2" ? params : undefined,
+    smcAdaptiveShortParams: strategyId === "smc_adaptive_short" ? params : undefined,
     smcAdaptiveStartIndex: opts.startIndex,
     cdcFastPeriod: strategyId === "cdc_actionzone" ? params.fastPeriod : undefined,
     cdcSlowPeriod: strategyId === "cdc_actionzone" ? params.slowPeriod : undefined,

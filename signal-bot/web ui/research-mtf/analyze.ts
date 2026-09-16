@@ -22,8 +22,8 @@ for(const rec of manifest.records) {
   assert.equal(k.length,1000);
   const r=smcAdaptiveV2(k), signals=r.signal.map(s=>s??'HOLD');
   assert.deepEqual(computeSignals(k,'smc_adaptive_v2',{}, {startIndex:0}),signals,'Shared backtest path');
-  const before=oldComputeAll(k),after=computeAll(k);
-  for(const strategy of STRATEGIES.filter(s=>s.id!=='smc_adaptive_v2')) {
+  const after=computeAll(k),before={...oldComputeAll(k),smcAdaptiveShort:after.smcAdaptiveShort};
+  for(const strategy of STRATEGIES.filter(s=>s.id!=='smc_adaptive_v2'&&s.id!=='smc_adaptive_short')) {
     assert.deepEqual(STRATEGY_FNS[strategy.id](k,after,strategy.params),STRATEGY_FNS[strategy.id](k,before,strategy.params),`${rec.interval}: unchanged ${strategy.id}`);
     unchangedStrategyChecks++;
   }

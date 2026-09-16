@@ -104,6 +104,9 @@ export function validate(input: unknown): RequestConfig {
       throw new Error("SMC Adaptive: Internal ต้องน้อยกว่า Swing, trendThreshold ไม่เกิน 1 และ RSI ต่ำกว่า 70");
     if (s.id === "smc_adaptive_v2" && p.fastPeriod >= p.trendPeriod)
       throw new Error("SMC Adaptive V2: EMA เร็วต้องมี period น้อยกว่า EMA เทรนด์");
+    if (s.id === "smc_adaptive_short" &&
+      (p.fastPeriod >= p.trendPeriod || p.internalSize >= p.swingSize || p.rsiThreshold >= 100))
+      throw new Error("SMC Adaptive Short: EMA เร็ว < EMA เทรนด์, Internal < Swing และ RSI < 100");
   }
   const result: RequestConfig = {
     symbol,
@@ -203,6 +206,12 @@ export async function loadData(
   let k: KlineData[] = [];
   let start = 0;
   const warnings: string[] = [];
+  if (cfg.strategy === "all" || cfg.selected === "smc_adaptive_short") {
+    const fee = cfg.fee / 100, slip = cfg.mode === "legacy" ? 0 : cfg.slippage / 100;
+    const roundTrip = 100 * ((1 + fee) * (1 + slip) / ((1 - fee) * (1 - slip)) - 1);
+    if (cfg.params.smc_adaptive_short.costPct < roundTrip)
+      warnings.push(`SMC Adaptive Short trade: costPct ${cfg.params.smc_adaptive_short.costPct}% ต่ำกว่าระยะราคาที่ต้องชดเชยต้นทุนประมาณ ${roundTrip.toFixed(3)}%; ปรับต้นทุนเผื่อในพารามิเตอร์ให้ตรงค่า fee/slippage ที่ใช้ทดสอบ`);
+  }
   if (cfg.source === "latest") {
     k = (
       await page({ ...base, limit: String(Math.min(cfg.limit + 1, 1000)) })

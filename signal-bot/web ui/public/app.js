@@ -33,6 +33,16 @@ const parameterLabels = {
   breakEvenAtr: "เริ่มป้องกันกำไรเมื่อเพิ่ม × ATR",
   breakEvenBufferPct: "ระยะเหนือราคาสัญญาณเข้า (%)",
   minStopPct: "ระยะ Stop/Trailing ขั้นต่ำ (%)",
+  volumePeriod: "ช่วงปริมาณซื้อขายอ้างอิง",
+  minVolumeRatio: "ปริมาณซื้อขาย / เฉลี่ยก่อนหน้า ขั้นต่ำ",
+  setupBars: "อายุจังหวะ sweep/retest (แท่ง)",
+  shockBars: "พักหลังแท่งผันผวนรุนแรง (แท่ง)",
+  shockAtr: "True Range สูงสุดก่อนพัก × ATR ก่อนหน้า",
+  targetAtr: "ระยะเป้าหมายสูงสุด × ATR",
+  minRiskPct: "ระยะ Stop เริ่มต้นขั้นต่ำ (%)",
+  costPct: "ต้นทุนเผื่อไป–กลับ (%) ตั้งให้ครอบคลุม fee/slippage",
+  minNetProfitPct: "ระยะกำไรหลังต้นทุนเผื่อขั้นต่ำ (%)",
+  minNetRewardRisk: "Reward/Risk หลังต้นทุนเผื่อขั้นต่ำ",
   maxExtensionAtr: "ระยะห่าง EMA เร็วสูงสุด × ATR",
   bbLength: "ช่วง BB",
   bbMult: "ตัวคูณ BB",
@@ -99,7 +109,10 @@ function parameters() {
   $("description").textContent = s.descriptionTh;
   $("params").replaceChildren(
     ...Object.entries(params[id]).map(([key, value]) => {
-      const label = node("label", parameterLabels[key] || key);
+      const shortLabel = id === "smc_adaptive_short"
+        ? { rsiThreshold: "RSI สูงสุดก่อนงดเข้า", adxThreshold: "ADX ระดับขาลงแรงที่งดซื้อ" }[key]
+        : null;
+      const label = node("label", shortLabel || parameterLabels[key] || key);
       label.title = key;
       const input = node("input");
       input.type = "number";
@@ -223,6 +236,7 @@ function selectDetail(mode) {
   const defaults = {
     smc_adaptive: "smcAdaptive.stop",
     smc_adaptive_v2: "smcAdaptiveV2.stop",
+    smc_adaptive_short: "smcAdaptiveShort.stop",
     supertrend: "supertrend.supertrend",
     cdc_actionzone: "cdcActionZone.fastMA",
     rsi: "rsi",

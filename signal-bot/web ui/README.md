@@ -1,5 +1,31 @@
 # Signal Lab — Web UI ทดสอบ indicator และสัญญาณ
 
+## SMC Adaptive Short trade — Spot ระยะสั้น
+
+เพิ่ม `smc_adaptive_short` สำหรับ 1m/3m/5m/15m แล้ว: confirmed SMC liquidity
+sweep/reversal หรือ bullish break/retest, EMA21/55, กรองขาลงแรง/volume/shock,
+ตรวจเป้าหมายเทียบต้นทุนก่อนเข้า และจำกัดถือ 48 แท่ง. เป็น Spot ซื้อแล้วขาย
+ตามคำยืนยันของผู้ใช้. สูตร V1/V2 เดิมยังอยู่.
+
+ผล BTCUSDT 1,000 แท่งต่อช่วง, next-open, fee0.10% + slippage0.05% ต่อขา:
+1m ไม่มีเทรด, 3m −0.09% (3 เทรด), 5m +0.50% (2 เทรด), 15m +1.85% (7 เทรด).
+ยังไม่ใช่กำไรทุกช่วงและจำนวนเทรดน้อย ดู [รายงานละเอียดและแหล่งอ้างอิง](smc-adaptive-short-results/REPORT.th.md)
+และ [ผลทั้งหมด/ต้นทุน/ข้อมูลที่ใช้](smc-adaptive-short-results/analysis.json).
+
+```bash
+npm run web:smc:short          # ทดสอบ 4 timeframe จากข้อมูลที่ตรึงไว้
+npm run web:smc:short:select   # เลือกค่าบน development ซ้ำ
+npm run web:check
+npm run web:test
+npm run web:ui
+```
+
+เลือก **SMC Adaptive Short trade → แท่งล่าสุด 1000 → ราคาเปิดแท่งถัดไป**.
+`costPct=0.31%` เป็นต้นทุนเผื่อไป–กลับสำหรับกรองสัญญาณ ตั้งแยกจากต้นทุน
+engine; หากเปลี่ยน fee/slippage ให้ปรับ `costPct` ให้ครอบคลุมด้วย.
+เว็บแจ้งเมื่อค่าที่เผื่อไว้น้อยกว่าต้นทุนที่ตั้ง. Stop/target เป็นระดับตรวจราคาปิด
+แล้ว fill เปิดแท่งถัดไป จึงไม่รับประกัน fill ที่ stop หรือคุ้มทุนเมื่อเกิด gap.
+
 ## SMC Adaptive V2 — เพิ่มจำนวนเทรด / ทดสอบ 8 timeframe
 
 แก้ V2 ตัวเดิมใน `lib/indicators.ts` และ registry ใน `lib/backtest.ts` แล้ว:

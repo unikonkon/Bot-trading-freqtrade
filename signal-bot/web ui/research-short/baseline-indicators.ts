@@ -1085,139 +1085,6 @@ export function smcAdaptiveV2(
   return r;
 }
 
-// ─── SMC Adaptive Short trade: short-duration SPOT, not short selling ───
-export const SMC_ADAPTIVE_SHORT_DEFAULTS = {
-  internalSize: 5, swingSize: 20, fastPeriod: 21, trendPeriod: 55,
-  atrPeriod: 14, adxPeriod: 14, volumePeriod: 20,
-  adxThreshold: 25, rsiThreshold: 65, minVolumeRatio: 0.8,
-  setupBars: 5, cooldownBars: 3, shockBars: 3,
-  stopAtr: 1.2, targetAtr: 14, trailAtr: 2, minRiskPct: 0.08,
-  costPct: 0.31, minNetProfitPct: 0.08, minNetRewardRisk: 0.75,
-  maxHoldBars: 48, maxExtensionAtr: 1.5, maxVolatilityRatio: 2.2, shockAtr: 3.5,
-};
-export type SMCAdaptiveShortParams = typeof SMC_ADAPTIVE_SHORT_DEFAULTS;
-export interface SMCAdaptiveShortResult extends DirectionalMovementResult {
-  signal: ("BUY" | "SELL" | null)[];
-  reason: string[];
-  regime: ("warmup" | "range" | "uptrend" | "downtrend" | "shock")[];
-  atr: (number | null)[];
-  fastEMA: (number | null)[];
-  trendEMA: (number | null)[];
-  rsi: (number | null)[];
-  volumeRatio: (number | null)[];
-  support: (number | null)[];
-  resistance: (number | null)[];
-  stop: (number | null)[];
-  target: (number | null)[];
-  initialRisk: (number | null)[];
-  netRewardRisk: (number | null)[];
-  position: boolean[];
-  structures: SMCStructureBreak[];
-}
-
-/** Short holding periods, long-only. All pivots are confirmed before use.
- * Targets/stops are checked at CLOSE; the execution engine fills next OPEN.
- * costPct is a user-configured round-trip estimate, independent of engine fees.
- * The entry gate tests a volatility/structure-derived target against costs;
- * it never moves a target farther away merely to pass that gate.
- */
-export function smcAdaptiveShort(
-  k: KlineData[], overrides: Partial<SMCAdaptiveShortParams> = {}, startIndex = 0,
-): SMCAdaptiveShortResult {
-  const p = { ...SMC_ADAPTIVE_SHORT_DEFAULTS, ...overrides };
-  for (const [key, v] of Object.entries(p)) {
-    if (!Number.isFinite(v) || v <= 0 ||
-      (/Size|Period|Bars/.test(key) && (!Number.isInteger(v) || v < 2 || v > 200)))
-      throw new Error(`Invalid SMC Adaptive Short parameter: ${key}`);
-  }
-  if (p.fastPeriod >= p.trendPeriod || p.internalSize >= p.swingSize || p.adxThreshold > 100 || p.rsiThreshold >= 100)
-    throw new Error("SMC Adaptive Short requires fast < trend, internal < swing, valid ADX/RSI");
-  if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex > k.length)
-    throw new Error("Invalid SMC Adaptive Short startIndex");
-  const n = k.length, c = closes(k), h = highs(k), l = lows(k);
-  const av = atr(k, p.atrPeriod), slowATR = atr(k, Math.max(50, p.atrPeriod));
-  const fast = ema(c, p.fastPeriod), trend = ema(c, p.trendPeriod), rv = rsi(c, 14);
-  const volumes = k.map(b => +b.volume), volumeMean = sma(volumes, p.volumePeriod);
-  const dm = directionalMovement(k, p.adxPeriod);
-  const internal = detectPivots(h, l, p.internalSize, true), swing = detectPivots(h, l, p.swingSize, true);
-  const structure = detectStructure(c, h, l, internal), events = new Map(structure.structures.map(e => [e.index, e]));
-  const empty = () => new Array<number | null>(n).fill(null);
-  const r: SMCAdaptiveShortResult = {
-    ...dm, signal: new Array(n).fill(null), reason: new Array(n).fill("warmup"), regime: new Array(n).fill("warmup"),
-    atr: av, fastEMA: fast, trendEMA: trend, rsi: rv, volumeRatio: empty(), support: empty(), resistance: empty(),
-    stop: empty(), target: empty(), initialRisk: empty(), netRewardRisk: empty(), position: new Array(n).fill(false), structures: structure.structures,
-  };
-  let support: number | null = null, resistance: number | null = null;
-  let sweep = -Infinity, sweepLow = 0, sweptLevel = 0, breakout = -Infinity, breakLevel = 0;
-  let lastExit = -Infinity, lastShock = -Infinity, entry = -1;
-  let entryPrice = 0, entryATR = 0, risk = 0, stop = 0, target = 0, peak = 0;
-  for (let i = 0; i < n; i++) {
-    if (internal.lowPrice[i] !== null) { support = internal.lowPrice[i]; sweep = -Infinity; }
-    if (swing.highPrice[i] !== null) resistance = swing.highPrice[i];
-    r.support[i] = support; r.resistance[i] = resistance;
-    const e = events.get(i);
-    if (e?.bias === "bullish") { breakout = i; breakLevel = e.level; }
-    if (e?.bias === "bearish") { breakout = -Infinity; sweep = -Infinity; }
-    const a = av[i], slow = slowATR[i], f = fast[i], t = trend[i], adx = dm.adx[i], rs = rv[i];
-    const mean = volumeMean[i - 1]; // Compare with completed PRIOR volumes, excluding the current bar.
-    if (a === null || a <= 0 || slow === null || slow <= 0 || f === null || t === null || adx === null || rs === null || mean == null) continue;
-    r.volumeRatio[i] = mean > 0 ? volumes[i] / mean : 0;
-    const trueRange = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1]));
-    const shock = a / slow > p.maxVolatilityRatio || trueRange > p.shockAtr * (av[i - 1] ?? a);
-    if (shock) { lastShock = i; sweep = breakout = -Infinity; }
-    const up = c[i] > t && f > t && t > (trend[i - 5] ?? t) && dm.plusDI[i]! > dm.minusDI[i]!;
-    const down = c[i] < t && f < t && t < (trend[i - 5] ?? t) && dm.minusDI[i]! > dm.plusDI[i]! && adx >= p.adxThreshold;
-    r.regime[i] = i - lastShock <= p.shockBars ? "shock" : down ? "downtrend" : up ? "uptrend" : "range";
-    if (sweep > -Infinity && (i - sweep > p.setupBars || c[i] < sweptLevel - .25 * a)) sweep = -Infinity;
-    if (!shock && support !== null && l[i] < support && c[i] > support && c[i] > +k[i].open) {
-      sweep = i; sweepLow = l[i]; sweptLevel = support;
-    }
-    if (i < startIndex) { r.reason[i] = "warmup (no position)"; continue; }
-    if (entry >= 0) {
-      r.initialRisk[i] = risk; r.stop[i] = stop; r.target[i] = target;
-      let reason = c[i] <= stop ? "risk stop (close)" : c[i] >= target ? "scalp target (close)" :
-        e?.bias === "bearish" && c[i] < f ? "bearish SMC invalidation" : i - entry >= p.maxHoldBars ? "short-duration time exit" : "";
-      if (!reason) {
-        peak = Math.max(peak, c[i]);
-        // Activate only after the assumed cost plus one entry ATR is earned.
-        if (peak - entryPrice >= entryPrice * p.costPct / 100 + entryATR)
-          stop = Math.max(stop, entryPrice * (1 + p.costPct / 100), peak - p.trailAtr * a);
-        if (c[i] <= stop) reason = "profit protection (close)";
-      }
-      r.stop[i] = stop;
-      if (reason) {
-        r.signal[i] = "SELL"; r.reason[i] = reason; entry = -1; lastExit = i; sweep = breakout = -Infinity;
-      } else { r.position[i] = true; r.reason[i] = "hold; short-duration risk monitoring"; }
-      continue;
-    }
-    if (r.regime[i] === "shock") { r.reason[i] = "shock cooldown"; continue; }
-    if (down) { r.reason[i] = "strong downtrend: no long entry"; continue; }
-    if (i - lastExit <= p.cooldownBars) { r.reason[i] = "trade cooldown"; continue; }
-    if (r.volumeRatio[i]! < p.minVolumeRatio) { r.reason[i] = "insufficient relative volume"; continue; }
-    const green = c[i] > +k[i].open && c[i] > c[i - 1] && c[i] - l[i] >= .6 * (h[i] - l[i]);
-    const reclaim = i - sweep <= p.setupBars && c[i] > h[i - 1] && c[i] > sweptLevel && rs > (rv[i - 1] ?? rs);
-    const retest = i > breakout && i - breakout <= p.setupBars && structure.trend[i] === "bullish" &&
-      l[i] <= breakLevel + .25 * a && c[i] > breakLevel && up;
-    r.reason[i] = "wait for confirmed SMC sweep/retest";
-    if ((!reclaim && !retest) || !green || rs >= p.rsiThreshold || c[i] - f > p.maxExtensionAtr * a) continue;
-    const structureLow = reclaim ? sweepLow : Math.min(l[i], breakLevel);
-    const candidateRisk = Math.max(p.stopAtr * a, c[i] - structureLow + .15 * a, c[i] * p.minRiskPct / 100);
-    const overhead = resistance !== null && resistance > c[i] ? resistance - c[i] - .1 * a : Infinity;
-    const reward = Math.min(p.targetAtr * a, overhead), cost = c[i] * p.costPct / 100;
-    const netRR = (reward - cost) / (candidateRisk + cost);
-    r.netRewardRisk[i] = netRR;
-    if (reward <= 0 || (reward - cost) / c[i] * 100 < p.minNetProfitPct || netRR < p.minNetRewardRisk) {
-      r.reason[i] = "target room insufficient after estimated costs"; continue;
-    }
-    entry = i; entryPrice = peak = c[i]; entryATR = a; risk = candidateRisk;
-    stop = c[i] - risk; target = c[i] + reward;
-    r.signal[i] = "BUY"; r.reason[i] = reclaim ? "SMC liquidity sweep + micro reversal" : "SMC bullish break + retest";
-    r.stop[i] = stop; r.target[i] = target; r.initialRisk[i] = risk; r.position[i] = true;
-    sweep = breakout = -Infinity;
-  }
-  return r;
-}
-
 // ─── Supertrend ──────────────────────────────────────────────────
 // Based on PineScript v4 Supertrend indicator — trend-following
 // overlay using ATR bands that flip on trend change.
@@ -1967,7 +1834,6 @@ export interface AllIndicators {
   smc: SMCResult;
   smcAdaptive: SMCAdaptiveResult;
   smcAdaptiveV2: SMCAdaptiveV2Result;
-  smcAdaptiveShort: SMCAdaptiveShortResult;
   cmMacd: CMMAcDResult;
   supertrend: SupertrendResult;
   squeezeMomentum: SqueezeMomentumResult;
@@ -1986,7 +1852,6 @@ export function computeAll(klines: KlineData[], overrides?: {
   smcAdaptiveParams?: Partial<SMCAdaptiveParams>;
   smcAdaptiveStartIndex?: number;
   smcAdaptiveV2Params?: Partial<SMCAdaptiveV2Params>;
-  smcAdaptiveShortParams?: Partial<SMCAdaptiveShortParams>;
   cmMacdFast?: number;
   cmMacdSlow?: number;
   cmMacdSignal?: number;
@@ -2023,7 +1888,6 @@ export function computeAll(klines: KlineData[], overrides?: {
     smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
     smcAdaptive: smcAdaptive(klines, overrides?.smcAdaptiveParams, overrides?.smcAdaptiveStartIndex),
     smcAdaptiveV2: smcAdaptiveV2(klines, overrides?.smcAdaptiveV2Params, overrides?.smcAdaptiveStartIndex),
-    smcAdaptiveShort: smcAdaptiveShort(klines, overrides?.smcAdaptiveShortParams, overrides?.smcAdaptiveStartIndex),
     cmMacd: cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
     supertrend: supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
     squeezeMomentum: squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),

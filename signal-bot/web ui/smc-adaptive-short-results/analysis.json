@@ -1,0 +1,268 @@
+{
+  "createdAt": "2026-09-16T11:48:14.134Z",
+  "manifest": {
+    "symbol": "BTCUSDT",
+    "asOf": "2026-09-16T11:43:05.720Z",
+    "developmentCutoff": "2026-09-06T01:30:00.000Z",
+    "feePct": 0.1,
+    "slippagePct": 0.05,
+    "source": "Binance Spot /api/v3/klines",
+    "records": [
+      {
+        "interval": "1m",
+        "file": "BTCUSDT-1m.json",
+        "sha256": "4a913b5c91e44eb75269f6a1d28a39adfdb87f010aeb2ad18f90dc2f773b3f9b",
+        "testFrom": "2026-09-15T19:03:00.000Z",
+        "testTo": "2026-09-16T11:42:59.999Z"
+      },
+      {
+        "interval": "3m",
+        "file": "BTCUSDT-3m.json",
+        "sha256": "e6ba812a7609e95875f8b3fb1493c8b59cb4dbd1e73a8937bcf4930de4e063ad",
+        "testFrom": "2026-09-14T09:42:00.000Z",
+        "testTo": "2026-09-16T11:41:59.999Z"
+      },
+      {
+        "interval": "5m",
+        "file": "BTCUSDT-5m.json",
+        "sha256": "774679bb307295d395a7422fea45d0e471c7dc5f5e6c0a86b63ec2538ad91732",
+        "testFrom": "2026-09-13T00:20:00.000Z",
+        "testTo": "2026-09-16T11:39:59.999Z"
+      },
+      {
+        "interval": "15m",
+        "file": "BTCUSDT-15m.json",
+        "sha256": "dd69ca1a5bf640fffbe7be0e1b211a18ffb8875afbf9ad69f13f9a3cfe8233f3",
+        "testFrom": "2026-09-06T01:30:00.000Z",
+        "testTo": "2026-09-16T11:29:59.999Z"
+      }
+    ]
+  },
+  "params": {
+    "internalSize": 5,
+    "swingSize": 20,
+    "fastPeriod": 21,
+    "trendPeriod": 55,
+    "atrPeriod": 14,
+    "adxPeriod": 14,
+    "volumePeriod": 20,
+    "adxThreshold": 25,
+    "rsiThreshold": 65,
+    "minVolumeRatio": 0.8,
+    "setupBars": 5,
+    "cooldownBars": 3,
+    "shockBars": 3,
+    "stopAtr": 1.2,
+    "targetAtr": 14,
+    "trailAtr": 2,
+    "minRiskPct": 0.08,
+    "costPct": 0.31,
+    "minNetProfitPct": 0.08,
+    "minNetRewardRisk": 0.75,
+    "maxHoldBars": 48,
+    "maxExtensionAtr": 1.5,
+    "maxVolatilityRatio": 2.2,
+    "shockAtr": 3.5
+  },
+  "selectionMethod": "24 shared candidates; mean(net - 0.5*DD) over 4 timeframes x 2 prior 1000-bar development windows. Eligibility: >=4 trades total across >=2 timeframes. All development ends before earliest final test. Validation participates in selection, not independent OOS.",
+  "prefixChecks": 4004,
+  "unchangedStrategyChecks": 48,
+  "sourceHashes": {
+    "lib/indicators.ts": "911ed97a398d8f77396b37a1d8f24dee999d82e3b4551dd3946a6d2b43ae080b",
+    "lib/backtest.ts": "8eb6890933b4fa8bc802318f5b869d625a5e6a8c2d001d10f098bf4cfab88d3a",
+    "signal-bot/web ui/engine.ts": "76eee2491676a31aca5ed670d41fa25b9f834efa91a30f3e6ec8e584038db218",
+    "signal-bot/web ui/export-calculations.ts": "800f0c49479d4bbafd7bcff04ce97c6bc97060b3c8940dd73ebd9c915ebae3b7",
+    "signal-bot/web ui/research-short/select.ts": "5fe56a837ed2941a03904efc12e3b462019c7463d650d03a857ff7981836b48b",
+    "signal-bot/web ui/research-short/analyze.ts": "0972221613d7b91f290139ed00a77e1cf35975358d4cef98528f95907564038a"
+  },
+  "results": [
+    {
+      "interval": "1m",
+      "from": "2026-09-15T19:03:00.000Z",
+      "to": "2026-09-16T11:42:59.999Z",
+      "bars": 1000,
+      "updated": {
+        "netPct": 0,
+        "trades": 0,
+        "ddPct": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "avgBars": 0,
+        "buyHoldPct": 0.08203084464843968
+      },
+      "v2": {
+        "netPct": -0.9550174053231331,
+        "trades": 3,
+        "ddPct": 1.1091029636242815,
+        "winRate": 0,
+        "profitFactor": 0,
+        "avgBars": 49.666666666666664,
+        "buyHoldPct": 0.08203084464843968
+      },
+      "grossPct": 0,
+      "stress": {
+        "netPct": 0,
+        "trades": 0,
+        "ddPct": 0,
+        "winRate": 0,
+        "profitFactor": 0,
+        "avgBars": 0,
+        "buyHoldPct": 0.08203084464843968
+      },
+      "costDragPp": 0,
+      "reasons": {
+        "warmup": 54,
+        "insufficient relative volume": 411,
+        "wait for confirmed SMC sweep/retest": 344,
+        "strong downtrend: no long entry": 143,
+        "shock cooldown": 39,
+        "target room insufficient after estimated costs": 9
+      }
+    },
+    {
+      "interval": "3m",
+      "from": "2026-09-14T09:42:00.000Z",
+      "to": "2026-09-16T11:41:59.999Z",
+      "bars": 1000,
+      "updated": {
+        "netPct": -0.09061448220376178,
+        "trades": 3,
+        "ddPct": 1.0533000150252447,
+        "winRate": 66.66666666666666,
+        "profitFactor": 0.8033815039196867,
+        "avgBars": 20.666666666666668,
+        "buyHoldPct": -2.3571095417874055
+      },
+      "v2": {
+        "netPct": -2.8616614510781346,
+        "trades": 4,
+        "ddPct": 3.099581657075349,
+        "winRate": 0,
+        "profitFactor": 0,
+        "avgBars": 22.25,
+        "buyHoldPct": -2.3571095417874055
+      },
+      "grossPct": 0.8126287107506158,
+      "stress": {
+        "netPct": -0.38989367009536124,
+        "trades": 3,
+        "ddPct": 1.3003949703819833,
+        "winRate": 33.33333333333333,
+        "profitFactor": 0.4036746968216412,
+        "avgBars": 20.666666666666668,
+        "buyHoldPct": -2.3571095417874055
+      },
+      "costDragPp": 0.9032431929543776,
+      "reasons": {
+        "warmup": 54,
+        "wait for confirmed SMC sweep/retest": 271,
+        "shock cooldown": 33,
+        "insufficient relative volume": 296,
+        "SMC liquidity sweep + micro reversal": 3,
+        "hold; short-duration risk monitoring": 59,
+        "risk stop (close)": 2,
+        "trade cooldown": 9,
+        "strong downtrend: no long entry": 264,
+        "bearish SMC invalidation": 1,
+        "target room insufficient after estimated costs": 8
+      }
+    },
+    {
+      "interval": "5m",
+      "from": "2026-09-13T00:20:00.000Z",
+      "to": "2026-09-16T11:39:59.999Z",
+      "bars": 1000,
+      "updated": {
+        "netPct": 0.4993079194702972,
+        "trades": 2,
+        "ddPct": 0.5898180616740154,
+        "winRate": 50,
+        "profitFactor": 4.906724363124655,
+        "avgBars": 22.5,
+        "buyHoldPct": -1.6101747670219435
+      },
+      "v2": {
+        "netPct": -2.5415702757797334,
+        "trades": 7,
+        "ddPct": 2.6269150773910765,
+        "winRate": 14.285714285714285,
+        "profitFactor": 0.13981030130977348,
+        "avgBars": 29,
+        "buyHoldPct": -1.6101747670219435
+      },
+      "grossPct": 1.1041165295944921,
+      "stress": {
+        "netPct": 0.2985100513001129,
+        "trades": 2,
+        "ddPct": 0.6395480176211532,
+        "winRate": 50,
+        "profitFactor": 2.315476803088665,
+        "avgBars": 22.5,
+        "buyHoldPct": -1.6101747670219435
+      },
+      "costDragPp": 0.604808610124195,
+      "reasons": {
+        "warmup": 54,
+        "insufficient relative volume": 295,
+        "wait for confirmed SMC sweep/retest": 289,
+        "shock cooldown": 37,
+        "strong downtrend: no long entry": 261,
+        "target room insufficient after estimated costs": 11,
+        "SMC liquidity sweep + micro reversal": 1,
+        "hold; short-duration risk monitoring": 43,
+        "scalp target (close)": 1,
+        "trade cooldown": 6,
+        "SMC bullish break + retest": 1,
+        "risk stop (close)": 1
+      }
+    },
+    {
+      "interval": "15m",
+      "from": "2026-09-06T01:30:00.000Z",
+      "to": "2026-09-16T11:29:59.999Z",
+      "bars": 1000,
+      "updated": {
+        "netPct": 1.8513061130846324,
+        "trades": 7,
+        "ddPct": 1.8693305805002127,
+        "winRate": 42.857142857142854,
+        "profitFactor": 2.0936321946414793,
+        "avgBars": 11.571428571428571,
+        "buyHoldPct": -5.005365624519809
+      },
+      "v2": {
+        "netPct": -0.09058774469040998,
+        "trades": 2,
+        "ddPct": 1.0049061545985538,
+        "winRate": 50,
+        "profitFactor": 0.011816264554087562,
+        "avgBars": 30.5,
+        "buyHoldPct": -5.005365624519809
+      },
+      "grossPct": 4.01280033683355,
+      "stress": {
+        "netPct": 1.140836101976248,
+        "trades": 7,
+        "ddPct": 2.2610694865617686,
+        "winRate": 28.57142857142857,
+        "profitFactor": 1.53482543486138,
+        "avgBars": 11.571428571428571,
+        "buyHoldPct": -5.005365624519809
+      },
+      "costDragPp": 2.1614942237489174,
+      "reasons": {
+        "warmup": 54,
+        "wait for confirmed SMC sweep/retest": 244,
+        "insufficient relative volume": 255,
+        "strong downtrend: no long entry": 302,
+        "SMC liquidity sweep + micro reversal": 7,
+        "hold; short-duration risk monitoring": 74,
+        "risk stop (close)": 6,
+        "trade cooldown": 12,
+        "shock cooldown": 43,
+        "target room insufficient after estimated costs": 2,
+        "scalp target (close)": 1
+      }
+    }
+  ]
+}

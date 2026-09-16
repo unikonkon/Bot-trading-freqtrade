@@ -6,7 +6,7 @@
   "scripts": {
     "web:ui": "tsx \"signal-bot/web ui/server.ts\"",
     "web:check": "tsc --noEmit -p \"signal-bot/web ui/tsconfig.json\" && node --check \"signal-bot/web ui/public/app.js\"",
-    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\" \"signal-bot/web ui/smc-adaptive.test.ts\" \"signal-bot/web ui/smc-adaptive-v2.test.ts\"",
+    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\" \"signal-bot/web ui/smc-adaptive.test.ts\" \"signal-bot/web ui/smc-adaptive-v2.test.ts\" \"signal-bot/web ui/smc-adaptive-short.test.ts\"",
     "bot": "tsx signal-bot/index.ts",
     "bot:once": "tsx signal-bot/index.ts --once",
     "check:sync": "tsx signal-bot/scripts/check-config-sync.ts",
@@ -20,7 +20,9 @@
     "web:smc:v2:analyze": "tsx \"signal-bot/web ui/research-v2/analyze.ts\"",
     "web:smc:v2:select": "tsx \"signal-bot/web ui/research-v2/select.ts\"",
     "web:smc:v2:mtf": "tsx \"signal-bot/web ui/research-mtf/analyze.ts\"",
-    "web:smc:v2:mtf:select": "tsx \"signal-bot/web ui/research-mtf/select.ts\""
+    "web:smc:v2:mtf:select": "tsx \"signal-bot/web ui/research-mtf/select.ts\"",
+    "web:smc:short": "tsx \"signal-bot/web ui/research-short/analyze.ts\"",
+    "web:smc:short:select": "tsx \"signal-bot/web ui/research-short/select.ts\""
   },
   "devDependencies": {
     "@types/node": "^20",

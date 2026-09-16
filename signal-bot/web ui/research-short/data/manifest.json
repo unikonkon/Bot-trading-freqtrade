@@ -1,0 +1,38 @@
+{
+  "symbol": "BTCUSDT",
+  "asOf": "2026-09-16T11:43:05.720Z",
+  "developmentCutoff": "2026-09-06T01:30:00.000Z",
+  "feePct": 0.1,
+  "slippagePct": 0.05,
+  "source": "Binance Spot /api/v3/klines",
+  "records": [
+    {
+      "interval": "1m",
+      "file": "BTCUSDT-1m.json",
+      "sha256": "4a913b5c91e44eb75269f6a1d28a39adfdb87f010aeb2ad18f90dc2f773b3f9b",
+      "testFrom": "2026-09-15T19:03:00.000Z",
+      "testTo": "2026-09-16T11:42:59.999Z"
+    },
+    {
+      "interval": "3m",
+      "file": "BTCUSDT-3m.json",
+      "sha256": "e6ba812a7609e95875f8b3fb1493c8b59cb4dbd1e73a8937bcf4930de4e063ad",
+      "testFrom": "2026-09-14T09:42:00.000Z",
+      "testTo": "2026-09-16T11:41:59.999Z"
+    },
+    {
+      "interval": "5m",
+      "file": "BTCUSDT-5m.json",
+      "sha256": "774679bb307295d395a7422fea45d0e471c7dc5f5e6c0a86b63ec2538ad91732",
+      "testFrom": "2026-09-13T00:20:00.000Z",
+      "testTo": "2026-09-16T11:39:59.999Z"
+    },
+    {
+      "interval": "15m",
+      "file": "BTCUSDT-15m.json",
+      "sha256": "dd69ca1a5bf640fffbe7be0e1b211a18ffb8875afbf9ad69f13f9a3cfe8233f3",
+      "testFrom": "2026-09-06T01:30:00.000Z",
+      "testTo": "2026-09-16T11:29:59.999Z"
+    }
+  ]
+}
