@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.json",
+  "include": [
+    "./*.ts",
+    "../../lib/backtest.ts",
+    "../../lib/indicators.ts",
+    "../../lib/types/kline.ts"
+  ],
+  "exclude": ["./*.test.ts"]
+}

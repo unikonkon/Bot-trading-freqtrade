@@ -237,17 +237,19 @@ export interface SignalOptions {
 }
 
 /**
- * คำนวณ indicator เฉพาะที่ strategy ใช้ แล้วแปลงเป็นสัญญาณ BUY/SELL/HOLD ต่อแท่ง
- * ไม่มีการจำลอง trade — บอทสัญญาณเรียกตัวนี้ตรง ๆ
+ * คำนวณ indicator ทั้งชุด โดยใช้พารามิเตอร์ของกลยุทธ์ที่เลือก
+ * Web UI และ computeSignals ใช้การแปลงพารามิเตอร์ชุดเดียวกัน
  */
-export function computeSignals(
+export function computeStrategyIndicators(
   klines: KlineData[],
   strategyId: StrategyId,
   params: Record<string, number> = {},
   opts: SignalOptions = {},
-): SignalAction[] {
-  const indicators = computeAll(klines, {
+): AllIndicators {
+  return computeAll(klines, {
     confirmedPivots: opts.confirmedPivots,
+    cdcFastPeriod: strategyId === "cdc_actionzone" ? params.fastPeriod : undefined,
+    cdcSlowPeriod: strategyId === "cdc_actionzone" ? params.slowPeriod : undefined,
     rsiPeriod: strategyId === "rsi" ? (params.period ?? 14) : undefined,
     smcSwingSize: strategyId === "smc" ? (params.swingSize ?? 50) : undefined,
     smcInternalSize: strategyId === "smc" ? (params.internalSize ?? 5) : undefined,
@@ -270,7 +272,14 @@ export function computeSignals(
     utBotKey: strategyId === "ut_bot" ? (params.keyValue ?? 1) : undefined,
     utBotAtrPeriod: strategyId === "ut_bot" ? (params.utAtrPeriod ?? 10) : undefined,
   });
-  return STRATEGY_FNS[strategyId](klines, indicators, params);
+}
+
+/** แปลง indicator เป็น BUY/SELL/HOLD โดยไม่มีการจำลอง trade */
+export function computeSignals(
+  klines: KlineData[], strategyId: StrategyId,
+  params: Record<string, number> = {}, opts: SignalOptions = {},
+): SignalAction[] {
+  return STRATEGY_FNS[strategyId](klines, computeStrategyIndicators(klines, strategyId, params, opts), params);
 }
 
 // ─── Backtest Engine ───────────────────────────────────────────
@@ -279,7 +288,7 @@ export function runBacktest(
   strategyId: StrategyId,
   params: Record<string, number> = {},
   feesPct = 0.1, // 0.1% per trade (Binance default)
-  opts: SignalOptions = {},
+  opts: SignalOptions & { startIndex?: number } = {},
 ): BacktestResult {
   const signals = computeSignals(klines, strategyId, params, opts);
 
@@ -291,7 +300,8 @@ export function runBacktest(
   let entryReason = "";
 
   // Generate trades
-  for (let i = 0; i < klines.length; i++) {
+  const startIndex = Math.max(0, Math.min(klines.length, opts.startIndex ?? 0));
+  for (let i = startIndex; i < klines.length; i++) {
     if (!inPosition && signals[i] === "BUY") {
       inPosition = true;
       entryIdx = i;
@@ -378,8 +388,8 @@ export function runBacktest(
   const sharpe = variance === 0 ? 0 : meanRet / Math.sqrt(variance);
 
   // Buy & hold
-  const buyAndHoldPct = closes.length >= 2
-    ? ((closes[closes.length - 1] - closes[0]) / closes[0]) * 100
+  const buyAndHoldPct = closes.length - startIndex >= 2
+    ? ((closes[closes.length - 1] - closes[startIndex]) / closes[startIndex]) * 100
     : 0;
 
   return {

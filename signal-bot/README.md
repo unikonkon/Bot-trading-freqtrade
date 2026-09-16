@@ -135,6 +135,17 @@ cp signal-bot/.env.example signal-bot/.env     # รันทุกคำสั�
 
 ## 6. รันบนเครื่อง
 
+### Web UI สำหรับ Backtest
+
+```bash
+npm run web:ui
+# เปิด http://127.0.0.1:4310
+```
+
+เลือกแท่งล่าสุดหรือช่วงวันที่ เปรียบเทียบทั้ง 10 กลยุทธ์และสองโหมดการซื้อ–ขาย ดูกราฟ/ค่า indicator รายแท่ง และตัวอย่างข้อความ Telegram (ไม่ส่งจริง) คู่มือและวิธีคิดผลตอบแทน: [`web ui/README.md`](./web%20ui/README.md)
+
+### บอท Telegram
+
 ```bash
 npm ci
 npm run bot:once              # สแกน 1 รอบ พิมพ์สถานะทุกบอทแล้วออก (ไม่ส่ง Telegram)

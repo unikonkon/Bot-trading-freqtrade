@@ -1,0 +1,145 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { loadData, validate, fetchPage } from "./data";
+import { parseKline } from "../../lib/types/kline";
+const base = {
+  symbol: "BTCUSDT",
+  interval: "1h",
+  source: "latest",
+  limit: 500,
+  strategy: "all",
+  selected: "supertrend",
+  params: {},
+  fee: 0.1,
+  slippage: 0.05,
+  mode: "both",
+};
+const epoch = Date.UTC(2026, 0, 1);
+function bars(count: number, start = epoch) {
+  return Array.from({ length: count }, (_, i) =>
+    parseKline([
+      start + i * 3600000,
+      "100",
+      "105",
+      "95",
+      "101",
+      "100",
+      start + (i + 1) * 3600000 - 1,
+      "10000",
+      10,
+      "50",
+      "5000",
+    ]),
+  );
+}
+test("validation rejects unknown strategies/params, invalid ranges and unusable periods", () => {
+  for (const patch of [
+    { interval: "bogus" },
+    { fee: -1 },
+    { limit: 1001 },
+    { params: { rsi: { period: 0 } } },
+    { params: { rsi: { period: 2.5 } } },
+    { params: { supertrend: { atrPeriod: Infinity } } },
+    { params: { rsi: { unknown: 14 } } },
+    { params: { cdc_actionzone: { fastPeriod: 30, slowPeriod: 10 } } },
+    { params: { rsi: { buyThreshold: 80, sellThreshold: 20 } } },
+    { strategy: "rsi" },
+    { symbol: "../../etc/passwd" },
+    { source: "range", from: epoch, to: epoch - 1 },
+  ])
+    assert.throws(() => validate({ ...base, ...patch }));
+});
+test("latest 1000 candles backfill the missing closed candle without duplicates", async () => {
+  const rows = bars(1001),
+    calls: Record<string, string>[] = [];
+  const data = await loadData(
+    validate({ ...base, limit: 1000 }),
+    async (p) => {
+      calls.push(p);
+      return p.endTime ? [rows[0]] : rows.slice(1);
+    },
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.equal(data.klines.length, 1000);
+  assert.equal(data.klines.at(-1)!.openTime, rows[999].openTime);
+  assert.equal(calls.length, 2);
+  assert.equal(data.start, 0);
+});
+test("range paginates, prepends warmup, excludes unclosed/end-overlapping candle", async () => {
+  const rows = bars(1350),
+    from = rows[300].openTime,
+    to = rows[1349].openTime + 100;
+  const calls: Record<string, string>[] = [];
+  const data = await loadData(
+    validate({ ...base, source: "range", from, to }),
+    async (p) => {
+      calls.push(p);
+      const eligible = rows.filter(
+        (k) =>
+          (!p.startTime || k.openTime >= +p.startTime) &&
+          (!p.endTime || k.openTime <= +p.endTime),
+      );
+      return p.startTime
+        ? eligible.slice(0, +p.limit)
+        : eligible.slice(-Number(p.limit));
+    },
+    to + 1000,
+  );
+  assert.equal(data.start, 300);
+  assert.equal(data.klines.length, 1349);
+  assert.equal(calls.length, 3);
+  assert.equal(calls[1].startTime, String(rows[1299].openTime + 1));
+  assert.equal(data.klines[data.start].openTime, from);
+});
+test("empty requested range cannot be mistaken for warmup data", async () => {
+  const rows = bars(300);
+  await assert.rejects(
+    loadData(
+      validate({
+        ...base,
+        source: "range",
+        from: epoch + 400 * 3600000,
+        to: epoch + 410 * 3600000,
+      }),
+      async (p) => (p.startTime ? [] : rows),
+    ),
+    /ไม่พบแท่ง/,
+  );
+});
+test("over 10,000 test candles is rejected rather than silently truncated", async () => {
+  let page = 0;
+  const from = Date.UTC(2024, 0, 1);
+  await assert.rejects(
+    loadData(
+      validate({ ...base, source: "range", from, to: from + 11000 * 3600000 }),
+      async () => bars(1000, from + page++ * 1000 * 3600000),
+    ),
+    /10,000/,
+  );
+});
+test("public client reports rate-limit and malformed data without retry storm", async () => {
+  const original = globalThis.fetch;
+  let calls = 0;
+  try {
+    globalThis.fetch = async () => {
+      calls++;
+      return new Response("{}", {
+        status: 429,
+        headers: { "retry-after": "60" },
+      });
+    };
+    await assert.rejects(
+      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }),
+      /429.*60/,
+    );
+    assert.equal(calls, 1);
+    globalThis.fetch = async () =>
+      new Response(JSON.stringify([[1, "bad"]]), { status: 200 });
+    await assert.rejects(
+      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }),
+      /ไม่ถูกต้อง/,
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});

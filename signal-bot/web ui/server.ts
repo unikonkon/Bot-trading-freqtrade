@@ -1,0 +1,188 @@
+import http from "node:http";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import { randomUUID } from "node:crypto";
+import { fileURLToPath } from "node:url";
+import { STRATEGIES, type StrategyId } from "../../lib/backtest";
+import { INTERVALS } from "../../lib/types/kline";
+import { validate, loadData, type RequestConfig } from "./data";
+import { analyze } from "./engine";
+
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
+const port = Number(process.env.WEB_UI_PORT ?? 4310);
+const runs = new Map<
+  string,
+  { at: number; cfg: RequestConfig; data: Awaited<ReturnType<typeof loadData>> }
+>();
+let busy = false;
+const files: Record<string, [string, string]> = {
+  "/": ["index.html", "text/html"],
+  "/app.js": ["app.js", "text/javascript"],
+  "/theme.js": ["theme.js", "text/javascript"],
+  "/fonts/Sarabun-Regular.ttf": ["fonts/Sarabun-Regular.ttf", "font/ttf"],
+  "/fonts/Sarabun-Medium.ttf": ["fonts/Sarabun-Medium.ttf", "font/ttf"],
+  "/fonts/Sarabun-SemiBold.ttf": ["fonts/Sarabun-SemiBold.ttf", "font/ttf"],
+  "/style.css": ["style.css", "text/css"],
+};
+const server = http.createServer(async (req, res) => {
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "no-store");
+  res.setHeader(
+    "Content-Security-Policy",
+    "default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'",
+  );
+  const json = (status: number, data: unknown) => {
+    res.writeHead(status, {
+      "Content-Type": "application/json; charset=utf-8",
+    });
+    res.end(JSON.stringify(data));
+  };
+  if (
+    ![`127.0.0.1:${port}`, `localhost:${port}`].includes(req.headers.host ?? "")
+  ) {
+    json(403, { error: "Host ไม่ได้รับอนุญาต" });
+    return;
+  }
+  const url = new URL(req.url ?? "/", "http://localhost");
+  try {
+    if (req.method === "GET" && files[url.pathname]) {
+      const [file, mime] = files[url.pathname];
+      res.writeHead(200, {
+        "Content-Type": mime.startsWith("font/")
+          ? mime
+          : `${mime}; charset=utf-8`,
+      });
+      res.end(await readFile(path.join(root, file)));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/meta") {
+      json(200, {
+        strategies: STRATEGIES,
+        intervals: INTERVALS,
+        maxBars: 10000,
+      });
+      return;
+    }
+    if (
+      req.method !== "POST" ||
+      !["/api/backtest", "/api/detail"].includes(url.pathname)
+    ) {
+      json(404, { error: "ไม่พบหน้าที่ขอ" });
+      return;
+    }
+    const origin = req.headers.origin;
+    if (
+      (origin &&
+        ![`http://127.0.0.1:${port}`, `http://localhost:${port}`].includes(
+          origin,
+        )) ||
+      !req.headers["content-type"]?.startsWith("application/json")
+    ) {
+      json(403, { error: "คำขอต้องมาจาก Web UI นี้" });
+      return;
+    }
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 16000) {
+        json(413, { error: "คำขอใหญ่เกินไป" });
+        return;
+      }
+    }
+    let input: unknown;
+    try {
+      input = JSON.parse(body);
+    } catch {
+      json(400, { error: "JSON ไม่ถูกต้อง" });
+      return;
+    }
+    if (busy) {
+      json(429, { error: "กำลังทดสอบอยู่ กรุณารอให้รอบปัจจุบันเสร็จ" });
+      return;
+    }
+    busy = true;
+    try {
+      for (const [id, run] of runs)
+        if (Date.now() - run.at > 30 * 60000) runs.delete(id);
+      if (url.pathname === "/api/detail") {
+        const { runId, strategy } = input as {
+          runId: string;
+          strategy: StrategyId;
+        };
+        const run = runs.get(runId);
+        if (!run) {
+          json(410, { error: "ผลทดสอบหมดอายุ กรุณารันทดสอบอีกครั้ง" });
+          return;
+        }
+        if (!STRATEGIES.some((s) => s.id === strategy)) {
+          json(400, { error: "ไม่พบกลยุทธ์" });
+          return;
+        }
+        json(
+          200,
+          analyze(
+            run.data.klines,
+            run.data.start,
+            strategy,
+            run.cfg.params[strategy],
+            run.cfg.fee,
+            run.cfg.slippage,
+            run.cfg.mode,
+            true,
+          ),
+        );
+        return;
+      }
+      const cfg = validate(input);
+      const data = await loadData(cfg);
+      const strategies =
+        cfg.strategy === "all"
+          ? STRATEGIES.filter((s) => s.id !== cfg.selected).map((s) => s.id)
+          : [];
+      const detail = analyze(
+        data.klines,
+        data.start,
+        cfg.selected,
+        cfg.params[cfg.selected],
+        cfg.fee,
+        cfg.slippage,
+        cfg.mode,
+        true,
+      );
+      const results = [
+        detail,
+        ...strategies.map((id) =>
+          analyze(
+            data.klines,
+            data.start,
+            id,
+            cfg.params[id],
+            cfg.fee,
+            cfg.slippage,
+            cfg.mode,
+            false,
+          ),
+        ),
+      ];
+      const runId = randomUUID();
+      while (runs.size >= 3) runs.delete(runs.keys().next().value!);
+      runs.set(runId, { at: Date.now(), cfg, data });
+      json(200, {
+        runId,
+        config: cfg,
+        warnings: data.warnings,
+        warmup: data.start,
+        klines: data.klines.slice(data.start),
+        results,
+      });
+    } finally {
+      busy = false;
+    }
+  } catch (e) {
+    json(400, { error: e instanceof Error ? e.message : "เกิดข้อผิดพลาด" });
+  }
+});
+server.requestTimeout = 180000;
+server.listen(port, "127.0.0.1", () =>
+  console.log(`Signal Lab: http://127.0.0.1:${port}`),
+);

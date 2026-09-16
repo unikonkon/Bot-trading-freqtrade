@@ -1535,6 +1535,8 @@ export interface AllIndicators {
 }
 
 export function computeAll(klines: KlineData[], overrides?: {
+  cdcFastPeriod?: number;
+  cdcSlowPeriod?: number;
   rsiPeriod?: number;
   smcSwingSize?: number;
   smcInternalSize?: number;
@@ -1570,7 +1572,7 @@ export function computeAll(klines: KlineData[], overrides?: {
     atr: atr(klines, 14),
     obv: obv(klines),
     vwap: vwap(klines),
-    cdcActionZone: cdcActionZone(c, 12, 26, 1),
+    cdcActionZone: cdcActionZone(c, overrides?.cdcFastPeriod ?? 12, overrides?.cdcSlowPeriod ?? 26, 1),
     smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
     cmMacd: cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
     supertrend: supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),

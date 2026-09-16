@@ -1,0 +1,331 @@
+<!doctype html>
+<html lang="th" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Backtest · Signal bot</title>
+    <meta
+      name="description"
+      content="ทดสอบและเปรียบเทียบกลยุทธ์ย้อนหลังจาก Binance"
+    />
+    <script src="/theme.js"></script>
+    <link
+      rel="preload"
+      href="/fonts/Sarabun-Regular.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
+    <link rel="stylesheet" href="/style.css" />
+    <script src="/app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#config">ข้ามไปตั้งค่าทดสอบ</a>
+    <header class="site-header">
+      <div class="header-inner">
+        <span class="brand"
+          >Signal bot <span aria-hidden="true">/</span>
+          <strong>Backtest</strong></span
+        >
+        <div class="header-actions">
+          <span class="muted">Binance Spot · เวลาไทย</span
+          ><button
+            id="theme-toggle"
+            class="theme-toggle"
+            type="button"
+            aria-pressed="true"
+            aria-label="ใช้โหมดมืด"
+          >
+            โหมดมืด
+          </button>
+        </div>
+      </div>
+    </header>
+    <main>
+      <div class="page-title">
+        <h1>ทดสอบกลยุทธ์</h1>
+        <p class="muted">เลือกข้อมูลและกลยุทธ์เพื่อเริ่มทดสอบย้อนหลัง</p>
+      </div>
+      <form id="config" class="settings">
+        <div class="settings-grid">
+          <fieldset>
+            <legend>ข้อมูลราคา</legend>
+            <div class="two">
+              <label
+                >คู่เหรียญ<input
+                  id="symbol"
+                  value="BTCUSDT"
+                  maxlength="24"
+                  pattern="[A-Za-z0-9]{5,24}"
+                  required /></label
+              ><label
+                >ช่วงแท่งเทียน<select id="interval">
+                  <option>1h</option>
+                </select></label
+              >
+            </div>
+            <label
+              >ข้อมูลย้อนหลัง<select id="source">
+                <option value="latest">แท่งล่าสุด</option>
+                <option value="range">เลือกช่วงวันที่</option>
+              </select></label
+            >
+            <div id="latest-fields">
+              <label
+                >จำนวนแท่ง<input
+                  id="limit"
+                  type="number"
+                  min="300"
+                  max="1000"
+                  step="1"
+                  value="500"
+                  required
+              /></label>
+            </div>
+            <div id="range-fields" hidden>
+              <label
+                >เริ่มต้น (เวลาไทย)<input
+                  id="from"
+                  type="datetime-local" /></label
+              ><label
+                >สิ้นสุด (เวลาไทย)<input id="to" type="datetime-local" /></label
+              ><small>สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small>
+            </div>
+          </fieldset>
+          <fieldset>
+            <legend>กลยุทธ์</legend>
+            <label>กลยุทธ์หลัก<select id="strategy"></select></label>
+            <p id="description" class="field-help"></p>
+            <label class="check"
+              ><input id="compare" type="checkbox" checked />เปรียบเทียบทั้ง 10
+              กลยุทธ์</label
+            >
+            <details class="parameter-options">
+              <summary>ปรับพารามิเตอร์</summary>
+              <div id="params" class="two"></div>
+            </details>
+          </fieldset>
+          <fieldset>
+            <legend>การซื้อขายจำลอง</legend>
+            <label
+              >ราคาเข้า–ออก<select id="mode">
+                <option value="both">เปรียบเทียบทั้งสองโหมด</option>
+                <option value="next_open">ราคาเปิดแท่งถัดไป</option>
+                <option value="legacy">ราคาปิดแท่งสัญญาณ (เดิม)</option>
+              </select></label
+            >
+            <div class="two">
+              <label
+                >ค่าธรรมเนียมต่อขา (%)<input
+                  id="fee"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.01"
+                  value="0.10"
+                  required /></label
+              ><label
+                >Slippage ต่อขา (%)<input
+                  id="slippage"
+                  type="number"
+                  min="0"
+                  max="5"
+                  step="0.01"
+                  value="0.05"
+                  required
+              /></label>
+            </div>
+            <p class="field-help">
+              Slippage ใช้กับราคาเปิดแท่งถัดไปเท่านั้น<br />ถือ Long
+              และปิดสถานะค้างเมื่อจบข้อมูล
+            </p>
+          </fieldset>
+        </div>
+        <div class="form-actions">
+          <button class="primary" id="run" type="submit">รันทดสอบ</button>
+          <p id="status" role="status" aria-live="polite">
+            พร้อมโหลดข้อมูลจาก Binance
+          </p>
+        </div>
+      </form>
+      <section class="results" aria-label="ผลทดสอบ">
+        <div id="error" class="error" role="alert" hidden></div>
+        <div id="empty" class="empty">
+          <h2>ยังไม่มีผลทดสอบ</h2>
+          <p>ตั้งค่าด้านบน แล้วกด “รันทดสอบ”</p>
+        </div>
+        <div id="output" hidden>
+          <div class="result-heading">
+            <div>
+              <h2 id="result-title"></h2>
+              <p id="dataset" class="muted"></p>
+            </div>
+            <label>โหมดที่แสดง<select id="display-mode"></select></label>
+          </div>
+          <div id="metrics" class="metrics"></div>
+          <details class="result-notes">
+            <summary>ข้อมูลและวิธีคำนวณ</summary>
+            <p id="method" class="method"></p>
+            <div id="warnings" class="notice"></div>
+          </details>
+          <nav class="result-nav" aria-label="ส่วนของผลทดสอบ">
+            <a href="#charts">กราฟ</a
+            ><a href="#strategies">เปรียบเทียบกลยุทธ์</a
+            ><a href="#trade-list">รายการเทรด</a
+            ><a href="#inspect">ตรวจค่ารายแท่ง</a>
+          </nav>
+          <section
+            id="charts"
+            class="panel chart-panel"
+            aria-labelledby="price-title"
+          >
+            <div class="section-title">
+              <h2 id="price-title">ราคาและสัญญาณ</h2>
+              <span id="chart-label"></span>
+            </div>
+            <div class="chart-controls">
+              <label>เส้น indicator<select id="overlay"></select></label
+              ><label
+                >ช่วงที่แสดง<select id="window">
+                  <option value="100">100 แท่ง</option>
+                  <option value="200" selected>200 แท่ง</option>
+                  <option value="500">500 แท่ง</option>
+                </select></label
+              >
+              <div class="chart-paging">
+                <button
+                  id="chart-prev"
+                  type="button"
+                  aria-label="ดูแท่งก่อนหน้า"
+                >
+                  ←</button
+                ><button id="chart-next" type="button" aria-label="ดูแท่งถัดไป">
+                  →
+                </button>
+              </div>
+            </div>
+            <canvas
+              id="price-chart"
+              aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
+            ></canvas>
+            <p id="hover" class="chart-readout">
+              เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
+            </p>
+            <div class="legend">
+              <span class="buy">▲ BUY</span><span class="sell">▼ SELL</span
+              ><span class="line-key">— Indicator</span
+              ><span>สัญลักษณ์แสดงเวลาเกิดสัญญาณ</span>
+            </div>
+          </section>
+          <section class="panel chart-panel" aria-labelledby="equity-title">
+            <div class="section-title">
+              <h2 id="equity-title">ผลตอบแทนสะสม</h2>
+              <span>เริ่มต้น 0%</span>
+            </div>
+            <canvas id="equity-chart" aria-label="กราฟผลตอบแทนสะสม"></canvas>
+          </section>
+          <section
+            id="strategies"
+            class="panel"
+            aria-labelledby="comparison-title"
+          >
+            <div class="section-title">
+              <h2 id="comparison-title">เปรียบเทียบกลยุทธ์</h2>
+              <span>กดชื่อกลยุทธ์เพื่อดูรายละเอียด</span>
+            </div>
+            <div
+              class="table-wrap"
+              tabindex="0"
+              role="region"
+              aria-label="ตารางเปรียบเทียบกลยุทธ์"
+            >
+              <table class="numeric-table">
+                <thead>
+                  <tr>
+                    <th scope="col">กลยุทธ์ / โหมด</th>
+                    <th scope="col">ผลตอบแทน</th>
+                    <th scope="col">Drawdown</th>
+                    <th scope="col">Win rate</th>
+                    <th scope="col">เทรด</th>
+                    <th scope="col">Profit factor</th>
+                  </tr>
+                </thead>
+                <tbody id="comparison"></tbody>
+              </table>
+            </div>
+          </section>
+          <section id="trade-list" class="panel" aria-labelledby="trades-title">
+            <div class="section-title">
+              <h2 id="trades-title">รายการเทรด</h2>
+              <span id="trade-count"></span>
+            </div>
+            <div
+              class="table-wrap"
+              tabindex="0"
+              role="region"
+              aria-label="ตารางรายการเทรด"
+            >
+              <table class="numeric-table trade-table">
+                <thead>
+                  <tr>
+                    <th scope="col">เข้า → ออก (เวลาไทย)</th>
+                    <th scope="col">ราคาเข้า</th>
+                    <th scope="col">ราคาออก</th>
+                    <th scope="col">สุทธิ / เทรด</th>
+                    <th scope="col">แท่ง</th>
+                    <th scope="col">เหตุผลออก</th>
+                  </tr>
+                </thead>
+                <tbody id="trades"></tbody>
+              </table>
+            </div>
+            <div class="pager">
+              <button id="trade-prev" type="button">ก่อนหน้า</button
+              ><span id="trade-page"></span
+              ><button id="trade-next" type="button">ถัดไป</button>
+            </div>
+          </section>
+          <div id="inspect" class="inspection">
+            <section class="panel" aria-labelledby="inspection-title">
+              <div class="section-title">
+                <h2 id="inspection-title">ตรวจค่ารายแท่ง</h2>
+              </div>
+              <label>แท่งที่เลือก<select id="bar"></select></label>
+              <p id="bar-summary"></p>
+              <div
+                class="table-wrap values"
+                tabindex="0"
+                role="region"
+                aria-label="ค่า indicator รายแท่ง"
+              >
+                <table class="numeric-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">Indicator</th>
+                      <th scope="col">ค่าที่คำนวณ</th>
+                    </tr>
+                  </thead>
+                  <tbody id="indicator-values"></tbody>
+                </table>
+              </div>
+            </section>
+            <section class="panel" aria-labelledby="telegram-title">
+              <div class="section-title">
+                <h2 id="telegram-title">ตัวอย่างข้อความ Telegram</h2>
+                <span>ไม่ส่งจริง</span>
+              </div>
+              <div class="telegram"><pre id="telegram"></pre></div>
+              <p class="field-help">
+                ใช้ราคาปิดของแท่งที่เลือก
+                บอทจริงจะตรวจเวลาและป้องกันการส่งซ้ำก่อนแจ้งเตือน
+              </p>
+            </section>
+          </div>
+        </div>
+      </section>
+      <footer>
+        <span>Signal bot · Backtest</span><span>เวลาแสดงผล Asia/Bangkok</span>
+      </footer>
+    </main>
+  </body>
+</html>
