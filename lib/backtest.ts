@@ -259,6 +259,7 @@ export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
 
 // ─── Signal computation (ใช้ร่วมกันโดย backtest และบอทสัญญาณ signal-bot/) ───
 export interface SignalOptions {
+  lazyIndicators?: boolean;
   /** false = โหมด TS เดิมมี lookahead ใช้เฉพาะ harness; default true */
   confirmedPivots?: boolean;
   /** Stateful strategies start flat here; prior bars only warm up features. */
@@ -276,6 +277,7 @@ export function computeStrategyIndicators(
   opts: SignalOptions = {},
 ): AllIndicators {
   return computeAll(klines, {
+    lazy: opts.lazyIndicators,
     confirmedPivots: opts.confirmedPivots,
     smcAdaptiveParams: strategyId === "smc_adaptive" ? params : undefined,
     smcAdaptiveV2Params: strategyId === "smc_adaptive_v2" ? params : undefined,
@@ -321,9 +323,9 @@ export function runBacktest(
   strategyId: StrategyId,
   params: Record<string, number> = {},
   feesPct = 0.1, // 0.1% per trade (Binance default)
-  opts: SignalOptions & { startIndex?: number } = {},
+  opts: SignalOptions & { startIndex?: number; precomputedSignals?: SignalAction[] } = {},
 ): BacktestResult {
-  const signals = computeSignals(klines, strategyId, params, opts);
+  const signals = opts.precomputedSignals ?? computeSignals(klines, strategyId, params, opts);
 
   const closes = klines.map(k => +k.close);
   const trades: Trade[] = [];
@@ -387,8 +389,8 @@ export function runBacktest(
   const avgWinPct = wins.length === 0 ? 0 : wins.reduce((s, t) => s + t.pnlPct, 0) / wins.length;
   const avgLossPct = losses.length === 0 ? 0 : losses.reduce((s, t) => s + t.pnlPct, 0) / losses.length;
   const avgBarsHeld = trades.length === 0 ? 0 : trades.reduce((s, t) => s + t.bars, 0) / trades.length;
-  const bestTradePct = trades.length === 0 ? 0 : Math.max(...trades.map(t => t.pnlPct));
-  const worstTradePct = trades.length === 0 ? 0 : Math.min(...trades.map(t => t.pnlPct));
+  const bestTradePct = trades.length === 0 ? 0 : trades.reduce((best, t) => Math.max(best, t.pnlPct), -Infinity);
+  const worstTradePct = trades.length === 0 ? 0 : trades.reduce((worst, t) => Math.min(worst, t.pnlPct), Infinity);
 
   const grossWins = wins.reduce((s, t) => s + t.pnlPct, 0);
   const grossLosses = Math.abs(losses.reduce((s, t) => s + t.pnlPct, 0));

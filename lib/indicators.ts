@@ -1,3 +1,4 @@
+import { PriceSearch } from "./price-search";
 import type { KlineData } from "@/lib/types/kline";
 
 // ─── Helper ────────────────────────────────────────────────────
@@ -536,20 +537,11 @@ function detectOrderBlocks(
     }
   }
 
-  // Check mitigation (price returns into the OB)
+  const lowSearch = new PriceSearch(l, "min"), highSearch = new PriceSearch(h, "max");
   for (const ob of orderBlocks) {
-    for (let i = ob.startIndex + 1; i < len; i++) {
-      if (ob.bias === "bullish" && l[i] <= ob.low) {
-        ob.mitigated = true;
-        ob.mitigatedIndex = i;
-        break;
-      }
-      if (ob.bias === "bearish" && h[i] >= ob.high) {
-        ob.mitigated = true;
-        ob.mitigatedIndex = i;
-        break;
-      }
-    }
+    const index = ob.bias === "bullish" ? lowSearch.first(ob.startIndex + 1, ob.low) : highSearch.first(ob.startIndex + 1, ob.high);
+    ob.mitigated = index >= 0;
+    ob.mitigatedIndex = index >= 0 ? index : null;
   }
 
   return orderBlocks;
@@ -565,6 +557,7 @@ function detectFairValueGaps(
 ): SMCFairValueGap[] {
   const fvgs: SMCFairValueGap[] = [];
   const len = h.length;
+  const lowSearch = new PriceSearch(l, "min"), highSearch = new PriceSearch(h, "max");
 
   for (let i = 2; i < len; i++) {
     const atrVal = atrValues[i];
@@ -582,13 +575,9 @@ function detectFairValueGaps(
           filledIndex: null,
         };
         // Check if FVG is filled later
-        for (let j = i + 1; j < len; j++) {
-          if (l[j] <= fvg.bottom) {
-            fvg.filled = true;
-            fvg.filledIndex = j;
-            break;
-          }
-        }
+        const filled = lowSearch.first(i + 1, fvg.bottom);
+        fvg.filled = filled >= 0;
+        fvg.filledIndex = filled >= 0 ? filled : null;
         fvgs.push(fvg);
       }
     }
@@ -605,13 +594,9 @@ function detectFairValueGaps(
           filled: false,
           filledIndex: null,
         };
-        for (let j = i + 1; j < len; j++) {
-          if (h[j] >= fvg.top) {
-            fvg.filled = true;
-            fvg.filledIndex = j;
-            break;
-          }
-        }
+        const filled = highSearch.first(i + 1, fvg.top);
+        fvg.filled = filled >= 0;
+        fvg.filledIndex = filled >= 0 ? filled : null;
         fvgs.push(fvg);
       }
     }
@@ -1676,12 +1661,9 @@ export function msbOrderBlock(
     market[i] = curMarket;
   }
 
-  // Check OB mitigation
+  const minClose = new PriceSearch(c, "min"), maxClose = new PriceSearch(c, "max");
   for (const ob of orderBlocks) {
-    for (let i = ob.startIndex + 1; i < len; i++) {
-      if (ob.type.startsWith("Bu") && c[i] < ob.low) { ob.broken = true; break; }
-      if (ob.type.startsWith("Be") && c[i] > ob.high) { ob.broken = true; break; }
-    }
+    ob.broken = ob.type.startsWith("Bu") ? minClose.first(ob.startIndex + 1, ob.low, true) >= 0 : maxClose.first(ob.startIndex + 1, ob.high, true) >= 0;
   }
 
   return { trend, market, msbSignals, orderBlocks, swingPoints, signal };
@@ -1978,6 +1960,7 @@ export interface AllIndicators {
 }
 
 export function computeAll(klines: KlineData[], overrides?: {
+  lazy?: boolean;
   cdcFastPeriod?: number;
   cdcSlowPeriod?: number;
   rsiPeriod?: number;
@@ -2014,22 +1997,34 @@ export function computeAll(klines: KlineData[], overrides?: {
 }): AllIndicators {
   const c = closes(klines);
   const confirmed = overrides?.confirmedPivots ?? true;
-  return {
-    rsi: rsi(c, overrides?.rsiPeriod ?? 14),
-    atr: atr(klines, 14),
-    obv: obv(klines),
-    vwap: vwap(klines),
-    cdcActionZone: cdcActionZone(c, overrides?.cdcFastPeriod ?? 12, overrides?.cdcSlowPeriod ?? 26, 1),
-    smc: smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
-    smcAdaptive: smcAdaptive(klines, overrides?.smcAdaptiveParams, overrides?.smcAdaptiveStartIndex),
-    smcAdaptiveV2: smcAdaptiveV2(klines, overrides?.smcAdaptiveV2Params, overrides?.smcAdaptiveStartIndex),
-    smcAdaptiveShort: smcAdaptiveShort(klines, overrides?.smcAdaptiveShortParams, overrides?.smcAdaptiveStartIndex),
-    cmMacd: cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
-    supertrend: supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
-    squeezeMomentum: squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),
-    msbOb: msbOrderBlock(klines, overrides?.msbZigzagLen ?? 9, overrides?.msbFibFactor ?? 0.33),
-    supportResistance: supportResistance(klines, overrides?.srLeftBars ?? 15, overrides?.srRightBars ?? 15, overrides?.srVolumeThresh ?? 20, confirmed),
-    trendlines: trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr", confirmed),
-    utBot: utBot(klines, overrides?.utBotKey ?? 1, overrides?.utBotAtrPeriod ?? 10),
+  const calculations = {
+    rsi: () => rsi(c, overrides?.rsiPeriod ?? 14),
+    atr: () => atr(klines, 14),
+    obv: () => obv(klines),
+    vwap: () => vwap(klines),
+    cdcActionZone: () => cdcActionZone(c, overrides?.cdcFastPeriod ?? 12, overrides?.cdcSlowPeriod ?? 26, 1),
+    smc: () => smartMoneyConcepts(klines, overrides?.smcSwingSize ?? 50, overrides?.smcInternalSize ?? 5, confirmed),
+    smcAdaptive: () => smcAdaptive(klines, overrides?.smcAdaptiveParams, overrides?.smcAdaptiveStartIndex),
+    smcAdaptiveV2: () => smcAdaptiveV2(klines, overrides?.smcAdaptiveV2Params, overrides?.smcAdaptiveStartIndex),
+    smcAdaptiveShort: () => smcAdaptiveShort(klines, overrides?.smcAdaptiveShortParams, overrides?.smcAdaptiveStartIndex),
+    cmMacd: () => cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
+    supertrend: () => supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
+    squeezeMomentum: () => squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),
+    msbOb: () => msbOrderBlock(klines, overrides?.msbZigzagLen ?? 9, overrides?.msbFibFactor ?? 0.33),
+    supportResistance: () => supportResistance(klines, overrides?.srLeftBars ?? 15, overrides?.srRightBars ?? 15, overrides?.srVolumeThresh ?? 20, confirmed),
+    trendlines: () => trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr", confirmed),
+    utBot: () => utBot(klines, overrides?.utBotKey ?? 1, overrides?.utBotAtrPeriod ?? 10),
   };
+  const result = {} as AllIndicators;
+  for (const key of Object.keys(calculations) as (keyof AllIndicators)[]) {
+    const calculate = calculations[key];
+    if (overrides?.lazy) {
+      Object.defineProperty(result, key, { enumerable: true, configurable: true, get() {
+        const value = calculate();
+        Object.defineProperty(result, key, { enumerable: true, configurable: true, writable: true, value });
+        return value;
+      }});
+    } else Object.defineProperty(result, key, { enumerable: true, configurable: true, writable: true, value: calculate() });
+  }
+  return result;
 }

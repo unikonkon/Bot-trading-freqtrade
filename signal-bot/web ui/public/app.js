@@ -9,6 +9,7 @@ let metadata,
 const params = {};
 let chartColors = {};
 let exporting = false;
+let snapshots = [], localRunId = null;
 const parameterLabels = {
   period: "ช่วงคำนวณ RSI",
   buyThreshold: "ระดับซื้อ",
@@ -99,9 +100,13 @@ function busy(value) {
   document
     .querySelectorAll("#config input,#config select,#config button")
     .forEach((e) => (e.disabled = value));
-  $("export-open").disabled = value || !result;
+  $("export-open").disabled = value || !result || !!result.paged;
+  $("export-open").title = result?.paged ? "ไฟล์ต้นฉบับอยู่ใน data-test; Export ZIP เดิมใช้กับโหมดออนไลน์" : "";
+  $("cancel-run").disabled = !value || !localRunId;
+  $("cancel-run").hidden = !value || !localRunId;
   $("slippage").disabled = value || $("mode").value === "legacy";
   $("run").textContent = value ? "กำลังคำนวณ…" : "รันทดสอบ";
+  if (!value) sourceFields();
 }
 function parameters() {
   const id = $("strategy").value,
@@ -140,11 +145,82 @@ function parameters() {
   );
 }
 function sourceFields() {
-  const range = $("source").value === "range";
+  const local = $("source").value === "local";
+  const range = $("source").value === "range" || (local && !$("local-full").checked);
+  $("local-fields").hidden = !local;
   $("range-fields").hidden = !range;
-  $("latest-fields").hidden = range;
+  $("latest-fields").hidden = $("source").value !== "latest";
   $("from").required = range;
   $("to").required = range;
+  $("from").disabled = !range;
+  $("to").disabled = !range;
+  $("limit").disabled = $("source").value !== "latest";
+  $("range-help").textContent = local ? "เลือกช่วงภายในไฟล์; คำนวณจากแท่งจริงครบช่วง พร้อม warmup" : "สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator";
+  updateDatasetSummary();
+}
+function updateDatasetSummary() {
+  const snapshot = snapshots.find(s => s.snapshot === $("snapshot").value);
+  const record = snapshot?.records.find(r => r.interval === $("interval").value);
+  $("local-summary").textContent = !record ? "ยังไม่มีไฟล์สำหรับช่วงแท่งนี้" :
+    `${record.ready ? "พร้อมทดสอบ" : "กำลังดาวน์โหลด"} · ${record.bars.toLocaleString()} แท่ง · ${time(record.from)} – ${time(record.to)} · BTCUSDT Spot`;
+  if (record) {
+    const localDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 16);
+    $("from").min = localDate(record.from); $("to").max = localDate(record.to);
+    if ($("source").value === "local") {
+      if ($("from").value < $("from").min) $("from").value = $("from").min;
+      if ($("to").value > $("to").max) $("to").value = $("to").max;
+    }
+  }
+  if ($("source").value !== "local") { $("from").removeAttribute("min"); $("to").removeAttribute("max"); }
+}
+async function refreshDatasets() {
+  const response = await fetch("/api/datasets");
+  if (!response.ok) throw Error("อ่านรายการชุดข้อมูลไม่สำเร็จ");
+  snapshots = (await response.json()).snapshots;
+  const previous = $("snapshot").value;
+  $("snapshot").replaceChildren(...snapshots.map(s => new Option(`${s.snapshot} · ${s.records.filter(r => r.ready).length}/9 ชุดพร้อม`, s.snapshot)));
+  if (snapshots.some(s => s.snapshot === previous)) $("snapshot").value = previous;
+  updateDatasetSummary();
+}
+async function localBacktest(config) {
+  const job = await post("/api/local/start", config);
+  localRunId = job.runId;
+  $("cancel-run").hidden = false; $("cancel-run").disabled = false;
+  while (true) {
+    const response = await fetch(`/api/local/status?id=${encodeURIComponent(job.runId)}`);
+    const status = await response.json();
+    if (!response.ok) throw Error(status.error);
+    $("status").textContent = status.progress;
+    if (status.status === "ready") return status.result;
+    if (status.status === "error" || status.status === "cancelled") throw Error(status.error || "ยกเลิกแล้ว");
+    await new Promise(resolve => setTimeout(resolve, 750));
+  }
+}
+function fillBarOptions() {
+  $("bar").replaceChildren(...result.klines.map((k, i) => new Option(`${(result.offset || 0) + i + 1} · ${time(k.closeTime)} · ${fmt(+k.close)}`, i)));
+  $("bar").value = String(result.klines.length - 1);
+  $("local-paging").hidden = !result.paged;
+  $("equity-note").hidden = !result.paged;
+  if (result.paged) {
+    $("data-page").textContent = `${(result.offset + 1).toLocaleString()}–${(result.offset + result.klines.length).toLocaleString()} / ${result.totalBars.toLocaleString()} แท่ง`;
+    $("data-prev").disabled = result.offset === 0;
+    $("data-next").disabled = result.offset + result.klines.length >= result.totalBars;
+    $("data-goto").max = result.totalBars;
+    $("data-goto").value = result.offset + 1;
+  }
+}
+async function localView(patch = {}) {
+  if (active || !result?.paged) return;
+  busy(true); error("");
+  const selectedMode = $("display-mode").value, overlay = $("overlay").value;
+  try {
+    const next = await post("/api/local/view", { runId: result.runId, strategy: detail.id, offset: result.offset, tradePage, ...patch });
+    result = next; detail = next.detail; chartEnd = result.klines.length;
+    tradePage = detail.simulations.find(s => s.mode === selectedMode)?.tradePage ?? 0;
+    fillBarOptions(); selectDetail(selectedMode);
+    if ([...$("overlay").options].some(o => o.value === overlay)) { $("overlay").value = overlay; drawPrice(); }
+  } catch (e) { error(e.message); }
+  finally { busy(false); }
 }
 async function post(url, payload) {
   const r = await fetch(url, {
@@ -162,8 +238,9 @@ function requestConfig() {
     interval: $("interval").value,
     source: $("source").value,
     limit: Number($("limit").value),
-    from: Date.parse($("from").value + ":00+07:00"),
-    to: Date.parse($("to").value + ":00+07:00"),
+    snapshot: $("snapshot").value,
+    from: $("source").value === "local" && $("local-full").checked ? null : Date.parse($("from").value + ":00+07:00"),
+    to: $("source").value === "local" && $("local-full").checked ? null : Date.parse($("to").value + ":00+07:00"),
     selected: $("strategy").value,
     strategy: $("compare").checked ? "all" : $("strategy").value,
     params: structuredClone(params),
@@ -176,31 +253,28 @@ async function run() {
   if (active) throw Error("กำลังทำงานอยู่");
   if (!$("config").reportValidity()) throw Error("กรุณาตรวจค่าการทดสอบ");
   error("");
+  localRunId = null;
   busy(true);
   $("status").textContent = "กำลังโหลดแท่งที่ปิดแล้วและคำนวณกลยุทธ์…";
   try {
-    const next = await post("/api/backtest", requestConfig());
+    const config = requestConfig();
+    const next = config.source === "local" ? await localBacktest(config) : await post("/api/backtest", config);
     result = next;
-    detail = result.results[0];
+    detail = result.detail || result.results[0];
     chartEnd = result.klines.length;
     tradePage = 0;
     $("empty").hidden = true;
     $("output").hidden = false;
     $("dataset").textContent =
-      `${result.klines.length.toLocaleString()} แท่ง · ${time(result.klines[0].openTime)} – ${time(result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง`;
+      `${(result.totalBars ?? result.klines.length).toLocaleString()} แท่ง · ${time(result.from ?? result.klines[0].openTime)} – ${time(result.to ?? result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง`;
     $("warnings").replaceChildren(...result.warnings.map((w) => node("p", w)));
-    $("bar").replaceChildren(
-      ...result.klines.map(
-        (k, i) => new Option(`${time(k.closeTime)} · ${fmt(+k.close)}`, i),
-      ),
-    );
-    $("bar").value = String(result.klines.length - 1);
+    fillBarOptions();
     selectDetail();
     $("status").textContent =
       `ทดสอบเสร็จ · ${result.results.length} กลยุทธ์ · ${new Date().toLocaleTimeString("th-TH")}`;
     return {
       runId: result.runId,
-      bars: result.klines.length,
+      bars: result.totalBars ?? result.klines.length,
       strategies: result.results.length,
     };
   } catch (e) {
@@ -329,6 +403,10 @@ function renderComparison() {
 }
 async function changeDetail(id, mode) {
   if (active) return;
+  if (result?.paged) {
+    if ([...$("display-mode").options].some(o => o.value === mode)) $("display-mode").value = mode;
+    await localView({ strategy: id, tradePage: 0 }); return;
+  }
   error("");
   busy(true);
   $("status").textContent = "กำลังเปิดรายละเอียดจากข้อมูลชุดเดิม…";
@@ -352,14 +430,14 @@ async function changeDetail(id, mode) {
 }
 function renderTrades() {
   const s = simulation(),
-    count = s.trades.length,
+    count = result.paged ? s.totalTrades : s.trades.length,
     pages = Math.max(1, Math.ceil(count / 25));
   tradePage = Math.min(tradePage, pages - 1);
   $("trade-count").textContent = `${count} เทรด`;
   $("trade-page").textContent = `${tradePage + 1} / ${pages}`;
   $("trade-prev").disabled = tradePage === 0;
   $("trade-next").disabled = tradePage >= pages - 1;
-  const rows = s.trades.slice(tradePage * 25, (tradePage + 1) * 25).map((t) => {
+  const rows = (result.paged ? s.trades : s.trades.slice(tradePage * 25, (tradePage + 1) * 25)).map((t) => {
     const tr = node("tr");
     const dates = node("td", time(t.entryTime));
     dates.append(node("small", `→ ${time(t.exitTime)}`));
@@ -670,8 +748,8 @@ function drawEquity() {
     s = simulation(),
     a = s.equity;
   if (!a.length) return;
-  const min = Math.min(0, ...a),
-    max = Math.max(0, ...a),
+  const min = a.reduce((v, x) => Math.min(v, x), 0),
+    max = a.reduce((v, x) => Math.max(v, x), 0),
     p = (max - min) * 0.1 || 1,
     lo = min - p,
     hi = max + p;
@@ -681,13 +759,13 @@ function drawEquity() {
     a,
     0,
     a.length,
-    (i) => (i / Math.max(1, a.length - 1)) * (w - 82),
+    (i) => ((s.equityIndices ? s.equityIndices[i] / Math.max(1, result.totalBars - 1) : i / Math.max(1, a.length - 1))) * (w - 82),
     (v) => 15 + ((hi - v) / (hi - lo)) * (h - 40),
     chartColors.line,
   );
   c.fillStyle = chartColors.muted;
   c.textAlign = "left";
-  c.fillText(time(result.klines[0].openTime), 0, h - 4);
+  c.fillText(time(result.from ?? result.klines[0].openTime), 0, h - 4);
 }
 function drawCharts() {
   const styles = getComputedStyle(document.documentElement);
@@ -787,6 +865,14 @@ async function downloadExport() {
 }
 
 async function init() {
+  $("refresh-datasets").addEventListener("click", () => refreshDatasets().catch(e => error(e.message)));
+  $("snapshot").addEventListener("change", updateDatasetSummary);
+  $("interval").addEventListener("change", updateDatasetSummary);
+  $("local-full").addEventListener("change", sourceFields);
+  $("cancel-run").addEventListener("click", () => localRunId && post("/api/local/cancel", { runId: localRunId }).catch(e => error(e.message)));
+  $("data-prev").addEventListener("click", () => localView({ offset: Math.max(0, result.offset - 2000) }));
+  $("data-next").addEventListener("click", () => localView({ offset: result.offset + result.klines.length }));
+  $("data-jump").addEventListener("click", () => localView({ offset: Math.max(0, Number($("data-goto").value) - 1) }));
   $("export-open").addEventListener("click", openExport);
   $("export-close").addEventListener("click", () => $("export-dialog").close());
   $("export-dialog").addEventListener("cancel", (event) => {
@@ -849,6 +935,8 @@ async function init() {
     const local = (ms) => new Date(ms + 7 * 3600000).toISOString().slice(0, 16);
     $("to").value = local(Date.now());
     $("from").value = local(Date.now() - 30 * 86400000);
+    await refreshDatasets();
+    if (snapshots.some(s => s.records.some(r => r.ready))) $("source").value = "local";
     parameters();
     sourceFields();
     $("config").addEventListener("submit", (e) => {
@@ -861,6 +949,7 @@ async function init() {
       $("slippage").disabled = $("mode").value === "legacy";
     });
     $("display-mode").addEventListener("change", () => {
+      if (result?.paged) { localView({ tradePage: 0 }); return; }
       tradePage = 0;
       render();
     });
@@ -887,10 +976,12 @@ async function init() {
       drawPrice();
     });
     $("trade-prev").addEventListener("click", () => {
+      if (result?.paged) { localView({ tradePage: Math.max(0, tradePage - 1) }); return; }
       tradePage--;
       renderTrades();
     });
     $("trade-next").addEventListener("click", () => {
+      if (result?.paged) { localView({ tradePage: tradePage + 1 }); return; }
       tradePage++;
       renderTrades();
     });

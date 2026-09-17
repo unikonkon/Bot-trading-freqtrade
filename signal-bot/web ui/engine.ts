@@ -102,7 +102,7 @@ export function simulateNextOpen(
   };
 }
 
-function indicatorColumns(ind: AllIndicators, n: number) {
+function indicatorColumns(ind: Partial<AllIndicators>, n: number) {
   const columns: Record<string, (number | string | boolean | null)[]> = {};
   function visit(value: unknown, name: string) {
     if (Array.isArray(value)) {
@@ -126,6 +126,12 @@ function indicatorColumns(ind: AllIndicators, n: number) {
   return columns;
 }
 
+export const INDICATOR_KEYS: Record<StrategyId, keyof AllIndicators> = {
+  rsi: "rsi", cdc_actionzone: "cdcActionZone", smc: "smc", smc_adaptive: "smcAdaptive",
+  smc_adaptive_v2: "smcAdaptiveV2", smc_adaptive_short: "smcAdaptiveShort", cm_macd: "cmMacd",
+  supertrend: "supertrend", squeeze_momentum: "squeezeMomentum", msb_ob: "msbOb",
+  support_resistance: "supportResistance", trendlines: "trendlines", ut_bot: "utBot",
+};
 export function analyze(
   k: KlineData[],
   start: number,
@@ -135,9 +141,11 @@ export function analyze(
   slip: number,
   mode: string,
   detail: boolean,
+  selectedOnly = false,
 ) {
   const ind = computeStrategyIndicators(k, id, params, {
     confirmedPivots: true,
+    lazyIndicators: true,
     startIndex: start,
   });
   const signals = STRATEGY_FNS[id](k, ind, params);
@@ -147,6 +155,8 @@ export function analyze(
   if (mode !== "next_open") {
     const r = runBacktest(k, id, params, fee, {
       confirmedPivots: true,
+      lazyIndicators: true,
+      precomputedSignals: signals,
       startIndex: start,
     });
     simulations.push({
@@ -171,7 +181,7 @@ export function analyze(
     signals: detail ? signals.slice(start) : [],
     indicators: detail
       ? Object.fromEntries(
-          Object.entries(indicatorColumns(ind, k.length)).map(([key, a]) => [
+          Object.entries(indicatorColumns(selectedOnly ? { [INDICATOR_KEYS[id]]: ind[INDICATOR_KEYS[id]] } : ind, k.length)).map(([key, a]) => [
             key,
             a.slice(start),
           ]),

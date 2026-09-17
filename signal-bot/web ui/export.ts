@@ -14,6 +14,7 @@ export interface ExportRun {
 }
 const CODE_FILES = [
   "lib/indicators.ts",
+  "lib/price-search.ts",
   "lib/backtest.ts",
   "lib/types/kline.ts",
   "signal-bot/web ui/engine.ts",
@@ -99,6 +100,7 @@ export function buildExportFiles(
     symbol: cfg.symbol,
     interval: cfg.interval,
     source: cfg.source,
+    snapshot: cfg.snapshot ?? null,
     requested: { from: cfg.from ?? null, to: cfg.to ?? null, limit: cfg.limit },
     startIndex: start,
     confirmedPivots: true,

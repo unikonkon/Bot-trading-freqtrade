@@ -22,7 +22,12 @@
     "web:smc:v2:mtf": "tsx \"signal-bot/web ui/research-mtf/analyze.ts\"",
     "web:smc:v2:mtf:select": "tsx \"signal-bot/web ui/research-mtf/select.ts\"",
     "web:smc:short": "tsx \"signal-bot/web ui/research-short/analyze.ts\"",
-    "web:smc:short:select": "tsx \"signal-bot/web ui/research-short/select.ts\""
+    "web:smc:short:select": "tsx \"signal-bot/web ui/research-short/select.ts\"",
+    "history:api": "tsx scripts/klines-server.ts",
+    "history:download": "tsx scripts/download-history.ts",
+    "history:verify": "tsx scripts/verify-history.ts",
+    "history:test": "tsx --test \"signal-bot/web ui/history.test.ts\"",
+    "history:benchmark": "tsx scripts/benchmark-history.ts"
   },
   "devDependencies": {
     "@types/node": "^20",

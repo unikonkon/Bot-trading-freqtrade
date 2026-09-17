@@ -68,8 +68,15 @@
               >ข้อมูลย้อนหลัง<select id="source">
                 <option value="latest">แท่งล่าสุด</option>
                 <option value="range">เลือกช่วงวันที่</option>
+                <option value="local">ไฟล์ย้อนหลังในเครื่อง</option>
               </select></label
             >
+            <div id="local-fields" hidden>
+              <label>ชุดข้อมูล<select id="snapshot"></select></label>
+              <button id="refresh-datasets" type="button">ตรวจชุดข้อมูลล่าสุด</button>
+              <p id="local-summary" class="field-help"></p>
+              <label class="check"><input id="local-full" type="checkbox" checked />ทดสอบครบช่วงที่บันทึกไว้</label>
+            </div>
             <div id="latest-fields">
               <label
                 >จำนวนแท่ง<input
@@ -89,7 +96,7 @@
                   type="datetime-local" /></label
               ><label
                 >สิ้นสุด (เวลาไทย)<input id="to" type="datetime-local" /></label
-              ><small>สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small>
+              ><small id="range-help">สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small>
             </div>
           </fieldset>
           <fieldset>
@@ -144,6 +151,7 @@
         <div class="form-actions">
           <button class="primary" id="run" type="submit">รันทดสอบ</button>
           <button id="export-open" type="button" disabled>Export</button>
+          <button id="cancel-run" type="button" hidden>ยกเลิกงาน</button>
           <p id="status" role="status" aria-live="polite">
             พร้อมโหลดข้อมูลจาก Binance
           </p>
@@ -232,6 +240,13 @@
                 </button>
               </div>
             </div>
+            <div id="local-paging" class="chart-controls" hidden>
+              <button id="data-prev" type="button">← ชุดก่อนหน้า</button>
+              <span id="data-page"></span>
+              <button id="data-next" type="button">ชุดถัดไป →</button>
+              <label>ไปยังแท่งที่<input id="data-goto" type="number" min="1" value="1" /></label>
+              <button id="data-jump" type="button">เปิดช่วงนี้</button>
+            </div>
             <canvas
               id="price-chart"
               aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
@@ -253,6 +268,7 @@
               <h2 id="equity-title">ผลตอบแทนสะสม</h2>
               <span>เริ่มต้น 0%</span>
             </div>
+            <p id="equity-note" class="field-help" hidden>กราฟย่อเพื่อแสดงภาพรวม สถิติและรายการเทรดคำนวณจากแท่งจริงครบช่วง</p>
             <canvas id="equity-chart" aria-label="กราฟผลตอบแทนสะสม"></canvas>
           </section>
           <section

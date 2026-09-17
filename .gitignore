@@ -23,3 +23,6 @@ freqtrade/fixtures/*.csv
 # signal-bot/ runtime
 signal-bot/data/
 signal-bot/logs/
+
+# Downloaded historical market data (kept locally; reproducible from manifest)
+data-test/BTCUSDT/

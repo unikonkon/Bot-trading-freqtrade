@@ -1,3 +1,4 @@
+import { createKlineHandler } from "../../api/klines/route";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadData, validate, fetchPage } from "./data";
@@ -152,14 +153,14 @@ test("public client reports rate-limit and malformed data without retry storm", 
       });
     };
     await assert.rejects(
-      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }),
+      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }, createKlineHandler({ gapMs: 0 })),
       /429.*60/,
     );
     assert.equal(calls, 1);
     globalThis.fetch = async () =>
       new Response(JSON.stringify([[1, "bad"]]), { status: 200 });
     await assert.rejects(
-      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }),
+      fetchPage({ symbol: "BTCUSDT", interval: "1h", limit: "500" }, createKlineHandler({ gapMs: 0 })),
       /ไม่ถูกต้อง/,
     );
   } finally {

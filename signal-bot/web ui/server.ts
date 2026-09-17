@@ -1,4 +1,7 @@
+import { listDatasets } from "./local-data";
+import { startJob, jobStatus, jobView, cancelJob } from "./history-jobs";
 import http from "node:http";
+import { GET as klinesRoute } from "../../api/klines/route";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -49,6 +52,12 @@ const server = http.createServer(async (req, res) => {
   }
   const url = new URL(req.url ?? "/", "http://localhost");
   try {
+    if (req.method === "GET" && url.pathname === "/api/klines") {
+      const upstream = await klinesRoute(new Request(url));
+      res.writeHead(upstream.status, Object.fromEntries(upstream.headers));
+      res.end(await upstream.text());
+      return;
+    }
     if (req.method === "GET" && files[url.pathname]) {
       const [file, mime] = files[url.pathname];
       res.writeHead(200, {
@@ -58,6 +67,12 @@ const server = http.createServer(async (req, res) => {
       });
       res.end(await readFile(path.join(root, file)));
       return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/datasets") {
+      json(200, { snapshots: await listDatasets() }); return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/local/status") {
+      json(200, jobStatus(url.searchParams.get("id") ?? "")); return;
     }
     if (req.method === "GET" && url.pathname === "/api/meta") {
       json(200, {
@@ -69,7 +84,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (
       req.method !== "POST" ||
-      !["/api/backtest", "/api/detail", "/api/export"].includes(url.pathname)
+      !["/api/backtest", "/api/detail", "/api/export", "/api/local/start", "/api/local/view", "/api/local/cancel"].includes(url.pathname)
     ) {
       json(404, { error: "ไม่พบหน้าที่ขอ" });
       return;
@@ -98,6 +113,18 @@ const server = http.createServer(async (req, res) => {
       input = JSON.parse(body);
     } catch {
       json(400, { error: "JSON ไม่ถูกต้อง" });
+      return;
+    }
+    if (url.pathname.startsWith("/api/local/")) {
+      if (!input || typeof input !== "object" || Array.isArray(input)) throw Error("Invalid request");
+      const value = input as Record<string, unknown>;
+      if (url.pathname === "/api/local/start") {
+        const cfg = validate(input);
+        if (cfg.source !== "local") throw Error("ต้องเลือกข้อมูลในเครื่อง");
+        json(202, { runId: startJob(cfg) });
+      } else if (url.pathname === "/api/local/cancel") {
+        cancelJob(String(value.runId)); json(200, { cancelled: true });
+      } else json(200, await jobView(String(value.runId), value));
       return;
     }
     if (busy) {
@@ -161,6 +188,7 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       const cfg = validate(input);
+      if (cfg.source === "local") throw Error("ใช้ /api/local/start สำหรับข้อมูลในเครื่อง");
       const data = await loadData(cfg);
       const strategies =
         cfg.strategy === "all"

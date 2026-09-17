@@ -1,3 +1,5 @@
+import { GET as klinesRoute } from "../../api/klines/route";
+import { loadLocalData } from "./local-data";
 import {
   parseKline,
   INTERVALS,
@@ -9,7 +11,8 @@ import { STRATEGIES, type StrategyId } from "../../lib/backtest";
 export interface RequestConfig {
   symbol: string;
   interval: string;
-  source: "latest" | "range";
+  source: "latest" | "range" | "local";
+  snapshot?: string;
   limit: number;
   from?: number;
   to?: number;
@@ -48,7 +51,7 @@ export function validate(input: unknown): RequestConfig {
     throw new Error("Symbol ไม่ถูกต้อง เช่น BTCUSDT");
   if (!INTERVALS.includes(v.interval as never))
     throw new Error("Timeframe ไม่ถูกต้อง");
-  if (!["latest", "range"].includes(String(v.source)))
+  if (!["latest", "range", "local"].includes(String(v.source)))
     throw new Error("รูปแบบข้อมูลไม่ถูกต้อง");
   if (!["next_open", "legacy", "both"].includes(String(v.mode)))
     throw new Error("โหมดจำลองไม่ถูกต้อง");
@@ -120,7 +123,12 @@ export function validate(input: unknown): RequestConfig {
     slippage: number(v.slippage, "Slippage", 0, 5),
     mode: v.mode as RequestConfig["mode"],
   };
-  if (result.source === "range") {
+  if (result.source === "local") {
+    if (typeof v.snapshot !== "string" || !/^[a-zA-Z0-9_-]{1,80}$/.test(v.snapshot)) throw Error("ต้องเลือกชุดข้อมูลในเครื่อง");
+    result.snapshot = v.snapshot;
+    if ((v.from != null) !== (v.to != null)) throw Error("ต้องระบุวันที่เริ่มและสิ้นสุดคู่กัน");
+  }
+  if (result.source === "range" || (result.source === "local" && v.from != null)) {
     result.from = number(v.from, "วันที่เริ่ม", Date.UTC(2017, 0), Date.now());
     result.to = number(
       v.to,
@@ -147,6 +155,7 @@ export function warmupBars(cfg: RequestConfig) {
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 export async function fetchPage(
   params: Record<string, string>,
+  handler = klinesRoute,
 ): Promise<KlineData[]> {
   // Fixed public destination: never accept a URL or a token from the browser.
   const url = new URL("https://api.binance.com/api/v3/klines");
@@ -155,7 +164,7 @@ export async function fetchPage(
   for (let attempt = 0; attempt < 3; attempt++) {
     let res: Response;
     try {
-      res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+      res = await handler(new Request(url));
     } catch (e) {
       if (attempt === 2)
         throw new Error(
@@ -211,6 +220,11 @@ export async function loadData(
     const roundTrip = 100 * ((1 + fee) * (1 + slip) / ((1 - fee) * (1 - slip)) - 1);
     if (cfg.params.smc_adaptive_short.costPct < roundTrip)
       warnings.push(`SMC Adaptive Short trade: costPct ${cfg.params.smc_adaptive_short.costPct}% ต่ำกว่าระยะราคาที่ต้องชดเชยต้นทุนประมาณ ${roundTrip.toFixed(3)}%; ปรับต้นทุนเผื่อในพารามิเตอร์ให้ตรงค่า fee/slippage ที่ใช้ทดสอบ`);
+  }
+  if (cfg.source === "local") {
+    const local = await loadLocalData(cfg, warmupBars(cfg));
+    local.warnings.push(...warnings);
+    return local;
   }
   if (cfg.source === "latest") {
     k = (

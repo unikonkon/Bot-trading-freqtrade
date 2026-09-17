@@ -78,6 +78,7 @@ export function calculateExport(
 ) {
   const all = computeStrategyIndicators(k, id, params, {
     confirmedPivots: true,
+    lazyIndicators: true,
     startIndex: start,
   });
   const signals = STRATEGY_FNS[id](k, all, params);
