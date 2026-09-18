@@ -16,7 +16,7 @@ export interface RequestConfig {
   limit: number;
   from?: number;
   to?: number;
-  strategy: StrategyId | "all";
+  strategies: StrategyId[];
   selected: StrategyId;
   params: Record<string, Record<string, number>>;
   fee: number;
@@ -56,12 +56,25 @@ export function validate(input: unknown): RequestConfig {
   if (!["next_open", "legacy", "both"].includes(String(v.mode)))
     throw new Error("โหมดจำลองไม่ถูกต้อง");
   const ids = STRATEGIES.map((s) => s.id);
-  if (v.strategy !== "all" && !ids.includes(v.strategy as StrategyId))
-    throw new Error("ไม่พบกลยุทธ์");
+  // Accepts a list of strategies; "all" and a single id stay valid for older callers.
+  let requested: StrategyId[];
+  if (v.strategies !== undefined) {
+    if (!Array.isArray(v.strategies) || !v.strategies.length)
+      throw new Error("ต้องเลือกอย่างน้อย 1 กลยุทธ์");
+    if (v.strategies.length > ids.length) throw new Error("เลือกกลยุทธ์เกินจำนวนที่มี");
+    if (!v.strategies.every((id) => ids.includes(id as StrategyId)))
+      throw new Error("ไม่พบกลยุทธ์");
+    if (new Set(v.strategies).size !== v.strategies.length)
+      throw new Error("เลือกกลยุทธ์ซ้ำ");
+    const chosen = new Set(v.strategies as StrategyId[]);
+    requested = ids.filter((id) => chosen.has(id));
+  } else if (v.strategy === "all") requested = [...ids];
+  else if (ids.includes(v.strategy as StrategyId)) requested = [v.strategy as StrategyId];
+  else throw new Error("ไม่พบกลยุทธ์");
   if (!ids.includes(v.selected as StrategyId))
     throw new Error("ไม่พบกลยุทธ์ที่เลือก");
-  if (v.strategy !== "all" && v.strategy !== v.selected)
-    throw new Error("กลยุทธ์ที่เลือกไม่ตรงกับคำขอทดสอบ");
+  if (!requested.includes(v.selected as StrategyId))
+    throw new Error("กลยุทธ์หลักต้องอยู่ในรายการที่เลือกทดสอบ");
   const params: RequestConfig["params"] = {};
   if (
     v.params !== undefined &&
@@ -116,7 +129,7 @@ export function validate(input: unknown): RequestConfig {
     interval: String(v.interval),
     source: v.source as RequestConfig["source"],
     limit: number(v.limit ?? 500, "จำนวนแท่ง", 300, 10000, true),
-    strategy: v.strategy as RequestConfig["strategy"],
+    strategies: requested,
     selected: v.selected as StrategyId,
     params,
     fee: number(v.fee, "ค่าธรรมเนียม", 0, 5),
@@ -141,9 +154,7 @@ export function validate(input: unknown): RequestConfig {
 }
 
 export function warmupBars(cfg: RequestConfig) {
-  const active = cfg.strategy === "all"
-    ? Object.values(cfg.params)
-    : [cfg.params[cfg.selected]];
+  const active = cfg.strategies.map((id) => cfg.params[id]);
   const periods = active.flatMap((p) =>
     Object.entries(p)
       .filter(([key]) => /period|length|size|bars|len/i.test(key))
@@ -215,7 +226,7 @@ export async function loadData(
   let k: KlineData[] = [];
   let start = 0;
   const warnings: string[] = [];
-  if (cfg.strategy === "all" || cfg.selected === "smc_adaptive_short") {
+  if (cfg.strategies.includes("smc_adaptive_short")) {
     const fee = cfg.fee / 100, slip = cfg.mode === "legacy" ? 0 : cfg.slippage / 100;
     const roundTrip = 100 * ((1 + fee) * (1 + slip) / ((1 - fee) * (1 - slip)) - 1);
     if (cfg.params.smc_adaptive_short.costPct < roundTrip)

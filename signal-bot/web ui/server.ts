@@ -190,10 +190,7 @@ const server = http.createServer(async (req, res) => {
       const cfg = validate(input);
       if (cfg.source === "local") throw Error("ใช้ /api/local/start สำหรับข้อมูลในเครื่อง");
       const data = await loadData(cfg);
-      const strategies =
-        cfg.strategy === "all"
-          ? STRATEGIES.filter((s) => s.id !== cfg.selected).map((s) => s.id)
-          : [];
+      const strategies = cfg.strategies.filter((id) => id !== cfg.selected);
       const detail = analyze(
         data.klines,
         data.start,

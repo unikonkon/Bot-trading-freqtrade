@@ -46,7 +46,7 @@ process.on("message", async (message: { requestId: number; command: string; inpu
       if (cfg.source !== "local") throw Error("Worker accepts local snapshots only");
       send({ progress: "ตรวจไฟล์และโหลดข้อมูลย้อนหลัง" });
       data = await loadData(cfg);
-      const ids = cfg.strategy === "all" ? STRATEGIES.map(s => s.id) : [cfg.selected];
+      const ids = cfg.strategies;
       for (let index = 0; index < ids.length; index++) {
         const id = ids[index];
         send({ progress: `คำนวณ ${id} (${index + 1}/${ids.length}) · ${(data.klines.length - data.start).toLocaleString()} แท่ง` });

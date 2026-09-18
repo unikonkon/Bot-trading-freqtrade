@@ -28,7 +28,7 @@
           <strong>Backtest</strong></span
         >
         <div class="header-actions">
-          <span class="muted">Binance Spot · เวลาไทย</span
+          <span class="muted">Binance Spot · เวลาไทย (Asia/Bangkok)</span
           ><button
             id="theme-toggle"
             class="theme-toggle"
@@ -73,9 +73,13 @@
             >
             <div id="local-fields" hidden>
               <label>ชุดข้อมูล<select id="snapshot"></select></label>
-              <button id="refresh-datasets" type="button">ตรวจชุดข้อมูลล่าสุด</button>
+              <button id="refresh-datasets" type="button">
+                ตรวจชุดข้อมูลล่าสุด
+              </button>
               <p id="local-summary" class="field-help"></p>
-              <label class="check"><input id="local-full" type="checkbox" checked />ทดสอบครบช่วงที่บันทึกไว้</label>
+              <label class="check"
+                ><input id="local-full" type="checkbox" checked />ทดสอบครบช่วงที่บันทึกไว้</label
+              >
             </div>
             <div id="latest-fields">
               <label
@@ -96,21 +100,10 @@
                   type="datetime-local" /></label
               ><label
                 >สิ้นสุด (เวลาไทย)<input id="to" type="datetime-local" /></label
-              ><small id="range-help">สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small>
+              ><small id="range-help"
+                >สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small
+              >
             </div>
-          </fieldset>
-          <fieldset>
-            <legend>กลยุทธ์</legend>
-            <label>กลยุทธ์หลัก<select id="strategy"></select></label>
-            <p id="description" class="field-help"></p>
-            <label class="check"
-              ><input id="compare" type="checkbox" checked />เปรียบเทียบทุก
-              กลยุทธ์</label
-            >
-            <details class="parameter-options">
-              <summary>ปรับพารามิเตอร์</summary>
-              <div id="params" class="two"></div>
-            </details>
           </fieldset>
           <fieldset>
             <legend>การซื้อขายจำลอง</legend>
@@ -148,6 +141,32 @@
             </p>
           </fieldset>
         </div>
+        <fieldset class="strategy-fieldset">
+          <legend>กลยุทธ์ที่ทดสอบ</legend>
+          <div class="picker-actions">
+            <button id="strategy-all" type="button">เลือกทั้งหมด</button
+            ><button id="strategy-none" type="button">ล้างการเลือก</button
+            ><span id="strategy-count" class="pill"></span
+            ><span class="muted">คำนวณเฉพาะกลยุทธ์ที่ติ๊กไว้</span>
+          </div>
+          <div
+            id="strategy-list"
+            class="strategy-list"
+            role="group"
+            aria-label="กลยุทธ์ที่ทดสอบ"
+          ></div>
+          <p id="strategy-error" class="strategy-error" hidden>
+            ต้องเลือกอย่างน้อย 1 กลยุทธ์
+          </p>
+          <details class="parameter-options">
+            <summary>ปรับพารามิเตอร์</summary>
+            <div class="parameter-head">
+              <label>พารามิเตอร์ของ<select id="param-target"></select></label>
+              <p id="description" class="field-help"></p>
+            </div>
+            <div id="params" class="params-grid"></div>
+          </details>
+        </fieldset>
         <div class="form-actions">
           <button class="primary" id="run" type="submit">รันทดสอบ</button>
           <button id="export-open" type="button" disabled>Export</button>
@@ -161,7 +180,7 @@
         <div id="error" class="error" role="alert" hidden></div>
         <div id="empty" class="empty">
           <h2>ยังไม่มีผลทดสอบ</h2>
-          <p>ตั้งค่าด้านบน แล้วกด “รันทดสอบ”</p>
+          <p>เลือกข้อมูลและกลยุทธ์ด้านบน แล้วกด “รันทดสอบ”</p>
         </div>
         <div id="output" hidden>
           <div class="result-heading">
@@ -169,7 +188,9 @@
               <h2 id="result-title"></h2>
               <p id="dataset" class="muted"></p>
             </div>
-            <label>โหมดที่แสดง<select id="display-mode"></select></label>
+            <label id="display-mode-field"
+              >โหมดที่แสดง<select id="display-mode"></select
+            ></label>
           </div>
           <div id="metrics" class="metrics"></div>
           <details class="result-notes">
@@ -177,201 +198,314 @@
             <p id="method" class="method"></p>
             <div id="warnings" class="notice"></div>
           </details>
-          <nav class="result-nav" aria-label="ส่วนของผลทดสอบ">
-            <a href="#charts">กราฟ</a
-            ><a href="#strategies">เปรียบเทียบกลยุทธ์</a
-            ><a href="#trade-list">รายการเทรด</a
-            ><a href="#inspect">ตรวจค่ารายแท่ง</a>
-          </nav>
-          <section
-            id="charts"
-            class="panel chart-panel"
-            aria-labelledby="price-title"
-          >
-            <div class="section-title">
-              <h2 id="price-title">ราคาและสัญญาณซื้อ–ขาย</h2>
-              <span id="chart-label"></span>
-            </div>
-            <div class="price-summary">
-              <div class="selected-price">
-                <span>ราคาปิดแท่งที่เลือก</span
-                ><strong id="selected-price">—</strong
-                ><small id="selected-time">—</small>
-              </div>
-              <div class="selected-signal">
-                <span>สัญญาณของแท่งนี้</span
-                ><strong id="selected-signal" class="signal-badge"
-                  >HOLD · รอ</strong
-                ><small>สัญญาณจากกลยุทธ์ ไม่ใช่รายการเทรด</small>
-              </div>
-              <div class="signal-totals">
-                <span>สัญญาณในช่วงกราฟ</span>
-                <div>
-                  <span id="buy-count" class="signal-chip buy">ซื้อ 0</span
-                  ><span id="sell-count" class="signal-chip sell">ขาย 0</span>
-                </div>
-                <small>นับทุกแท่งที่เกิดสัญญาณ</small>
-              </div>
-            </div>
-            <div class="chart-controls">
-              <label>เส้น indicator<select id="overlay"></select></label
-              ><label
-                >ช่วงที่แสดง<select id="window">
-                  <option value="50" selected>50 แท่ง · ขยาย</option>
-                  <option value="100">100 แท่ง</option>
-                  <option value="200">200 แท่ง</option>
-                  <option value="500">500 แท่ง</option>
-                  <option value="1000">1,000 แท่ง</option>
-                  <option value="2000">2,000 แท่ง</option>
-                  <option value="3000">3,000 แท่ง</option>
-                  <option value="4000">4,000 แท่ง</option>
-                  <option value="5000">5,000 แท่ง</option>
-                </select></label
-              >
-              <div class="chart-paging">
-                <button
-                  id="chart-prev"
-                  type="button"
-                  aria-label="ดูแท่งก่อนหน้า"
-                >
-                  ←</button
-                ><button id="chart-next" type="button" aria-label="ดูแท่งถัดไป">
-                  →
-                </button>
-              </div>
-            </div>
-            <div id="local-paging" class="chart-controls" hidden>
-              <button id="data-prev" type="button">← ชุดก่อนหน้า</button>
-              <span id="data-page"></span>
-              <button id="data-next" type="button">ชุดถัดไป →</button>
-              <label>ไปยังแท่งที่<input id="data-goto" type="number" min="1" value="1" /></label>
-              <button id="data-jump" type="button">เปิดช่วงนี้</button>
-            </div>
-            <canvas
-              id="price-chart"
-              aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
-            ></canvas>
-            <p id="hover" class="chart-readout">
-              เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
-            </p>
-            <div class="legend">
-              <span class="signal-chip buy">▲ BUY</span
-              ><span class="signal-chip sell">▼ SELL</span
-              ><span class="line-key">— Indicator</span
-              ><span id="signal-note"
-                >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</span
-              >
-            </div>
-          </section>
-          <section class="panel chart-panel" aria-labelledby="equity-title">
-            <div class="section-title">
-              <h2 id="equity-title">ผลตอบแทนสะสม</h2>
-              <span>เริ่มต้น 0%</span>
-            </div>
-            <p id="equity-note" class="field-help" hidden>กราฟย่อเพื่อแสดงภาพรวม สถิติและรายการเทรดคำนวณจากแท่งจริงครบช่วง</p>
-            <canvas id="equity-chart" aria-label="กราฟผลตอบแทนสะสม"></canvas>
-          </section>
-          <section
-            id="strategies"
-            class="panel"
-            aria-labelledby="comparison-title"
-          >
-            <div class="section-title">
-              <h2 id="comparison-title">เปรียบเทียบกลยุทธ์</h2>
-              <span>กดชื่อกลยุทธ์เพื่อดูรายละเอียด</span>
-            </div>
-            <div
-              class="table-wrap"
-              tabindex="0"
-              role="region"
-              aria-label="ตารางเปรียบเทียบกลยุทธ์"
+          <div class="tabs" role="tablist" aria-label="ส่วนของผลทดสอบ">
+            <button
+              id="tab-chart"
+              class="tab"
+              type="button"
+              role="tab"
+              aria-controls="panel-chart"
+              aria-selected="true"
             >
-              <table class="numeric-table">
-                <thead>
-                  <tr>
-                    <th scope="col">กลยุทธ์ / โหมด</th>
-                    <th scope="col">ผลตอบแทน</th>
-                    <th scope="col">Drawdown</th>
-                    <th scope="col">Win rate</th>
-                    <th scope="col">เทรด</th>
-                    <th scope="col">Profit factor</th>
-                  </tr>
-                </thead>
-                <tbody id="comparison"></tbody>
-              </table>
-            </div>
-          </section>
-          <section id="trade-list" class="panel" aria-labelledby="trades-title">
-            <div class="section-title">
-              <h2 id="trades-title">รายการเทรด</h2>
-              <span id="trade-count"></span>
-            </div>
-            <div
-              class="table-wrap"
-              tabindex="0"
-              role="region"
-              aria-label="ตารางรายการเทรด"
+              กราฟและสัญญาณ
+            </button>
+            <button
+              id="tab-compare"
+              class="tab"
+              type="button"
+              role="tab"
+              aria-controls="panel-compare"
+              aria-selected="false"
+              tabindex="-1"
             >
-              <table class="numeric-table trade-table">
-                <thead>
-                  <tr>
-                    <th scope="col">เข้า → ออก (เวลาไทย)</th>
-                    <th scope="col">ราคาเข้า</th>
-                    <th scope="col">ราคาออก</th>
-                    <th scope="col">สุทธิ / เทรด</th>
-                    <th scope="col">แท่ง</th>
-                    <th scope="col">เหตุผลออก</th>
-                  </tr>
-                </thead>
-                <tbody id="trades"></tbody>
-              </table>
-            </div>
-            <div class="pager">
-              <button id="trade-prev" type="button">ก่อนหน้า</button
-              ><span id="trade-page"></span
-              ><button id="trade-next" type="button">ถัดไป</button>
-            </div>
-          </section>
-          <div id="inspect" class="inspection">
-            <section class="panel" aria-labelledby="inspection-title">
+              ผลการทดสอบ<span id="tab-compare-count" class="pill"></span>
+            </button>
+            <button
+              id="tab-trades"
+              class="tab"
+              type="button"
+              role="tab"
+              aria-controls="panel-trades"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              รายการเทรด<span id="tab-trades-count" class="pill"></span>
+            </button>
+            <button
+              id="tab-inspect"
+              class="tab"
+              type="button"
+              role="tab"
+              aria-controls="panel-inspect"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              ค่ารายแท่ง
+            </button>
+          </div>
+
+          <div id="panel-chart" role="tabpanel" aria-labelledby="tab-chart">
+            <section class="panel chart-panel" aria-labelledby="price-title">
               <div class="section-title">
-                <h2 id="inspection-title">ตรวจค่ารายแท่ง</h2>
+                <h2 id="price-title">ราคาและสัญญาณซื้อ–ขาย</h2>
+                <span id="chart-label"></span>
               </div>
-              <label>แท่งที่เลือก<select id="bar"></select></label>
-              <p id="bar-summary"></p>
+              <div class="price-summary">
+                <div class="selected-price">
+                  <span>ราคาปิดแท่งที่เลือก</span
+                  ><strong id="selected-price">—</strong
+                  ><small id="selected-time">—</small>
+                </div>
+                <div class="selected-signal">
+                  <span>สัญญาณของแท่งนี้</span
+                  ><strong id="selected-signal" class="signal-badge"
+                    >HOLD · รอ</strong
+                  ><small
+                    >สัญญาณจากกลยุทธ์ ไม่ใช่รายการเทรด ·
+                    <button id="goto-inspect" class="link-button" type="button">
+                      ดูค่า indicator ของแท่งนี้
+                    </button></small
+                  >
+                </div>
+                <div class="signal-totals">
+                  <span>สัญญาณในช่วงกราฟ</span>
+                  <div>
+                    <span id="buy-count" class="signal-chip buy">▲ ซื้อ 0</span
+                    ><span id="sell-count" class="signal-chip sell"
+                      >▼ ขาย 0</span
+                    >
+                  </div>
+                  <small id="signal-note"
+                    >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</small
+                  >
+                </div>
+              </div>
+              <div class="chart-controls">
+                <label>เส้น indicator<select id="overlay"></select></label
+                ><label
+                  >ช่วงที่แสดง<select id="window">
+                    <option value="50" selected>50 แท่ง · ขยาย</option>
+                    <option value="100">100 แท่ง</option>
+                    <option value="200">200 แท่ง</option>
+                    <option value="500">500 แท่ง</option>
+                    <option value="1000">1,000 แท่ง</option>
+                    <option value="2000">2,000 แท่ง</option>
+                    <option value="3000">3,000 แท่ง</option>
+                    <option value="4000">4,000 แท่ง</option>
+                    <option value="5000">5,000 แท่ง</option>
+                  </select></label
+                >
+                <div class="chart-paging">
+                  <button
+                    id="chart-prev"
+                    type="button"
+                    aria-label="ดูแท่งก่อนหน้า"
+                  >
+                    ←</button
+                  ><button
+                    id="chart-next"
+                    type="button"
+                    aria-label="ดูแท่งถัดไป"
+                  >
+                    →
+                  </button>
+                </div>
+                <span class="line-key">— เส้น indicator ที่เลือก</span>
+              </div>
+              <div id="local-paging" class="chart-controls dataset-paging" hidden>
+                <button id="data-prev" type="button">← ชุดก่อนหน้า</button>
+                <span id="data-page"></span>
+                <button id="data-next" type="button">ชุดถัดไป →</button>
+                <label
+                  >ไปยังแท่งที่<input
+                    id="data-goto"
+                    type="number"
+                    min="1"
+                    value="1"
+                /></label>
+                <button id="data-jump" type="button">เปิดช่วงนี้</button>
+              </div>
+              <canvas
+                id="price-chart"
+                aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
+              ></canvas>
+              <p id="hover" class="chart-readout">
+                เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
+              </p>
+            </section>
+            <section class="panel chart-panel" aria-labelledby="equity-title">
+              <div class="section-title">
+                <h2 id="equity-title">ผลตอบแทนสะสม</h2>
+                <span>เริ่มต้น 0%</span>
+              </div>
+              <p id="equity-note" class="field-help" hidden>
+                กราฟย่อเพื่อแสดงภาพรวม สถิติและรายการเทรดคำนวณจากแท่งจริงครบช่วง
+              </p>
+              <canvas id="equity-chart" aria-label="กราฟผลตอบแทนสะสม"></canvas>
+            </section>
+          </div>
+
+          <div
+            id="panel-compare"
+            role="tabpanel"
+            aria-labelledby="tab-compare"
+            hidden
+          >
+            <section class="panel" aria-labelledby="comparison-title">
+              <div class="section-title">
+                <h2 id="comparison-title">ผลการทดสอบ</h2>
+                <span>กดชื่อกลยุทธ์เพื่อตั้งเป็นกลยุทธ์หลักและดูกราฟ</span>
+              </div>
+              <div class="table-toolbar">
+                <label
+                  >เรียงตาม<select id="sort-key">
+                    <option value="returnPct" selected>ผลตอบแทน</option>
+                    <option value="maxDrawdownPct">Drawdown</option>
+                    <option value="winRate">Win rate</option>
+                    <option value="totalTrades">จำนวนเทรด</option>
+                    <option value="profitFactor">Profit factor</option>
+                    <option value="name">ชื่อกลยุทธ์</option>
+                  </select></label
+                ><label
+                  >ลำดับ<select id="sort-dir">
+                    <option value="desc" selected>มาก → น้อย</option>
+                    <option value="asc">น้อย → มาก</option>
+                  </select></label
+                ><label id="compare-mode-field"
+                  >โหมดที่เปรียบเทียบ<select id="compare-mode">
+                    <option value="">ทุกโหมด</option>
+                  </select></label
+                ><label
+                  >ค้นหากลยุทธ์<input
+                    id="compare-search"
+                    type="search"
+                    placeholder="เช่น SMC"
+                /></label>
+                <span id="compare-count" class="muted"></span>
+              </div>
               <div
-                class="table-wrap values"
+                class="table-wrap"
                 tabindex="0"
                 role="region"
-                aria-label="ค่า indicator รายแท่ง"
+                aria-label="ตารางผลการทดสอบของกลยุทธ์ที่เลือก"
               >
-                <table class="numeric-table">
+                <table class="numeric-table compare-table">
                   <thead>
                     <tr>
-                      <th scope="col">Indicator</th>
-                      <th scope="col">ค่าที่คำนวณ</th>
+                      <th scope="col" class="rank-col">#</th>
+                      <th scope="col" data-sort="name">
+                        <button type="button">กลยุทธ์ / โหมด</button>
+                      </th>
+                      <th scope="col" data-sort="returnPct">
+                        <button type="button">ผลตอบแทน</button>
+                      </th>
+                      <th scope="col" data-sort="maxDrawdownPct">
+                        <button type="button">Drawdown</button>
+                      </th>
+                      <th scope="col" data-sort="winRate">
+                        <button type="button">Win rate</button>
+                      </th>
+                      <th scope="col" data-sort="totalTrades">
+                        <button type="button">เทรด</button>
+                      </th>
+                      <th scope="col" data-sort="profitFactor">
+                        <button type="button">Profit factor</button>
+                      </th>
                     </tr>
                   </thead>
-                  <tbody id="indicator-values"></tbody>
+                  <tbody id="comparison"></tbody>
                 </table>
               </div>
             </section>
-            <section class="panel" aria-labelledby="telegram-title">
+          </div>
+
+          <div
+            id="panel-trades"
+            role="tabpanel"
+            aria-labelledby="tab-trades"
+            hidden
+          >
+            <section class="panel" aria-labelledby="trades-title">
               <div class="section-title">
-                <h2 id="telegram-title">ตัวอย่างข้อความ Telegram</h2>
-                <span>ไม่ส่งจริง</span>
+                <h2 id="trades-title">รายการเทรด</h2>
+                <span id="trade-count"></span>
               </div>
-              <div class="telegram"><pre id="telegram"></pre></div>
-              <p class="field-help">
-                ใช้ราคาปิดของแท่งที่เลือก
-                บอทจริงจะตรวจเวลาและป้องกันการส่งซ้ำก่อนแจ้งเตือน
-              </p>
+              <div
+                class="table-wrap"
+                tabindex="0"
+                role="region"
+                aria-label="ตารางรายการเทรด"
+              >
+                <table class="numeric-table trade-table">
+                  <thead>
+                    <tr>
+                      <th scope="col">เข้า → ออก (เวลาไทย)</th>
+                      <th scope="col">ราคาเข้า</th>
+                      <th scope="col">ราคาออก</th>
+                      <th scope="col">สุทธิ / เทรด</th>
+                      <th scope="col">แท่ง</th>
+                      <th scope="col">เหตุผลออก</th>
+                    </tr>
+                  </thead>
+                  <tbody id="trades"></tbody>
+                </table>
+              </div>
+              <div class="pager">
+                <button id="trade-prev" type="button">ก่อนหน้า</button
+                ><span id="trade-page"></span
+                ><button id="trade-next" type="button">ถัดไป</button>
+              </div>
             </section>
+          </div>
+
+          <div
+            id="panel-inspect"
+            role="tabpanel"
+            aria-labelledby="tab-inspect"
+            hidden
+          >
+            <div class="inspection">
+              <section class="panel" aria-labelledby="inspection-title">
+                <div class="section-title">
+                  <h2 id="inspection-title">ค่า indicator รายแท่ง</h2>
+                </div>
+                <label>แท่งที่เลือก<select id="bar"></select></label>
+                <p id="bar-summary"></p>
+                <div
+                  class="table-wrap values"
+                  tabindex="0"
+                  role="region"
+                  aria-label="ค่า indicator รายแท่ง"
+                >
+                  <table class="numeric-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">Indicator</th>
+                        <th scope="col">ค่าที่คำนวณ</th>
+                      </tr>
+                    </thead>
+                    <tbody id="indicator-values"></tbody>
+                  </table>
+                </div>
+              </section>
+              <section class="panel" aria-labelledby="telegram-title">
+                <div class="section-title">
+                  <h2 id="telegram-title">ตัวอย่างข้อความ Telegram</h2>
+                  <span>ไม่ส่งจริง</span>
+                </div>
+                <div class="telegram"><pre id="telegram"></pre></div>
+                <p class="field-help">
+                  ใช้ราคาปิดของแท่งที่เลือก
+                  บอทจริงจะตรวจเวลาและป้องกันการส่งซ้ำก่อนแจ้งเตือน
+                </p>
+              </section>
+            </div>
           </div>
         </div>
       </section>
       <footer>
-        <span>Signal bot · Backtest</span><span>เวลาแสดงผล Asia/Bangkok</span>
+        <span>Signal bot · Backtest</span
+        ><span>แจ้งเตือนอย่างเดียว ไม่ส่งคำสั่งซื้อขาย</span>
       </footer>
     </main>
     <dialog

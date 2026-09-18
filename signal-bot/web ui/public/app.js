@@ -10,6 +10,10 @@ const params = {};
 let chartColors = {};
 let exporting = false;
 let snapshots = [], localRunId = null;
+const selectedStrategies = new Set();
+let mainStrategy = "";
+let compareSort = { key: "returnPct", dir: -1 };
+const TABS = ["chart", "compare", "trades", "inspect"];
 const parameterLabels = {
   period: "ช่วงคำนวณ RSI",
   buyThreshold: "ระดับซื้อ",
@@ -109,8 +113,9 @@ function busy(value) {
   if (!value) sourceFields();
 }
 function parameters() {
-  const id = $("strategy").value,
-    s = strategy(id);
+  const id = $("param-target").value;
+  if (!id) return;
+  const s = strategy(id);
   $("description").textContent = s.descriptionTh;
   $("params").replaceChildren(
     ...Object.entries(params[id]).map(([key, value]) => {
@@ -143,6 +148,91 @@ function parameters() {
       return label;
     }),
   );
+}
+function buildStrategyPicker() {
+  $("strategy-list").replaceChildren(
+    ...metadata.strategies.map((s) => {
+      const item = node("div", undefined, "strategy-item");
+      item.dataset.id = s.id;
+      const label = node("label", undefined, "check");
+      const input = node("input");
+      input.type = "checkbox";
+      input.value = s.id;
+      input.addEventListener("change", () => {
+        if (input.checked) selectedStrategies.add(s.id);
+        else {
+          selectedStrategies.delete(s.id);
+          if (mainStrategy === s.id) mainStrategy = [...selectedStrategies][0] ?? "";
+        }
+        syncPicker();
+      });
+      const text = node("span", undefined, "strategy-name");
+      text.append(node("strong", s.name), node("small", s.descriptionTh));
+      label.append(input, text);
+      const star = node("button", "★", "star");
+      star.type = "button";
+      star.title = `ตั้ง ${s.name} เป็นกลยุทธ์หลัก`;
+      star.setAttribute("aria-label", star.title);
+      star.addEventListener("click", () => setMainStrategy(s.id));
+      item.append(label, star);
+      return item;
+    }),
+  );
+}
+// The main strategy drives the chart, per-bar values and the Telegram preview,
+// so it is always part of the run.
+function setMainStrategy(id) {
+  mainStrategy = id;
+  selectedStrategies.add(id);
+  syncPicker();
+  if ([...$("param-target").options].some((o) => o.value === id)) {
+    $("param-target").value = id;
+    parameters();
+  }
+}
+function syncPicker() {
+  if (mainStrategy && !selectedStrategies.has(mainStrategy))
+    selectedStrategies.add(mainStrategy);
+  if (!mainStrategy && selectedStrategies.size)
+    mainStrategy = [...selectedStrategies][0];
+  for (const item of [...$("strategy-list").children]) {
+    const id = item.dataset.id,
+      main = id === mainStrategy;
+    item.querySelector("input").checked = selectedStrategies.has(id);
+    item.classList.toggle("is-main", main);
+    item.querySelector(".star").setAttribute("aria-pressed", String(main));
+  }
+  $("strategy-count").textContent =
+    `เลือก ${selectedStrategies.size} / ${metadata.strategies.length}`;
+  $("strategy-error").hidden = selectedStrategies.size > 0;
+  updateParamTarget();
+}
+function updateParamTarget() {
+  const ids = metadata.strategies
+    .map((s) => s.id)
+    .filter((id) => !selectedStrategies.size || selectedStrategies.has(id));
+  const previous = $("param-target").value;
+  $("param-target").replaceChildren(
+    ...ids.map((id) => new Option(strategy(id).name, id)),
+  );
+  $("param-target").value = ids.includes(previous)
+    ? previous
+    : ids.includes(mainStrategy)
+      ? mainStrategy
+      : ids[0];
+  parameters();
+}
+function showTab(name) {
+  for (const tab of TABS) {
+    const button = $(`tab-${tab}`),
+      panel = $(`panel-${tab}`),
+      on = tab === name;
+    button.setAttribute("aria-selected", String(on));
+    button.tabIndex = on ? 0 : -1;
+    button.classList.toggle("active", on);
+    panel.hidden = !on;
+  }
+  if (name === "chart") drawCharts();
 }
 function sourceFields() {
   const local = $("source").value === "local";
@@ -241,8 +331,10 @@ function requestConfig() {
     snapshot: $("snapshot").value,
     from: $("source").value === "local" && $("local-full").checked ? null : Date.parse($("from").value + ":00+07:00"),
     to: $("source").value === "local" && $("local-full").checked ? null : Date.parse($("to").value + ":00+07:00"),
-    selected: $("strategy").value,
-    strategy: $("compare").checked ? "all" : $("strategy").value,
+    selected: mainStrategy,
+    strategies: metadata.strategies
+      .map((s) => s.id)
+      .filter((id) => selectedStrategies.has(id)),
     params: structuredClone(params),
     fee: Number($("fee").value),
     slippage: Number($("slippage").value),
@@ -251,8 +343,19 @@ function requestConfig() {
 }
 async function run() {
   if (active) throw Error("กำลังทำงานอยู่");
-  if (!$("config").reportValidity()) throw Error("กรุณาตรวจค่าการทดสอบ");
   error("");
+  if (!selectedStrategies.size) {
+    $("strategy-error").hidden = false;
+    $("strategy-list").scrollIntoView({ block: "nearest" });
+    const message = "เลือกอย่างน้อย 1 กลยุทธ์ก่อนรันทดสอบ";
+    error(message);
+    throw Error(message);
+  }
+  if (!$("config").reportValidity()) {
+    const message = "กรุณาตรวจค่าการทดสอบที่ทำเครื่องหมายไว้";
+    error(message);
+    throw Error(message);
+  }
   localRunId = null;
   busy(true);
   $("status").textContent = "กำลังโหลดแท่งที่ปิดแล้วและคำนวณกลยุทธ์…";
@@ -265,6 +368,7 @@ async function run() {
     tradePage = 0;
     $("empty").hidden = true;
     $("output").hidden = false;
+    showTab("chart");
     $("dataset").textContent =
       `${(result.totalBars ?? result.klines.length).toLocaleString()} แท่ง · ${time(result.from ?? result.klines[0].openTime)} – ${time(result.to ?? result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง`;
     $("warnings").replaceChildren(...result.warnings.map((w) => node("p", w)));
@@ -300,6 +404,8 @@ function selectDetail(mode) {
   );
   if (detail.simulations.some((s) => s.mode === old))
     $("display-mode").value = old;
+  $("display-mode-field").hidden = detail.simulations.length < 2;
+  syncModeFilter();
   const numeric = Object.entries(detail.indicators).filter(([, v]) =>
     v.some((x) => typeof x === "number"),
   );
@@ -324,6 +430,18 @@ function selectDetail(mode) {
     $("overlay").value = defaults[detail.id];
   else $("overlay").value = "";
   render();
+}
+function syncModeFilter() {
+  const modes = [
+    ...new Set(result.results.flatMap((r) => r.simulations.map((s) => s.mode))),
+  ];
+  const keep = $("compare-mode").value;
+  $("compare-mode").replaceChildren(
+    new Option("ทุกโหมด", ""),
+    ...modes.map((m) => new Option(modeName[m], m)),
+  );
+  $("compare-mode").value = modes.includes(keep) ? keep : "";
+  $("compare-mode-field").hidden = modes.length < 2;
 }
 function render() {
   const s = simulation();
@@ -373,38 +491,119 @@ function render() {
   renderBar();
   drawCharts();
 }
-function renderComparison() {
+function comparisonRows() {
+  const modeFilter = $("compare-mode").value,
+    query = $("compare-search").value.trim().toLowerCase();
   const rows = [];
   for (const r of result.results)
-    for (const s of r.simulations) {
-      const tr = node(
-        "tr",
-        undefined,
-        r.id === detail.id && s.mode === simulation().mode ? "selected" : "",
-      );
-      const cell = node("td"),
-        button = node("button", r.name);
-      button.type = "button";
-      button.append(node("small", modeName[s.mode]));
-      button.addEventListener("click", () => changeDetail(r.id, s.mode));
-      cell.append(button);
-      tr.append(cell);
-      for (const [text, c] of [
-        [pct(s.returnPct), s.returnPct],
-        [`${fmt(s.maxDrawdownPct)}${s.mode === "legacy" ? " pp" : "%"}`, 0],
-        [`${fmt(s.winRate, 1)}%`, 0],
-        [String(s.totalTrades), 0],
-        [s.profitFactor === null ? "∞" : fmt(s.profitFactor), 0],
-      ])
-        tr.append(node("td", text, color(c)));
-      rows.push(tr);
+    for (const sim of r.simulations) {
+      if (modeFilter && sim.mode !== modeFilter) continue;
+      if (
+        query &&
+        !r.name.toLowerCase().includes(query) &&
+        !r.id.toLowerCase().includes(query)
+      )
+        continue;
+      rows.push({ r, sim });
     }
-  $("comparison").replaceChildren(...rows);
+  // Profit factor is null when a strategy never lost: sort it as the best value.
+  const value = ({ r, sim }) =>
+    compareSort.key === "name"
+      ? r.name
+      : compareSort.key === "profitFactor" && sim.profitFactor === null
+        ? Infinity
+        : sim[compareSort.key];
+  rows.sort((a, b) => {
+    const x = value(a),
+      y = value(b);
+    const cmp =
+      typeof x === "string"
+        ? x.localeCompare(y, "th")
+        : x === y || (!Number.isFinite(x) && !Number.isFinite(y))
+          ? 0
+          : !Number.isFinite(x) && x !== Infinity
+            ? -1
+            : !Number.isFinite(y) && y !== Infinity
+              ? 1
+              : x > y
+                ? 1
+                : -1;
+    return cmp * compareSort.dir || a.r.name.localeCompare(b.r.name, "th");
+  });
+  return rows;
+}
+function updateSortIndicators() {
+  for (const th of document.querySelectorAll(".compare-table th[data-sort]")) {
+    const active = th.dataset.sort === compareSort.key;
+    th.setAttribute(
+      "aria-sort",
+      active ? (compareSort.dir < 0 ? "descending" : "ascending") : "none",
+    );
+    th.classList.toggle("sorted", active);
+    th.querySelector("button").dataset.arrow = active
+      ? compareSort.dir < 0
+        ? "\u25bc"
+        : "\u25b2"
+      : "";
+  }
+  $("sort-key").value = compareSort.key;
+  $("sort-dir").value = compareSort.dir < 0 ? "desc" : "asc";
+}
+function sortBy(key) {
+  if (compareSort.key === key) compareSort.dir *= -1;
+  else compareSort = { key, dir: key === "name" ? 1 : -1 };
+  renderComparison();
+}
+function renderComparison() {
+  const rows = comparisonRows(),
+    current = simulation().mode;
+  const list = rows.map(({ r, sim }, index) => {
+    const tr = node(
+      "tr",
+      undefined,
+      r.id === detail.id && sim.mode === current ? "selected" : "",
+    );
+    tr.append(node("td", String(index + 1), "rank-col"));
+    const cell = node("td"),
+      button = node("button", r.name);
+    button.type = "button";
+    button.title = `แสดง ${r.name} เป็นกลยุทธ์หลัก`;
+    if (r.id === mainStrategy) button.append(node("span", "หลัก", "main-tag"));
+    button.append(node("small", modeName[sim.mode]));
+    button.addEventListener("click", () => changeDetail(r.id, sim.mode));
+    cell.append(button);
+    tr.append(cell);
+    for (const [text, c] of [
+      [pct(sim.returnPct), sim.returnPct],
+      [
+        `${fmt(sim.maxDrawdownPct)}${sim.mode === "legacy" ? " pp" : "%"}`,
+        0,
+      ],
+      [`${fmt(sim.winRate, 1)}%`, 0],
+      [String(sim.totalTrades), 0],
+      [sim.profitFactor === null ? "\u221e" : fmt(sim.profitFactor), 0],
+    ])
+      tr.append(node("td", text, color(c)));
+    return tr;
+  });
+  if (!list.length) {
+    const tr = node("tr"),
+      td = node("td", "ไม่พบกลยุทธ์ที่ตรงกับตัวกรอง");
+    td.colSpan = 7;
+    tr.append(td);
+    list.push(tr);
+  }
+  $("comparison").replaceChildren(...list);
+  $("compare-count").textContent =
+    `${rows.length} แถว · ${new Set(rows.map((row) => row.r.id)).size} กลยุทธ์`;
+  $("tab-compare-count").textContent = String(result.results.length);
+  updateSortIndicators();
 }
 async function changeDetail(id, mode) {
   if (active) return;
   if (result?.paged) {
     if ([...$("display-mode").options].some(o => o.value === mode)) $("display-mode").value = mode;
+    setMainStrategy(id);
     await localView({ strategy: id, tradePage: 0 }); return;
   }
   error("");
@@ -419,6 +618,7 @@ async function changeDetail(id, mode) {
     }
     detail = d;
     tradePage = 0;
+    setMainStrategy(id);
     selectDetail(mode);
     $("status").textContent = `แสดง ${d.name} · ใช้ข้อมูลชุดเดิม`;
   } catch (e) {
@@ -434,6 +634,7 @@ function renderTrades() {
     pages = Math.max(1, Math.ceil(count / 25));
   tradePage = Math.min(tradePage, pages - 1);
   $("trade-count").textContent = `${count} เทรด`;
+  $("tab-trades-count").textContent = count.toLocaleString();
   $("trade-page").textContent = `${tradePage + 1} / ${pages}`;
   $("trade-prev").disabled = tradePage === 0;
   $("trade-next").disabled = tradePage >= pages - 1;
@@ -873,6 +1074,35 @@ async function init() {
   $("data-prev").addEventListener("click", () => localView({ offset: Math.max(0, result.offset - 2000) }));
   $("data-next").addEventListener("click", () => localView({ offset: result.offset + result.klines.length }));
   $("data-jump").addEventListener("click", () => localView({ offset: Math.max(0, Number($("data-goto").value) - 1) }));
+  for (const tab of TABS)
+    $(`tab-${tab}`).addEventListener("click", () => showTab(tab));
+  $("goto-inspect").addEventListener("click", () => {
+    showTab("inspect");
+    $("bar").focus();
+  });
+  document.querySelector(".tabs").addEventListener("keydown", (event) => {
+    const step = { ArrowRight: 1, ArrowLeft: -1, Home: -Infinity, End: Infinity }[event.key];
+    if (step === undefined) return;
+    event.preventDefault();
+    const at = TABS.findIndex((tab) => $(`tab-${tab}`).getAttribute("aria-selected") === "true");
+    const next = !Number.isFinite(step)
+      ? step < 0 ? 0 : TABS.length - 1
+      : (at + step + TABS.length) % TABS.length;
+    showTab(TABS[next]);
+    $(`tab-${TABS[next]}`).focus();
+  });
+  for (const th of document.querySelectorAll(".compare-table th[data-sort]"))
+    th.querySelector("button").addEventListener("click", () => sortBy(th.dataset.sort));
+  $("sort-key").addEventListener("change", () => {
+    compareSort.key = $("sort-key").value;
+    renderComparison();
+  });
+  $("sort-dir").addEventListener("change", () => {
+    compareSort.dir = $("sort-dir").value === "asc" ? 1 : -1;
+    renderComparison();
+  });
+  $("compare-mode").addEventListener("change", renderComparison);
+  $("compare-search").addEventListener("input", renderComparison);
   $("export-open").addEventListener("click", openExport);
   $("export-close").addEventListener("click", () => $("export-dialog").close());
   $("export-dialog").addEventListener("cancel", (event) => {
@@ -924,10 +1154,9 @@ async function init() {
     if (!r.ok) throw Error("โหลดการตั้งค่าไม่สำเร็จ");
     metadata = await r.json();
     for (const s of metadata.strategies) params[s.id] = { ...s.params };
-    $("strategy").replaceChildren(
-      ...metadata.strategies.map((s) => new Option(s.name, s.id)),
-    );
-    $("strategy").value = "supertrend";
+    buildStrategyPicker();
+    for (const s of metadata.strategies) selectedStrategies.add(s.id);
+    setMainStrategy("supertrend");
     $("interval").replaceChildren(
       ...metadata.intervals.map((i) => new Option(i, i)),
     );
@@ -937,13 +1166,21 @@ async function init() {
     $("from").value = local(Date.now() - 30 * 86400000);
     await refreshDatasets();
     if (snapshots.some(s => s.records.some(r => r.ready))) $("source").value = "local";
-    parameters();
     sourceFields();
     $("config").addEventListener("submit", (e) => {
       e.preventDefault();
       run().catch(() => {});
     });
-    $("strategy").addEventListener("change", parameters);
+    $("param-target").addEventListener("change", parameters);
+    $("strategy-all").addEventListener("click", () => {
+      for (const s of metadata.strategies) selectedStrategies.add(s.id);
+      syncPicker();
+    });
+    $("strategy-none").addEventListener("click", () => {
+      selectedStrategies.clear();
+      mainStrategy = "";
+      syncPicker();
+    });
     $("source").addEventListener("change", sourceFields);
     $("mode").addEventListener("change", () => {
       $("slippage").disabled = $("mode").value === "legacy";
