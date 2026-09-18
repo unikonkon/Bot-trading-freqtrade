@@ -11,7 +11,9 @@ let chartColors = {};
 let exporting = false;
 let snapshots = [], localRunId = null;
 const selectedStrategies = new Set();
+const selectedIntervals = new Set();
 let mainStrategy = "";
+let mainInterval = "";
 let compareSort = { key: "returnPct", dir: -1 };
 const TABS = ["chart", "compare", "trades", "inspect"];
 const parameterLabels = {
@@ -149,6 +151,76 @@ function parameters() {
     }),
   );
 }
+function intervalRecord(interval) {
+  const snapshot = snapshots.find((s) => s.snapshot === $("snapshot").value);
+  return snapshot?.records.find((r) => r.interval === interval);
+}
+function intervalAvailable(interval) {
+  return $("source").value !== "local" || !!intervalRecord(interval)?.ready;
+}
+function buildIntervalPicker() {
+  $("interval-list").replaceChildren(
+    ...metadata.intervals.map((interval) => {
+      const chip = node("span", undefined, "interval-chip");
+      chip.dataset.id = interval;
+      const toggle = node("button", interval, "interval-toggle");
+      toggle.type = "button";
+      toggle.addEventListener("click", () => {
+        if (selectedIntervals.has(interval)) {
+          selectedIntervals.delete(interval);
+          if (mainInterval === interval) mainInterval = [...selectedIntervals][0] ?? "";
+        } else selectedIntervals.add(interval);
+        syncIntervals();
+      });
+      const star = node("button", "★", "interval-star");
+      star.type = "button";
+      star.title = `ตั้ง ${interval} เป็นช่วงหลัก`;
+      star.setAttribute("aria-label", star.title);
+      star.addEventListener("click", () => setMainInterval(interval));
+      chip.append(toggle, star);
+      return chip;
+    }),
+  );
+}
+// The main interval drives the chart, per-bar values and the Telegram preview,
+// so it is always part of the run.
+function setMainInterval(interval) {
+  mainInterval = interval;
+  selectedIntervals.add(interval);
+  syncIntervals();
+}
+function syncIntervals() {
+  for (const interval of [...selectedIntervals])
+    if (!intervalAvailable(interval)) selectedIntervals.delete(interval);
+  if (mainInterval && !selectedIntervals.has(mainInterval))
+    mainInterval = [...selectedIntervals][0] ?? "";
+  if (!mainInterval && selectedIntervals.size) mainInterval = [...selectedIntervals][0];
+  for (const chip of [...$("interval-list").children]) {
+    const interval = chip.dataset.id,
+      on = selectedIntervals.has(interval),
+      main = interval === mainInterval,
+      available = intervalAvailable(interval);
+    const record = intervalRecord(interval);
+    chip.classList.toggle("is-on", on);
+    chip.classList.toggle("is-main", main);
+    chip.classList.toggle("is-off", !available);
+    const toggle = chip.querySelector(".interval-toggle");
+    toggle.setAttribute("aria-pressed", String(on));
+    toggle.disabled = !available || active;
+    toggle.title = !available
+      ? `ชุดข้อมูลนี้ยังไม่มี ${interval}`
+      : record
+        ? `${interval} · ${record.bars.toLocaleString()} แท่ง`
+        : interval;
+    const star = chip.querySelector(".interval-star");
+    star.setAttribute("aria-pressed", String(main));
+    star.disabled = !available || active;
+  }
+  $("interval-count").textContent =
+    `เลือก ${selectedIntervals.size} / ${metadata.intervals.filter(intervalAvailable).length}`;
+  $("interval-error").hidden = selectedIntervals.size > 0;
+  updateDatasetSummary();
+}
 function buildStrategyPicker() {
   $("strategy-list").replaceChildren(
     ...metadata.strategies.map((s) => {
@@ -245,17 +317,25 @@ function sourceFields() {
   $("from").disabled = !range;
   $("to").disabled = !range;
   $("limit").disabled = $("source").value !== "latest";
-  $("range-help").textContent = local ? "เลือกช่วงภายในไฟล์; คำนวณจากแท่งจริงครบช่วง พร้อม warmup" : "สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator";
-  updateDatasetSummary();
+  $("range-help").textContent = local ? "เลือกช่วงภายในไฟล์; คำนวณจากแท่งจริงครบช่วง พร้อม warmup" : "สูงสุด 10,000 แท่ง ต่อช่วงแท่งเทียน พร้อมข้อมูลเตรียม indicator; ช่วงที่เกินจะถูกข้ามพร้อมคำเตือน";
+  syncIntervals();
 }
 function updateDatasetSummary() {
-  const snapshot = snapshots.find(s => s.snapshot === $("snapshot").value);
-  const record = snapshot?.records.find(r => r.interval === $("interval").value);
-  $("local-summary").textContent = !record ? "ยังไม่มีไฟล์สำหรับช่วงแท่งนี้" :
-    `${record.ready ? "พร้อมทดสอบ" : "กำลังดาวน์โหลด"} · ${record.bars.toLocaleString()} แท่ง · ${time(record.from)} – ${time(record.to)} · BTCUSDT Spot`;
-  if (record) {
+  const chosen = [...selectedIntervals];
+  const records = chosen.map(intervalRecord).filter(Boolean);
+  $("local-summary").textContent = !chosen.length
+    ? "ยังไม่ได้เลือกช่วงแท่งเทียน"
+    : !records.length
+      ? "ชุดข้อมูลนี้ยังไม่มีไฟล์ของช่วงที่เลือก"
+      : `${records.length} ช่วง · ${records.reduce((sum, r) => sum + r.bars, 0).toLocaleString()} แท่งรวม · ช่วงหลัก ${mainInterval || "—"}` +
+        (records.length > 1
+          ? ` · ทุกช่วงมีข้อมูลร่วมกัน ${time(Math.max(...records.map(r => r.from)))} – ${time(Math.min(...records.map(r => r.to)))}`
+          : ` · ${time(records[0].from)} – ${time(records[0].to)}`);
+  // Date limits use the overlap of every selected interval so one range fits them all.
+  if (records.length) {
     const localDate = ms => new Date(ms + 7 * 3600000).toISOString().slice(0, 16);
-    $("from").min = localDate(record.from); $("to").max = localDate(record.to);
+    $("from").min = localDate(Math.max(...records.map(r => r.from)));
+    $("to").max = localDate(Math.min(...records.map(r => r.to)));
     if ($("source").value === "local") {
       if ($("from").value < $("from").min) $("from").value = $("from").min;
       if ($("to").value > $("to").max) $("to").value = $("to").max;
@@ -270,7 +350,7 @@ async function refreshDatasets() {
   const previous = $("snapshot").value;
   $("snapshot").replaceChildren(...snapshots.map(s => new Option(`${s.snapshot} · ${s.records.filter(r => r.ready).length}/9 ชุดพร้อม`, s.snapshot)));
   if (snapshots.some(s => s.snapshot === previous)) $("snapshot").value = previous;
-  updateDatasetSummary();
+  if (metadata) syncIntervals();
 }
 async function localBacktest(config) {
   const job = await post("/api/local/start", config);
@@ -304,8 +384,9 @@ async function localView(patch = {}) {
   busy(true); error("");
   const selectedMode = $("display-mode").value, overlay = $("overlay").value;
   try {
-    const next = await post("/api/local/view", { runId: result.runId, strategy: detail.id, offset: result.offset, tradePage, ...patch });
+    const next = await post("/api/local/view", { runId: result.runId, strategy: detail.id, interval: result.interval, offset: result.offset, tradePage, ...patch });
     result = next; detail = next.detail; chartEnd = result.klines.length;
+    setMainInterval(result.interval); updateDataset();
     tradePage = detail.simulations.find(s => s.mode === selectedMode)?.tradePage ?? 0;
     fillBarOptions(); selectDetail(selectedMode);
     if ([...$("overlay").options].some(o => o.value === overlay)) { $("overlay").value = overlay; drawPrice(); }
@@ -325,7 +406,8 @@ async function post(url, payload) {
 function requestConfig() {
   return {
     symbol: $("symbol").value.trim().toUpperCase(),
-    interval: $("interval").value,
+    interval: mainInterval,
+    intervals: metadata.intervals.filter((i) => selectedIntervals.has(i)),
     source: $("source").value,
     limit: Number($("limit").value),
     snapshot: $("snapshot").value,
@@ -344,6 +426,13 @@ function requestConfig() {
 async function run() {
   if (active) throw Error("กำลังทำงานอยู่");
   error("");
+  if (!selectedIntervals.size) {
+    $("interval-error").hidden = false;
+    $("interval-list").scrollIntoView({ block: "nearest" });
+    const message = "เลือกอย่างน้อย 1 ช่วงแท่งเทียนก่อนรันทดสอบ";
+    error(message);
+    throw Error(message);
+  }
   if (!selectedStrategies.size) {
     $("strategy-error").hidden = false;
     $("strategy-list").scrollIntoView({ block: "nearest" });
@@ -363,23 +452,31 @@ async function run() {
     const config = requestConfig();
     const next = config.source === "local" ? await localBacktest(config) : await post("/api/backtest", config);
     result = next;
-    detail = result.detail || result.results[0];
+    detail =
+      result.detail ||
+      result.results.find(
+        (r) => r.interval === result.interval && r.id === result.config.selected,
+      ) ||
+      result.results[0];
     chartEnd = result.klines.length;
     tradePage = 0;
+    // The run may have dropped intervals that could not be loaded.
+    setMainInterval(result.interval);
     $("empty").hidden = true;
     $("output").hidden = false;
     showTab("chart");
-    $("dataset").textContent =
-      `${(result.totalBars ?? result.klines.length).toLocaleString()} แท่ง · ${time(result.from ?? result.klines[0].openTime)} – ${time(result.to ?? result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง`;
+    updateDataset();
     $("warnings").replaceChildren(...result.warnings.map((w) => node("p", w)));
     fillBarOptions();
     selectDetail();
+    const ranIntervals = new Set(result.results.map((r) => r.interval)).size;
     $("status").textContent =
-      `ทดสอบเสร็จ · ${result.results.length} กลยุทธ์ · ${new Date().toLocaleTimeString("th-TH")}`;
+      `ทดสอบเสร็จ · ${new Set(result.results.map((r) => r.id)).size} กลยุทธ์ × ${ranIntervals} ช่วงแท่ง · ${new Date().toLocaleTimeString("th-TH")}`;
     return {
       runId: result.runId,
       bars: result.totalBars ?? result.klines.length,
-      strategies: result.results.length,
+      strategies: new Set(result.results.map((r) => r.id)).size,
+      intervals: ranIntervals,
     };
   } catch (e) {
     error(e.message);
@@ -389,6 +486,15 @@ async function run() {
     busy(false);
   }
 }
+function updateDataset() {
+  const bars = result.totalBars ?? result.klines.length;
+  const others = (result.intervals ?? [])
+    .filter((i) => i.interval !== result.interval)
+    .map((i) => `${i.interval} ${i.bars.toLocaleString()}`);
+  $("dataset").textContent =
+    `ช่วงหลัก ${result.interval} · ${bars.toLocaleString()} แท่ง · ${time(result.from ?? result.klines[0].openTime)} – ${time(result.to ?? result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง` +
+    (others.length ? ` · อีก ${others.length} ช่วง: ${others.join(", ")} แท่ง` : "");
+}
 function simulation() {
   return (
     detail.simulations.find((s) => s.mode === $("display-mode").value) ||
@@ -397,7 +503,7 @@ function simulation() {
 }
 function selectDetail(mode) {
   $("result-title").textContent =
-    `${result.config.symbol} / ${result.config.interval} · ${detail.name}`;
+    `${result.config.symbol} / ${result.interval} · ${detail.name}`;
   const old = mode || $("display-mode").value;
   $("display-mode").replaceChildren(
     ...detail.simulations.map((s) => new Option(modeName[s.mode], s.mode)),
@@ -442,6 +548,18 @@ function syncModeFilter() {
   );
   $("compare-mode").value = modes.includes(keep) ? keep : "";
   $("compare-mode-field").hidden = modes.length < 2;
+  const intervals = metadata.intervals.filter((i) =>
+    result.results.some((r) => r.interval === i),
+  );
+  const keepInterval = $("compare-interval").value;
+  $("compare-interval").replaceChildren(
+    new Option("ทุกช่วง", ""),
+    ...intervals.map((i) => new Option(i, i)),
+  );
+  $("compare-interval").value = intervals.includes(keepInterval)
+    ? keepInterval
+    : "";
+  $("compare-interval-field").hidden = intervals.length < 2;
 }
 function render() {
   const s = simulation();
@@ -493,15 +611,18 @@ function render() {
 }
 function comparisonRows() {
   const modeFilter = $("compare-mode").value,
+    intervalFilter = $("compare-interval").value,
     query = $("compare-search").value.trim().toLowerCase();
   const rows = [];
   for (const r of result.results)
     for (const sim of r.simulations) {
       if (modeFilter && sim.mode !== modeFilter) continue;
+      if (intervalFilter && r.interval !== intervalFilter) continue;
       if (
         query &&
         !r.name.toLowerCase().includes(query) &&
-        !r.id.toLowerCase().includes(query)
+        !r.id.toLowerCase().includes(query) &&
+        r.interval !== query
       )
         continue;
       rows.push({ r, sim });
@@ -510,9 +631,11 @@ function comparisonRows() {
   const value = ({ r, sim }) =>
     compareSort.key === "name"
       ? r.name
-      : compareSort.key === "profitFactor" && sim.profitFactor === null
-        ? Infinity
-        : sim[compareSort.key];
+      : compareSort.key === "interval"
+        ? metadata.intervals.indexOf(r.interval)
+        : compareSort.key === "profitFactor" && sim.profitFactor === null
+          ? Infinity
+          : sim[compareSort.key];
   rows.sort((a, b) => {
     const x = value(a),
       y = value(b);
@@ -528,7 +651,12 @@ function comparisonRows() {
               : x > y
                 ? 1
                 : -1;
-    return cmp * compareSort.dir || a.r.name.localeCompare(b.r.name, "th");
+    return (
+      cmp * compareSort.dir ||
+      a.r.name.localeCompare(b.r.name, "th") ||
+      metadata.intervals.indexOf(a.r.interval) -
+        metadata.intervals.indexOf(b.r.interval)
+    );
   });
   return rows;
 }
@@ -551,7 +679,7 @@ function updateSortIndicators() {
 }
 function sortBy(key) {
   if (compareSort.key === key) compareSort.dir *= -1;
-  else compareSort = { key, dir: key === "name" ? 1 : -1 };
+  else compareSort = { key, dir: key === "name" || key === "interval" ? 1 : -1 };
   renderComparison();
 }
 function renderComparison() {
@@ -561,18 +689,26 @@ function renderComparison() {
     const tr = node(
       "tr",
       undefined,
-      r.id === detail.id && sim.mode === current ? "selected" : "",
+      r.id === detail.id && r.interval === result.interval && sim.mode === current
+        ? "selected"
+        : "",
     );
     tr.append(node("td", String(index + 1), "rank-col"));
     const cell = node("td"),
       button = node("button", r.name);
     button.type = "button";
-    button.title = `แสดง ${r.name} เป็นกลยุทธ์หลัก`;
+    button.title = `แสดง ${r.name} ที่ช่วง ${r.interval} เป็นกลยุทธ์หลัก`;
     if (r.id === mainStrategy) button.append(node("span", "หลัก", "main-tag"));
     button.append(node("small", modeName[sim.mode]));
-    button.addEventListener("click", () => changeDetail(r.id, sim.mode));
+    button.addEventListener("click", () =>
+      changeDetail(r.id, sim.mode, r.interval),
+    );
     cell.append(button);
     tr.append(cell);
+    const intervalCell = node("td", r.interval, "interval-cell");
+    if (r.interval === result.interval)
+      intervalCell.append(node("span", "★", "interval-main-tag"));
+    tr.append(intervalCell);
     for (const [text, c] of [
       [pct(sim.returnPct), sim.returnPct],
       [
@@ -589,38 +725,62 @@ function renderComparison() {
   if (!list.length) {
     const tr = node("tr"),
       td = node("td", "ไม่พบกลยุทธ์ที่ตรงกับตัวกรอง");
-    td.colSpan = 7;
+    td.colSpan = 8;
     tr.append(td);
     list.push(tr);
   }
   $("comparison").replaceChildren(...list);
   $("compare-count").textContent =
-    `${rows.length} แถว · ${new Set(rows.map((row) => row.r.id)).size} กลยุทธ์`;
+    `${rows.length} แถว · ${new Set(rows.map((row) => row.r.id)).size} กลยุทธ์ × ${new Set(rows.map((row) => row.r.interval)).size} ช่วง`;
   $("tab-compare-count").textContent = String(result.results.length);
   updateSortIndicators();
 }
-async function changeDetail(id, mode) {
+async function changeDetail(id, mode, interval = result.interval) {
   if (active) return;
   if (result?.paged) {
     if ([...$("display-mode").options].some(o => o.value === mode)) $("display-mode").value = mode;
     setMainStrategy(id);
-    await localView({ strategy: id, tradePage: 0 }); return;
+    // A different interval reloads its candles, so the bar offset restarts at the end.
+    await localView(
+      interval === result.interval
+        ? { strategy: id, tradePage: 0 }
+        : { strategy: id, interval, tradePage: 0, offset: undefined },
+    );
+    return;
   }
   error("");
   busy(true);
   $("status").textContent = "กำลังเปิดรายละเอียดจากข้อมูลชุดเดิม…";
   try {
-    let d = result.results.find((r) => r.id === id);
-    if (!d?.signals.length) {
-      d = await post("/api/detail", { runId: result.runId, strategy: id });
-      const index = result.results.findIndex((r) => r.id === id);
-      result.results[index] = d;
+    let d = result.results.find((r) => r.id === id && r.interval === interval);
+    if (!d?.signals.length || interval !== result.interval) {
+      const next = await post("/api/detail", {
+        runId: result.runId,
+        strategy: id,
+        interval,
+      });
+      d = next.detail;
+      const index = result.results.findIndex(
+        (r) => r.id === id && r.interval === interval,
+      );
+      if (index >= 0) result.results[index] = d;
+      if (interval !== result.interval) {
+        result.interval = next.interval;
+        result.warmup = next.warmup;
+        result.klines = next.klines;
+        result.from = next.klines[0].openTime;
+        result.to = next.klines.at(-1).closeTime;
+        chartEnd = result.klines.length;
+        setMainInterval(next.interval);
+        updateDataset();
+        fillBarOptions();
+      }
     }
     detail = d;
     tradePage = 0;
     setMainStrategy(id);
     selectDetail(mode);
-    $("status").textContent = `แสดง ${d.name} · ใช้ข้อมูลชุดเดิม`;
+    $("status").textContent = `แสดง ${d.name} · ช่วง ${result.interval} · ใช้ข้อมูลชุดเดิม`;
   } catch (e) {
     error(e.message);
     $("status").textContent = "เปิดรายละเอียดไม่สำเร็จ";
@@ -1012,8 +1172,10 @@ function openExport() {
       return label;
     }),
   );
+  const ranIntervals = result.intervals ?? [{ interval: result.interval, bars: result.klines.length }];
   $("export-dataset").textContent =
-    `${result.config.symbol} / ${result.config.interval} · ${result.klines.length} แท่ง · ${time(result.klines[0].openTime)} – ${time(result.klines.at(-1).closeTime)}`;
+    `${result.config.symbol} · ${ranIntervals.length} ช่วงแท่งเทียน · ` +
+    ranIntervals.map((i) => `${i.interval} ${i.bars.toLocaleString()} แท่ง`).join(" · ");
   $("export-status").textContent = "";
   updateExportSelection();
   $("export-dialog").showModal();
@@ -1067,8 +1229,16 @@ async function downloadExport() {
 
 async function init() {
   $("refresh-datasets").addEventListener("click", () => refreshDatasets().catch(e => error(e.message)));
-  $("snapshot").addEventListener("change", updateDatasetSummary);
-  $("interval").addEventListener("change", updateDatasetSummary);
+  $("snapshot").addEventListener("change", () => syncIntervals());
+  $("interval-all").addEventListener("click", () => {
+    for (const i of metadata.intervals) if (intervalAvailable(i)) selectedIntervals.add(i);
+    syncIntervals();
+  });
+  $("interval-none").addEventListener("click", () => {
+    selectedIntervals.clear();
+    mainInterval = "";
+    syncIntervals();
+  });
   $("local-full").addEventListener("change", sourceFields);
   $("cancel-run").addEventListener("click", () => localRunId && post("/api/local/cancel", { runId: localRunId }).catch(e => error(e.message)));
   $("data-prev").addEventListener("click", () => localView({ offset: Math.max(0, result.offset - 2000) }));
@@ -1102,6 +1272,7 @@ async function init() {
     renderComparison();
   });
   $("compare-mode").addEventListener("change", renderComparison);
+  $("compare-interval").addEventListener("change", renderComparison);
   $("compare-search").addEventListener("input", renderComparison);
   $("export-open").addEventListener("click", openExport);
   $("export-close").addEventListener("click", () => $("export-dialog").close());
@@ -1157,10 +1328,8 @@ async function init() {
     buildStrategyPicker();
     for (const s of metadata.strategies) selectedStrategies.add(s.id);
     setMainStrategy("supertrend");
-    $("interval").replaceChildren(
-      ...metadata.intervals.map((i) => new Option(i, i)),
-    );
-    $("interval").value = "1h";
+    buildIntervalPicker();
+    setMainInterval("1h");
     const local = (ms) => new Date(ms + 7 * 3600000).toISOString().slice(0, 16);
     $("to").value = local(Date.now());
     $("from").value = local(Date.now() - 30 * 86400000);

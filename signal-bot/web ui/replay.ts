@@ -14,7 +14,8 @@ const root = path.resolve(
 async function main() {
   const read = (name: string) => fs.readFile(path.join(root, name), "utf8");
   const config = JSON.parse(await read("config.json")) as {
-    startIndex: number;
+    intervals: string[];
+    datasets: Record<string, { startIndex: number }>;
     strategies: StrategyId[];
     params: Record<string, Record<string, number>>;
     fee: number;
@@ -35,31 +36,41 @@ async function main() {
       `Checksum mismatch: ${file}`,
     );
   }
-  const klines = JSON.parse(await read("input-klines.json")) as KlineData[];
-  await fs.mkdir(path.join(root, "recomputed"), { recursive: true });
-  for (const id of config.strategies) {
-    const actual = calculateExport(
-      klines,
-      config.startIndex,
-      id,
-      config.params[id],
-      config.fee,
-      config.slippage,
-      config.mode,
-    );
-    const normalized = JSON.parse(JSON.stringify(actual));
-    assert.deepEqual(
-      normalized,
-      JSON.parse(await read(`calculations/${id}.json`)),
-      `Replay mismatch: ${id}`,
-    );
-    await fs.writeFile(
-      path.join(root, `recomputed/${id}.json`),
-      JSON.stringify(normalized, null, 2),
-    );
-    console.log(
-      `PASS ${id}: ${actual.records.length} candles; signals, indicators and simulations match`,
-    );
+  // Every interval in the export is replayed on its own files.
+  for (const interval of config.intervals) {
+    if (interval.includes("/") || interval.includes(".."))
+      throw new Error("Unsafe interval name");
+    const startIndex = config.datasets[interval].startIndex;
+    const klines = JSON.parse(
+      await read(`${interval}/input-klines.json`),
+    ) as KlineData[];
+    await fs.mkdir(path.join(root, interval, "recomputed"), {
+      recursive: true,
+    });
+    for (const id of config.strategies) {
+      const actual = calculateExport(
+        klines,
+        startIndex,
+        id,
+        config.params[id],
+        config.fee,
+        config.slippage,
+        config.mode,
+      );
+      const normalized = JSON.parse(JSON.stringify(actual));
+      assert.deepEqual(
+        normalized,
+        JSON.parse(await read(`${interval}/calculations/${id}.json`)),
+        `Replay mismatch: ${interval} ${id}`,
+      );
+      await fs.writeFile(
+        path.join(root, interval, "recomputed", `${id}.json`),
+        JSON.stringify(normalized, null, 2),
+      );
+      console.log(
+        `PASS ${interval} ${id}: ${actual.records.length} candles; signals, indicators and simulations match`,
+      );
+    }
   }
 }
 main().catch((error) => {

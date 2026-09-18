@@ -38,7 +38,7 @@ const cfg = validate({
 const run = {
   at: Date.now(),
   cfg,
-  data: { klines, start: 300, warnings: ["fixture"] },
+  datasets: { "1h": { klines, start: 300, warnings: ["fixture"] } },
 };
 function unzip(buffer: Buffer) {
   const files: Record<string, string> = {};
@@ -78,13 +78,14 @@ test("export validates selections, duplicates, unsafe/unknown IDs and empty requ
 test("selected export contains requested data only, full warmup, matching provenance and standalone code", async () => {
   const sources = await captureExportSources();
   const files = buildExportFiles("r", run, ["rsi", "cdc_actionzone"], sources);
-  assert.ok(files["signals/rsi.csv"].startsWith("\uFEFF"));
-  assert.ok(!files["signals/supertrend.csv"]);
-  assert.equal(JSON.parse(files["input-klines.json"]).length, 1000);
+  assert.ok(files["1h/signals/rsi.csv"].startsWith("\uFEFF"));
+  assert.ok(!files["1h/signals/supertrend.csv"]);
+  assert.equal(JSON.parse(files["1h/input-klines.json"]).length, 1000);
   const config = JSON.parse(files["config.json"]);
-  assert.equal(config.startIndex, 300);
+  assert.equal(config.datasets["1h"].startIndex, 300);
+  assert.deepEqual(config.intervals, ["1h"]);
   assert.equal(config.params.cdc_actionzone.fastPeriod, 3);
-  const c = JSON.parse(files["calculations/cdc_actionzone.json"]);
+  const c = JSON.parse(files["1h/calculations/cdc_actionzone.json"]);
   assert.equal(c.records.length, 700);
   assert.equal(c.records[0].index, 300);
   assert.equal(
@@ -147,11 +148,11 @@ test("download ZIP contains UTF-8 metadata and exact input without path escapes"
   );
   const files = unzip(archive);
   assert.equal(
-    files["input-klines.json"],
+    files["1h/input-klines.json"],
     JSON.stringify(klines, null, 2) + "\n",
   );
   assert.match(files["README.md"], /คำนวณซ้ำ/);
-  assert.ok(files["trades/supertrend-next_open.csv"]);
+  assert.ok(files["1h/trades/supertrend-next_open.csv"]);
   assert.throws(() => zipFiles({ "../escape": "bad" }));
   assert.throws(() => zipFiles({ "/absolute": "bad" }));
 });

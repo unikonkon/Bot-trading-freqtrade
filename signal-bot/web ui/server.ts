@@ -8,7 +8,7 @@ import { randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { STRATEGIES, type StrategyId } from "../../lib/backtest";
 import { INTERVALS } from "../../lib/types/kline";
-import { validate, loadData, type RequestConfig } from "./data";
+import { validate, loadInterval, type IntervalData } from "./data";
 import { analyze } from "./engine";
 import {
   captureExportSources,
@@ -149,7 +149,8 @@ const server = http.createServer(async (req, res) => {
           exportSources,
         );
         const stamp = new Date(run.at).toISOString().replace(/[:.]/g, "-");
-        const filename = `signal-export-${run.cfg.symbol}-${run.cfg.interval}-${stamp}.zip`;
+        const spread = Object.keys(run.datasets);
+        const filename = `signal-export-${run.cfg.symbol}-${spread.length === 1 ? spread[0] : `${spread.length}tf`}-${stamp}.zip`;
         res.writeHead(200, {
           "Content-Type": "application/zip",
           "Content-Disposition": `attachment; filename="${filename}"`,
@@ -159,9 +160,10 @@ const server = http.createServer(async (req, res) => {
         return;
       }
       if (url.pathname === "/api/detail") {
-        const { runId, strategy } = input as {
+        const { runId, strategy, interval } = input as {
           runId: string;
           strategy: StrategyId;
+          interval?: string;
         };
         const run = runs.get(runId);
         if (!run) {
@@ -172,59 +174,83 @@ const server = http.createServer(async (req, res) => {
           json(400, { error: "ไม่พบกลยุทธ์" });
           return;
         }
-        json(
-          200,
-          analyze(
-            run.data.klines,
-            run.data.start,
-            strategy,
-            run.cfg.params[strategy],
-            run.cfg.fee,
-            run.cfg.slippage,
-            run.cfg.mode,
-            true,
-          ),
-        );
+        const wanted = interval ?? run.cfg.interval;
+        const data = run.datasets[wanted];
+        if (!data) {
+          json(400, { error: "ไม่พบช่วงแท่งเทียนในรอบทดสอบนี้" });
+          return;
+        }
+        json(200, {
+          interval: wanted,
+          warmup: data.start,
+          klines: data.klines.slice(data.start),
+          detail: {
+            ...analyze(
+              data.klines,
+              data.start,
+              strategy,
+              run.cfg.params[strategy],
+              run.cfg.fee,
+              run.cfg.slippage,
+              run.cfg.mode,
+              true,
+            ),
+            interval: wanted,
+          },
+        });
         return;
       }
       const cfg = validate(input);
       if (cfg.source === "local") throw Error("ใช้ /api/local/start สำหรับข้อมูลในเครื่อง");
-      const data = await loadData(cfg);
-      const strategies = cfg.strategies.filter((id) => id !== cfg.selected);
-      const detail = analyze(
-        data.klines,
-        data.start,
-        cfg.selected,
-        cfg.params[cfg.selected],
-        cfg.fee,
-        cfg.slippage,
-        cfg.mode,
-        true,
-      );
-      const results = [
-        detail,
-        ...strategies.map((id) =>
-          analyze(
-            data.klines,
-            data.start,
+      // Each interval is loaded on its own: one that is unavailable or over the
+      // 10,000-bar cap is skipped with a warning instead of failing the run.
+      const datasets: Record<string, IntervalData> = {};
+      const warnings: string[] = [];
+      for (const interval of cfg.intervals) {
+        const loaded = await loadInterval(cfg, interval);
+        warnings.push(...loaded.warnings);
+        if (loaded.data) datasets[interval] = loaded.data;
+      }
+      const ready = Object.keys(datasets);
+      if (!ready.length)
+        throw Error("ไม่มีช่วงแท่งเทียนที่โหลดได้ กรุณาปรับช่วงวันที่หรือเลือก timeframe อื่น");
+      const mainInterval = ready.includes(cfg.interval) ? cfg.interval : ready[0];
+      if (mainInterval !== cfg.interval)
+        warnings.push(`ช่วงหลัก ${cfg.interval} ใช้ไม่ได้ จึงแสดงกราฟของ ${mainInterval} แทน`);
+      const config = { ...cfg, interval: mainInterval, intervals: ready };
+      const results = ready.flatMap((interval) =>
+        cfg.strategies.map((id) => ({
+          ...analyze(
+            datasets[interval].klines,
+            datasets[interval].start,
             id,
             cfg.params[id],
             cfg.fee,
             cfg.slippage,
             cfg.mode,
-            false,
+            interval === mainInterval && id === cfg.selected,
           ),
-        ),
-      ];
+          interval,
+        })),
+      );
       const runId = randomUUID();
       while (runs.size >= 3) runs.delete(runs.keys().next().value!);
-      runs.set(runId, { at: Date.now(), cfg, data });
+      runs.set(runId, { at: Date.now(), cfg: config, datasets });
+      const main = datasets[mainInterval];
       json(200, {
         runId,
-        config: cfg,
-        warnings: data.warnings,
-        warmup: data.start,
-        klines: data.klines.slice(data.start),
+        config,
+        warnings,
+        interval: mainInterval,
+        intervals: ready.map((interval) => ({
+          interval,
+          bars: datasets[interval].klines.length - datasets[interval].start,
+          warmup: datasets[interval].start,
+          from: datasets[interval].klines[datasets[interval].start].openTime,
+          to: datasets[interval].klines.at(-1)!.closeTime,
+        })),
+        warmup: main.start,
+        klines: main.klines.slice(main.start),
         results,
       });
     } finally {

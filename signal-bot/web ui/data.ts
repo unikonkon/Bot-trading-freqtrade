@@ -10,7 +10,10 @@ import { STRATEGIES, type StrategyId } from "../../lib/backtest";
 
 export interface RequestConfig {
   symbol: string;
+  /** Interval shown in the chart, per-bar values and Telegram preview. Always a member of `intervals`. */
   interval: string;
+  /** Every interval the run covers, ordered as in INTERVALS. */
+  intervals: string[];
   source: "latest" | "range" | "local";
   snapshot?: string;
   limit: number;
@@ -49,8 +52,24 @@ export function validate(input: unknown): RequestConfig {
   const symbol = String(v.symbol ?? "").toUpperCase();
   if (!/^[A-Z0-9]{5,24}$/.test(symbol))
     throw new Error("Symbol ไม่ถูกต้อง เช่น BTCUSDT");
-  if (!INTERVALS.includes(v.interval as never))
-    throw new Error("Timeframe ไม่ถูกต้อง");
+  // Accepts a list of intervals; a single `interval` stays valid for older callers.
+  let intervals: string[];
+  if (v.intervals !== undefined) {
+    if (!Array.isArray(v.intervals) || !v.intervals.length)
+      throw new Error("ต้องเลือกอย่างน้อย 1 ช่วงแท่งเทียน");
+    if (v.intervals.length > INTERVALS.length)
+      throw new Error("เลือกช่วงแท่งเทียนเกินจำนวนที่มี");
+    if (!v.intervals.every((i) => INTERVALS.includes(i as never)))
+      throw new Error("Timeframe ไม่ถูกต้อง");
+    if (new Set(v.intervals).size !== v.intervals.length)
+      throw new Error("เลือกช่วงแท่งเทียนซ้ำ");
+    const chosen = new Set(v.intervals as string[]);
+    intervals = INTERVALS.filter((i) => chosen.has(i));
+  } else if (INTERVALS.includes(v.interval as never)) intervals = [String(v.interval)];
+  else throw new Error("Timeframe ไม่ถูกต้อง");
+  const mainInterval = v.interval === undefined ? intervals[0] : String(v.interval);
+  if (!intervals.includes(mainInterval))
+    throw new Error("ช่วงแท่งเทียนหลักต้องอยู่ในรายการที่เลือกทดสอบ");
   if (!["latest", "range", "local"].includes(String(v.source)))
     throw new Error("รูปแบบข้อมูลไม่ถูกต้อง");
   if (!["next_open", "legacy", "both"].includes(String(v.mode)))
@@ -126,7 +145,8 @@ export function validate(input: unknown): RequestConfig {
   }
   const result: RequestConfig = {
     symbol,
-    interval: String(v.interval),
+    interval: mainInterval,
+    intervals,
     source: v.source as RequestConfig["source"],
     limit: number(v.limit ?? 500, "จำนวนแท่ง", 300, 10000, true),
     strategies: requested,
@@ -317,4 +337,25 @@ export async function loadData(
       warnings.push("ข้อมูลมีช่องว่างระหว่างแท่ง โปรดตรวจสอบก่อนใช้ผลทดสอบ");
   }
   return { klines: k, start, warnings };
+}
+
+export type IntervalData = Awaited<ReturnType<typeof loadData>>;
+
+/**
+ * Loads one interval of a multi-interval run. An interval that cannot be loaded —
+ * outside the snapshot, not downloaded yet, or over the 10,000-bar range cap —
+ * is reported instead of failing the whole run.
+ */
+export async function loadInterval(
+  cfg: RequestConfig,
+  interval: string,
+  load: typeof loadData = loadData,
+): Promise<{ data?: IntervalData; warnings: string[] }> {
+  try {
+    const data = await load({ ...cfg, interval });
+    return { data, warnings: data.warnings.map((w) => `[${interval}] ${w}`) };
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : "โหลดข้อมูลไม่สำเร็จ";
+    return { warnings: [`ข้ามช่วง ${interval}: ${reason}`] };
+  }
 }

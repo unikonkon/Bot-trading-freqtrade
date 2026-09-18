@@ -1069,7 +1069,8 @@ footer {
 }
 .compare-table th:nth-child(2),
 .compare-table td:nth-child(2),
-.compare-table th:nth-child(2) button {
+.compare-table th:nth-child(2) button,
+.compare-table th[data-sort="interval"] button {
   text-align: left;
 }
 .compare-table th[data-sort] button::after {
@@ -1155,5 +1156,92 @@ footer {
   .table-toolbar > span {
     margin-left: 0;
     padding-bottom: 0;
+  }
+}
+
+/* Interval chips: toggle to include in the run, ★ to make it the chart interval. */
+.picker-label {
+  font-size: 0.875rem;
+  margin-right: 2px;
+}
+.interval-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.interval-chip {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--input-border);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.interval-chip button {
+  border: 0;
+  border-radius: 0;
+  background: none;
+  min-height: 36px;
+  padding: 4px 13px;
+  font-variant-numeric: tabular-nums;
+}
+.interval-chip:hover:not(.is-off) {
+  border-color: var(--border-hover);
+}
+.interval-chip.is-on {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+.interval-chip.is-on .interval-toggle {
+  color: var(--text);
+  font-weight: 500;
+}
+.interval-chip.is-main {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.interval-chip.is-off {
+  opacity: 0.45;
+}
+.interval-toggle {
+  color: var(--muted);
+}
+/* The ★ only means something once the interval is part of the run. */
+.interval-star {
+  display: none;
+  padding: 4px 11px 4px 3px;
+  color: var(--disabled);
+  font-size: 0.9375rem;
+}
+.interval-chip.is-on .interval-star {
+  display: inline-flex;
+  align-items: center;
+}
+.interval-chip.is-main .interval-star {
+  color: var(--accent);
+}
+.interval-chip button:hover:not(:disabled) {
+  background: var(--hover);
+}
+.interval-chip button:disabled {
+  background: none;
+}
+/* Beats .numeric-table td:not(:first-child), which right-aligns every other column. */
+.numeric-table.compare-table td.interval-cell,
+.numeric-table.compare-table th[data-sort="interval"] {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: 90px;
+}
+.interval-main-tag {
+  margin-left: 6px;
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+@media (max-width: 760px) {
+  .interval-chip button {
+    min-height: 34px;
+    padding: 4px 11px;
   }
 }

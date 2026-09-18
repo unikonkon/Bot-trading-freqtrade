@@ -134,7 +134,7 @@ fs.writeFileSync(path.join(output,'REPORT.th.md'),lines.join('\n'));
 const cfg=validate({symbol:config.symbol,interval:config.interval,source:config.source,from:config.requested.from,to:config.requested.to,limit:config.requested.limit,
  strategy:'smc_adaptive_v2',selected:'smc_adaptive_v2',mode:'both',fee:.1,slippage:.05,params:{...config.params,smc_adaptive_v2:p}});
 const sources=await captureExportSources();
-const archive=createExport('smc-adaptive-v2-offline-analysis',{at:Date.now(),cfg,data:{klines:k,start,warnings:['Offline replay using the original 10-36 export candles and frozen SMC Adaptive V2 parameters']}},['smc_adaptive_v2'],sources);
+const archive=createExport('smc-adaptive-v2-offline-analysis',{at:Date.now(),cfg,datasets:{[cfg.interval]:{klines:k,start,warnings:['Offline replay using the original 10-36 export candles and frozen SMC Adaptive V2 parameters']}}},['smc_adaptive_v2'],sources);
 fs.writeFileSync(path.join(output,'SMC-Adaptive-V2.zip'),archive);
 console.log(JSON.stringify({output,full:full.nextOpen,test:splits[2].rows.find(x=>x.id==='smc_adaptive_v2'),stress,testStress,latest,fixtures,causalPrefixes:cuts.size,archiveBytes:archive.length},null,2));
 }

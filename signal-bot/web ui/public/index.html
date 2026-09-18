@@ -50,20 +50,32 @@
         <div class="settings-grid">
           <fieldset>
             <legend>ข้อมูลราคา</legend>
-            <div class="two">
-              <label
-                >คู่เหรียญ<input
-                  id="symbol"
-                  value="BTCUSDT"
-                  maxlength="24"
-                  pattern="[A-Za-z0-9]{5,24}"
-                  required /></label
-              ><label
-                >ช่วงแท่งเทียน<select id="interval">
-                  <option>1h</option>
-                </select></label
-              >
+            <label
+              >คู่เหรียญ<input
+                id="symbol"
+                value="BTCUSDT"
+                maxlength="24"
+                pattern="[A-Za-z0-9]{5,24}"
+                required
+            /></label>
+            <div class="picker-actions">
+              <span class="picker-label">ช่วงแท่งเทียน</span
+              ><button id="interval-all" type="button">เลือกทั้งหมด</button
+              ><button id="interval-none" type="button">ล้าง</button
+              ><span id="interval-count" class="pill"></span>
             </div>
+            <div
+              id="interval-list"
+              class="interval-list"
+              role="group"
+              aria-label="ช่วงแท่งเทียนที่ทดสอบ"
+            ></div>
+            <p id="interval-error" class="strategy-error" hidden>
+              ต้องเลือกอย่างน้อย 1 ช่วงแท่งเทียน
+            </p>
+            <p class="field-help">
+              กด ★ เพื่อตั้งช่วงหลัก คือช่วงที่ใช้วาดกราฟและดูค่ารายแท่ง
+            </p>
             <label
               >ข้อมูลย้อนหลัง<select id="source">
                 <option value="latest">แท่งล่าสุด</option>
@@ -365,11 +377,16 @@
                     <option value="totalTrades">จำนวนเทรด</option>
                     <option value="profitFactor">Profit factor</option>
                     <option value="name">ชื่อกลยุทธ์</option>
+                    <option value="interval">ช่วงแท่งเทียน</option>
                   </select></label
                 ><label
                   >ลำดับ<select id="sort-dir">
                     <option value="desc" selected>มาก → น้อย</option>
                     <option value="asc">น้อย → มาก</option>
+                  </select></label
+                ><label id="compare-interval-field"
+                  >ช่วงแท่งเทียน<select id="compare-interval">
+                    <option value="">ทุกช่วง</option>
                   </select></label
                 ><label id="compare-mode-field"
                   >โหมดที่เปรียบเทียบ<select id="compare-mode">
@@ -395,6 +412,9 @@
                       <th scope="col" class="rank-col">#</th>
                       <th scope="col" data-sort="name">
                         <button type="button">กลยุทธ์ / โหมด</button>
+                      </th>
+                      <th scope="col" data-sort="interval">
+                        <button type="button">ช่วง</button>
                       </th>
                       <th scope="col" data-sort="returnPct">
                         <button type="button">ผลตอบแทน</button>

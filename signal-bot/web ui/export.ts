@@ -3,14 +3,15 @@ import { createHash } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { STRATEGIES, type StrategyId } from "../../lib/backtest";
-import type { RequestConfig, loadData } from "./data";
+import type { RequestConfig, IntervalData } from "./data";
 import { calculateExport, RULES } from "./export-calculations";
 import { zipFiles } from "./zip";
 
 export interface ExportRun {
   at: number;
   cfg: RequestConfig;
-  data: Awaited<ReturnType<typeof loadData>>;
+  /** One entry per interval the run covers; per-interval files live in `<interval>/`. */
+  datasets: Record<string, IntervalData>;
 }
 const CODE_FILES = [
   "lib/indicators.ts",
@@ -88,9 +89,9 @@ export function buildExportFiles(
   ids: StrategyId[],
   sources: Record<string, string>,
 ) {
-  const cfg = run.cfg,
-    k = run.data.klines,
-    start = run.data.start;
+  const cfg = run.cfg;
+  const intervals = Object.keys(run.datasets);
+  if (!intervals.length) throw new Error("รอบทดสอบนี้ไม่มีข้อมูลให้ส่งออก");
   const files: Record<string, string> = { ...sources };
   const config = {
     schemaVersion: 1,
@@ -99,10 +100,10 @@ export function buildExportFiles(
     exportedAt: new Date().toISOString(),
     symbol: cfg.symbol,
     interval: cfg.interval,
+    intervals,
     source: cfg.source,
     snapshot: cfg.snapshot ?? null,
     requested: { from: cfg.from ?? null, to: cfg.to ?? null, limit: cfg.limit },
-    startIndex: start,
     confirmedPivots: true,
     strategies: ids,
     params: Object.fromEntries(ids.map((id) => [id, cfg.params[id]])),
@@ -112,42 +113,30 @@ export function buildExportFiles(
     timezone: "Asia/Bangkok",
     signalTimezone: "UTC",
     inputFormat: "KlineData[] (normalized Binance klines; includes warmup)",
-    actual: {
-      from: k[start].openTime,
-      to: k.at(-1)!.closeTime,
-      bars: k.length - start,
-      warmup: start,
-    },
-    warnings: run.data.warnings,
+    datasets: Object.fromEntries(
+      intervals.map((interval) => {
+        const { klines, start, warnings } = run.datasets[interval];
+        return [
+          interval,
+          {
+            path: interval,
+            startIndex: start,
+            actual: {
+              from: klines[start].openTime,
+              to: klines.at(-1)!.closeTime,
+              bars: klines.length - start,
+              warmup: start,
+            },
+            warnings,
+          },
+        ];
+      }),
+    ),
   };
   files["config.json"] = json(config);
-  files["input-klines.json"] = json(k);
-  files["input-klines.csv"] = csv([
-    [
-      "index",
-      "isWarmup",
-      "openTime",
-      "closeTime",
-      "open",
-      "high",
-      "low",
-      "close",
-      "volume",
-    ],
-    ...k.map((b, i) => [
-      i,
-      i < start,
-      b.openTime,
-      b.closeTime,
-      b.open,
-      b.high,
-      b.low,
-      b.close,
-      b.volume,
-    ]),
-  ]);
   const summary: unknown[][] = [
     [
+      "interval",
       "strategy",
       "mode",
       "returnPct",
@@ -158,96 +147,126 @@ export function buildExportFiles(
       "profitFactor",
     ],
   ];
-  for (const id of ids) {
-    const calc = calculateExport(
-      k,
-      start,
-      id,
-      cfg.params[id],
-      cfg.fee,
-      cfg.slippage,
-      cfg.mode,
-    );
-    files[`calculations/${id}.json`] = json(calc);
-    const keys = Object.keys(calc.series);
-    files[`signals/${id}.json`] = json(calc.records);
-    files[`signals/${id}.csv`] = csv([
+  for (const interval of intervals) {
+    const k = run.datasets[interval].klines,
+      start = run.datasets[interval].start;
+    files[`${interval}/input-klines.json`] = json(k);
+    files[`${interval}/input-klines.csv`] = csv([
       [
-        "symbol",
-        "interval",
-        "strategy",
-        "inputIndex",
+        "index",
+        "isWarmup",
         "openTime",
         "closeTime",
-        "signalTimeUtc",
         "open",
         "high",
         "low",
         "close",
         "volume",
-        "previousClose",
-        "signal",
-        "reason",
-        ...keys,
-        ...keys.map((key) => "previous." + key),
-        "events",
       ],
-      ...calc.records.map((r) => [
-        cfg.symbol,
-        cfg.interval,
-        id,
-        r.index,
-        r.openTime,
-        r.closeTime,
-        r.signalTimeUtc,
-        r.open,
-        r.high,
-        r.low,
-        r.close,
-        r.volume,
-        r.previousClose,
-        r.signal,
-        r.reason,
-        ...keys.map((key) => r.current[key]),
-        ...keys.map((key) => r.previous[key]),
-        r.events,
+      ...k.map((b, i) => [
+        i,
+        i < start,
+        b.openTime,
+        b.closeTime,
+        b.open,
+        b.high,
+        b.low,
+        b.close,
+        b.volume,
       ]),
     ]);
-    for (const sim of calc.simulations) {
-      summary.push([
+    for (const id of ids) {
+      const calc = calculateExport(
+        k,
+        start,
         id,
-        sim.mode,
-        sim.returnPct,
-        sim.maxDrawdownPct,
-        sim.mode === "legacy" ? "percentage_points" : "percent",
-        sim.winRate,
-        sim.totalTrades,
-        sim.profitFactor === null ? "Infinity" : sim.profitFactor,
-      ]);
-      files[`trades/${id}-${sim.mode}.csv`] = csv([
+        cfg.params[id],
+        cfg.fee,
+        cfg.slippage,
+        cfg.mode,
+      );
+      files[`${interval}/calculations/${id}.json`] = json(calc);
+      const keys = Object.keys(calc.series);
+      files[`${interval}/signals/${id}.json`] = json(calc.records);
+      files[`${interval}/signals/${id}.csv`] = csv([
         [
-          "entryIdx",
-          "entryTime",
-          "entryPrice",
-          "exitIdx",
-          "exitTime",
-          "exitPrice",
-          "pnlPct",
-          "bars",
+          "symbol",
+          "interval",
+          "strategy",
+          "inputIndex",
+          "openTime",
+          "closeTime",
+          "signalTimeUtc",
+          "open",
+          "high",
+          "low",
+          "close",
+          "volume",
+          "previousClose",
+          "signal",
           "reason",
+          ...keys,
+          ...keys.map((key) => "previous." + key),
+          "events",
         ],
-        ...sim.trades.map((t) => [
-          t.entryIdx,
-          t.entryTime,
-          t.entryPrice,
-          t.exitIdx,
-          t.exitTime,
-          t.exitPrice,
-          t.pnlPct,
-          t.bars,
-          t.reason,
+        ...calc.records.map((r) => [
+          cfg.symbol,
+          cfg.interval,
+          id,
+          r.index,
+          r.openTime,
+          r.closeTime,
+          r.signalTimeUtc,
+          r.open,
+          r.high,
+          r.low,
+          r.close,
+          r.volume,
+          r.previousClose,
+          r.signal,
+          r.reason,
+          ...keys.map((key) => r.current[key]),
+          ...keys.map((key) => r.previous[key]),
+          r.events,
         ]),
       ]);
+      for (const sim of calc.simulations) {
+        summary.push([
+          interval,
+          id,
+          sim.mode,
+          sim.returnPct,
+          sim.maxDrawdownPct,
+          sim.mode === "legacy" ? "percentage_points" : "percent",
+          sim.winRate,
+          sim.totalTrades,
+          sim.profitFactor === null ? "Infinity" : sim.profitFactor,
+        ]);
+        files[`${interval}/trades/${id}-${sim.mode}.csv`] = csv([
+          [
+            "entryIdx",
+            "entryTime",
+            "entryPrice",
+            "exitIdx",
+            "exitTime",
+            "exitPrice",
+            "pnlPct",
+            "bars",
+            "reason",
+          ],
+          ...sim.trades.map((t) => [
+            t.entryIdx,
+            t.entryTime,
+            t.entryPrice,
+            t.exitIdx,
+            t.exitTime,
+            t.exitPrice,
+            t.pnlPct,
+            t.bars,
+            t.reason,
+          ]),
+        ]);
+      }
     }
   }
   files["summary.csv"] = csv(summary);
@@ -285,7 +304,7 @@ export function buildExportFiles(
     include: ["lib/**/*.ts", "signal-bot/**/*.ts"],
   });
   files["README.md"] =
-    `# Signal bot — Export ผลคำนวณและโค้ด\n\nรอบทดสอบ ${runId}\n\n${cfg.symbol} / ${cfg.interval}; ${ids.length} กลยุทธ์; ${k.length - start} แท่งทดสอบ + ${start} warmup\n\n## คำนวณซ้ำ\n\nใช้ Node.js 20+ รันจากโฟลเดอร์ที่แตก ZIP:\n\n\`\`\`bash\nnpm ci\nnpm run replay\n\`\`\`\n\nติดตั้ง dependency ครั้งแรกต้องใช้อินเทอร์เน็ต หลังติดตั้งแล้ว replay ไม่เรียก Binance/Telegram ตรวจ SHA-256 ทุกไฟล์ใน manifest ก่อนคำนวณ และตรวจผลทั้งหมดตรงกับ calculations/*.json ก่อนเขียน recomputed/*.json\n\n## ไฟล์\n\n- config.json: พารามิเตอร์ที่ใช้ในรอบเดิม ไม่ใช่ฟอร์มที่แก้ภายหลัง\n- input-klines.json: KlineData[] ที่แปลงจาก Binance รวม warmup ไม่ใช่ raw array ต้นฉบับ\n- input-klines.csv: แท่งทั้งหมดพร้อม isWarmup\n- calculations/*.json: indicator ของกลยุทธ์ที่เลือกแบบเต็ม รวม warmup, series, records และ simulations\n- signals/*.csv / *.json: เฉพาะช่วงทดสอบ รวม HOLD พร้อมค่าปัจจุบัน/ก่อนหน้า และ events\n- trades/*.csv: เทรดจำลองแต่ละโหมด แยกจากสัญญาณ\n- summary.csv: สรุปผลการจำลอง\n- rules.md: เงื่อนไขจริงของกลยุทธ์ที่เลือก\n- lib/ และ signal-bot/web ui/: โค้ดคำนวณร่วม snapshot ตอนเริ่ม server; shared library มีครบทุกกลยุทธ์ แต่ replay รันเฉพาะกลยุทธ์ที่เลือก\n\n## ใช้กับ API อื่น\n\nนำ raw JSON จาก Binance หรือ api/klines/route.ts ไปส่งเข้า evaluateKlines ใน signal-bot/web ui/evaluate-klines.ts:\n\n\`\`\`ts\nimport { evaluateKlines } from './signal-bot/web ui/evaluate-klines';\nconst output = evaluateKlines(rawKlines, '${ids[0]}', ${JSON.stringify(cfg.params[ids[0]])});\n// [{ openTime, signalTime, price, signal: 'BUY' | 'SELL' | 'HOLD' }]\n\`\`\`\n\nadapter รับข้อมูลที่เรียงเวลาและตัดแท่งไม่ปิดเอง; หากต้องการผลตรงชุดนี้ ใช้ input-klines.json + params ใน config และ computeSignals ตาม replay ซึ่งรวม warmup เดียวกัน\n\n## ความหมายและข้อจำกัด\n\nเวลาใน CSV เป็น UTC ISO หรือ epoch milliseconds; UI แสดง Asia/Bangkok. signalTime = closeTime. index และ event indices อ้าง input-klines.json รวม warmup เสมอ ไม่ใช่เลขแถว CSV. null คือไม่มีค่า ไม่แปลงเป็น 0. CSV ใช้ UTF-8 BOM สำหรับภาษาไทย\n\nBUY/SELL เป็นสัญญาณ ไม่ใช่การส่งคำสั่งซื้อขายหรือการส่ง Telegram. RSI อาจส่งสัญญาณติดกันหลายแท่ง. HOLD อาจเกิดจากไม่ผ่านเงื่อนไขหรือข้อมูลเตรียมไม่พอ. โครงสร้าง SMC/OB บางรายการมีสถานะสุดท้ายของชุดข้อมูล ไม่ใช่ snapshot สถานะทุกแท่ง; records.events ใช้เหตุการณ์ที่ index ของแท่งนั้น\n\nเปิดแท่งถัดไป: Long เต็มพอร์ต เริ่ม 100 หน่วย ทบต้น หัก fee/slippage ต่อขา; drawdown รวมมูลค่าถือ ณ ปิดแท่ง. โหมดเดิม: ราคาปิดแท่งสัญญาณ ผลรวม % รายเทรด ไม่มี slippage และ drawdown เป็นจุดเปอร์เซ็นต์; เวลาเทรดยังคง openTime ตาม engine เดิม. ทั้งสองโหมดบังคับปิดท้ายข้อมูล\n\nที่มาราคาคือ backend เดิมที่ดึง Binance public klines โดยตรง รูปแบบเดียวกับ api/klines/route.ts ไม่ได้เรียก Next.js route นี้ ข้อมูลจากรอบเดิม ไม่มีการดึงใหม่ตอน Export. ทุกกลยุทธ์ใช้ confirmed pivots; ประวัติสะสมอาจต่างจาก rolling window ของบอทจริง\n\n${run.data.warnings.map((w) => "- " + w).join("\n")}\n`;
+    `# Signal bot — Export ผลคำนวณและโค้ด\n\nรอบทดสอบ ${runId}\n\n${cfg.symbol}; ${ids.length} กลยุทธ์; ${intervals.length} ช่วงแท่งเทียน (${intervals.join(", ")}); ช่วงหลัก ${cfg.interval}\n\n${intervals.map((i) => `- ${i}: ${run.datasets[i].klines.length - run.datasets[i].start} แท่งทดสอบ + ${run.datasets[i].start} warmup`).join("\n")}\n\n## คำนวณซ้ำ\n\nใช้ Node.js 20+ รันจากโฟลเดอร์ที่แตก ZIP:\n\n\`\`\`bash\nnpm ci\nnpm run replay\n\`\`\`\n\nติดตั้ง dependency ครั้งแรกต้องใช้อินเทอร์เน็ต หลังติดตั้งแล้ว replay ไม่เรียก Binance/Telegram ตรวจ SHA-256 ทุกไฟล์ใน manifest ก่อนคำนวณ และตรวจผลทั้งหมดตรงกับ <timeframe>/calculations/*.json ก่อนเขียน <timeframe>/recomputed/*.json\n\n## ไฟล์\n\n- config.json: พารามิเตอร์ที่ใช้ในรอบเดิม ไม่ใช่ฟอร์มที่แก้ภายหลัง; datasets ระบุ startIndex และช่วงเวลาจริงของแต่ละ timeframe\n- <timeframe>/ (${intervals.join(", ")}): ข้อมูลและผลคำนวณแยกตามช่วงแท่งเทียน แต่ละโฟลเดอร์คำนวณอิสระจากกัน\n- <timeframe>/input-klines.json: KlineData[] ที่แปลงจาก Binance รวม warmup ไม่ใช่ raw array ต้นฉบับ\n- <timeframe>/input-klines.csv: แท่งทั้งหมดพร้อม isWarmup\n- <timeframe>/calculations/*.json: indicator ของกลยุทธ์ที่เลือกแบบเต็ม รวม warmup, series, records และ simulations\n- <timeframe>/signals/*.csv / *.json: เฉพาะช่วงทดสอบ รวม HOLD พร้อมค่าปัจจุบัน/ก่อนหน้า และ events\n- <timeframe>/trades/*.csv: เทรดจำลองแต่ละโหมด แยกจากสัญญาณ\n- summary.csv: สรุปผลการจำลองทุกช่วงแท่งเทียนรวมกัน คอลัมน์แรกคือ interval\n- rules.md: เงื่อนไขจริงของกลยุทธ์ที่เลือก\n- lib/ และ signal-bot/web ui/: โค้ดคำนวณร่วม snapshot ตอนเริ่ม server; shared library มีครบทุกกลยุทธ์ แต่ replay รันเฉพาะกลยุทธ์ที่เลือก\n\n## ใช้กับ API อื่น\n\nนำ raw JSON จาก Binance หรือ api/klines/route.ts ไปส่งเข้า evaluateKlines ใน signal-bot/web ui/evaluate-klines.ts:\n\n\`\`\`ts\nimport { evaluateKlines } from './signal-bot/web ui/evaluate-klines';\nconst output = evaluateKlines(rawKlines, '${ids[0]}', ${JSON.stringify(cfg.params[ids[0]])});\n// [{ openTime, signalTime, price, signal: 'BUY' | 'SELL' | 'HOLD' }]\n\`\`\`\n\nadapter รับข้อมูลที่เรียงเวลาและตัดแท่งไม่ปิดเอง; หากต้องการผลตรงชุดนี้ ใช้ input-klines.json + params ใน config และ computeSignals ตาม replay ซึ่งรวม warmup เดียวกัน\n\n## ความหมายและข้อจำกัด\n\nเวลาใน CSV เป็น UTC ISO หรือ epoch milliseconds; UI แสดง Asia/Bangkok. signalTime = closeTime. index และ event indices อ้าง input-klines.json รวม warmup เสมอ ไม่ใช่เลขแถว CSV. null คือไม่มีค่า ไม่แปลงเป็น 0. CSV ใช้ UTF-8 BOM สำหรับภาษาไทย\n\nBUY/SELL เป็นสัญญาณ ไม่ใช่การส่งคำสั่งซื้อขายหรือการส่ง Telegram. RSI อาจส่งสัญญาณติดกันหลายแท่ง. HOLD อาจเกิดจากไม่ผ่านเงื่อนไขหรือข้อมูลเตรียมไม่พอ. โครงสร้าง SMC/OB บางรายการมีสถานะสุดท้ายของชุดข้อมูล ไม่ใช่ snapshot สถานะทุกแท่ง; records.events ใช้เหตุการณ์ที่ index ของแท่งนั้น\n\nเปิดแท่งถัดไป: Long เต็มพอร์ต เริ่ม 100 หน่วย ทบต้น หัก fee/slippage ต่อขา; drawdown รวมมูลค่าถือ ณ ปิดแท่ง. โหมดเดิม: ราคาปิดแท่งสัญญาณ ผลรวม % รายเทรด ไม่มี slippage และ drawdown เป็นจุดเปอร์เซ็นต์; เวลาเทรดยังคง openTime ตาม engine เดิม. ทั้งสองโหมดบังคับปิดท้ายข้อมูล\n\nที่มาราคาคือ backend เดิมที่ดึง Binance public klines โดยตรง รูปแบบเดียวกับ api/klines/route.ts ไม่ได้เรียก Next.js route นี้ ข้อมูลจากรอบเดิม ไม่มีการดึงใหม่ตอน Export. ทุกกลยุทธ์ใช้ confirmed pivots; ประวัติสะสมอาจต่างจาก rolling window ของบอทจริง\n\n${intervals.flatMap((i) => run.datasets[i].warnings.map((w: string) => `- [${i}] ${w}`)).join("\n")}\n`;
   files["manifest.json"] = json({
     schemaVersion: 1,
     algorithm: "sha256",
