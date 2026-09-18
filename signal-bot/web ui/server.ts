@@ -29,6 +29,8 @@ const files: Record<string, [string, string]> = {
   "/fonts/Sarabun-Regular.ttf": ["fonts/Sarabun-Regular.ttf", "font/ttf"],
   "/fonts/Sarabun-Medium.ttf": ["fonts/Sarabun-Medium.ttf", "font/ttf"],
   "/fonts/Sarabun-SemiBold.ttf": ["fonts/Sarabun-SemiBold.ttf", "font/ttf"],
+  "/fonts/IBMPlexMono-Regular.ttf": ["fonts/IBMPlexMono-Regular.ttf", "font/ttf"],
+  "/fonts/IBMPlexMono-Medium.ttf": ["fonts/IBMPlexMono-Medium.ttf", "font/ttf"],
   "/style.css": ["style.css", "text/css"],
 };
 const server = http.createServer(async (req, res) => {

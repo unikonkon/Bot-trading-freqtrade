@@ -217,7 +217,7 @@ function syncIntervals() {
     star.disabled = !available || active;
   }
   $("interval-count").textContent =
-    `เลือก ${selectedIntervals.size} / ${metadata.intervals.filter(intervalAvailable).length}`;
+    `${selectedIntervals.size}/${metadata.intervals.filter(intervalAvailable).length}`;
   $("interval-error").hidden = selectedIntervals.size > 0;
   updateDatasetSummary();
 }
@@ -238,9 +238,8 @@ function buildStrategyPicker() {
         }
         syncPicker();
       });
-      const text = node("span", undefined, "strategy-name");
-      text.append(node("strong", s.name), node("small", s.descriptionTh));
-      label.append(input, text);
+      label.append(input, node("span", s.name, "strategy-name"));
+      label.title = s.descriptionTh;
       const star = node("button", "★", "star");
       star.type = "button";
       star.title = `ตั้ง ${s.name} เป็นกลยุทธ์หลัก`;
@@ -275,7 +274,7 @@ function syncPicker() {
     item.querySelector(".star").setAttribute("aria-pressed", String(main));
   }
   $("strategy-count").textContent =
-    `เลือก ${selectedStrategies.size} / ${metadata.strategies.length}`;
+    `${selectedStrategies.size}/${metadata.strategies.length}`;
   $("strategy-error").hidden = selectedStrategies.size > 0;
   updateParamTarget();
 }
@@ -466,7 +465,17 @@ async function run() {
     $("output").hidden = false;
     showTab("chart");
     updateDataset();
-    $("warnings").replaceChildren(...result.warnings.map((w) => node("p", w)));
+    // Routine per-interval notes stay folded; a skipped interval opens the list.
+    const skipped = result.warnings.filter((w) => /ข้าม|ใช้ไม่ได้/.test(w));
+    $("warnings-list").replaceChildren(
+      ...result.warnings.map((w) => node("p", w)),
+    );
+    $("warnings-summary").textContent = skipped.length
+      ? skipped.join(" · ")
+      : `หมายเหตุข้อมูล ${result.warnings.length} รายการ`;
+    $("warnings").open = skipped.length > 0;
+    $("warnings").hidden = !result.warnings.length;
+    $("warnings").classList.toggle("is-alert", skipped.length > 0);
     fillBarOptions();
     selectDetail();
     const ranIntervals = new Set(result.results.map((r) => r.interval)).size;
@@ -491,9 +500,14 @@ function updateDataset() {
   const others = (result.intervals ?? [])
     .filter((i) => i.interval !== result.interval)
     .map((i) => `${i.interval} ${i.bars.toLocaleString()}`);
-  $("dataset").textContent =
+  const full =
     `ช่วงหลัก ${result.interval} · ${bars.toLocaleString()} แท่ง · ${time(result.from ?? result.klines[0].openTime)} – ${time(result.to ?? result.klines.at(-1).closeTime)} · เตรียม indicator ${result.warmup} แท่ง` +
     (others.length ? ` · อีก ${others.length} ช่วง: ${others.join(", ")} แท่ง` : "");
+  $("dataset").textContent =
+    `${bars.toLocaleString()} แท่ง · warmup ${result.warmup}` +
+    (others.length ? ` · +${others.length} ช่วง` : "");
+  $("dataset").title = full;
+  $("dataset-full").textContent = full;
 }
 function simulation() {
   return (
@@ -502,8 +516,11 @@ function simulation() {
   );
 }
 function selectDetail(mode) {
-  $("result-title").textContent =
-    `${result.config.symbol} / ${result.interval} · ${detail.name}`;
+  $("result-title").replaceChildren(
+    node("span", result.config.symbol, "mono"),
+    node("span", result.interval, "tf-badge"),
+    node("span", detail.name, "title-strategy"),
+  );
   const old = mode || $("display-mode").value;
   $("display-mode").replaceChildren(
     ...detail.simulations.map((s) => new Option(modeName[s.mode], s.mode)),
@@ -730,10 +747,53 @@ function renderComparison() {
     list.push(tr);
   }
   $("comparison").replaceChildren(...list);
+  renderTopRanking(rows, current);
   $("compare-count").textContent =
     `${rows.length} แถว · ${new Set(rows.map((row) => row.r.id)).size} กลยุทธ์ × ${new Set(rows.map((row) => row.r.interval)).size} ช่วง`;
   $("tab-compare-count").textContent = String(result.results.length);
   updateSortIndicators();
+}
+// The chart tab shows the leaders beside the chart, so a run can be judged
+// without switching tabs. It follows the same sort and filters as the full table.
+function renderTopRanking(rows, current) {
+  const list = rows.slice(0, 6).map(({ r, sim }) => {
+    const tr = node(
+      "tr",
+      undefined,
+      r.id === detail.id &&
+        r.interval === result.interval &&
+        sim.mode === current
+        ? "selected"
+        : "",
+    );
+    const cell = node("td"),
+      button = node("button", r.name);
+    button.type = "button";
+    button.title = `แสดง ${r.name} ที่ช่วง ${r.interval} เป็นกลยุทธ์หลัก`;
+    button.append(node("small", modeName[sim.mode]));
+    button.addEventListener("click", () =>
+      changeDetail(r.id, sim.mode, r.interval),
+    );
+    cell.append(button);
+    tr.append(
+      cell,
+      node("td", r.interval),
+      node("td", pct(sim.returnPct), color(sim.returnPct)),
+      node(
+        "td",
+        `${fmt(sim.maxDrawdownPct)}${sim.mode === "legacy" ? " pp" : "%"}`,
+      ),
+    );
+    return tr;
+  });
+  if (!list.length) {
+    const tr = node("tr"),
+      td = node("td", "ไม่พบกลยุทธ์ที่ตรงกับตัวกรอง");
+    td.colSpan = 4;
+    tr.append(td);
+    list.push(tr);
+  }
+  $("top-ranking").replaceChildren(...list);
 }
 async function changeDetail(id, mode, interval = result.interval) {
   if (active) return;
@@ -871,7 +931,7 @@ function surface(id) {
   canvas.height = height * ratio;
   const c = canvas.getContext("2d");
   c.scale(ratio, ratio);
-  c.font = '13px "Sarabun", sans-serif';
+  c.font = '11px "IBM Plex Mono", ui-monospace, monospace';
   return { c, width, height };
 }
 function axes(c, w, top, bottom, min, max) {
@@ -957,13 +1017,13 @@ function drawSignalLabels(c, start, end, x, y, plotW, top, bottom) {
   );
   const occupied = [];
   c.save();
-  c.font = '600 15px "Sarabun", sans-serif';
+  c.font = '500 13px "IBM Plex Mono", ui-monospace, monospace';
   c.textAlign = "center";
   c.textBaseline = "middle";
   for (const signal of signals) {
     const text = signal.buy ? "BUY" : "SELL";
-    const width = Math.ceil(c.measureText(text).width) + 26,
-      height = 32;
+    const width = Math.ceil(c.measureText(text).width) + 20,
+      height = 26;
     const left = Math.max(
       2,
       Math.min(plotW - width - 2, signal.px - width / 2),
@@ -992,7 +1052,7 @@ function drawSignalLabels(c, start, end, x, y, plotW, top, bottom) {
       c.lineTo(left + width / 2, labelY + (signal.buy ? 0 : height));
       c.stroke();
       c.beginPath();
-      c.roundRect(left, labelY, width, height, 9);
+      c.roundRect(left, labelY, width, height, 3);
       c.fillStyle = chartColors.surface;
       c.fill();
       c.stroke();
@@ -1153,8 +1213,7 @@ function exportSelection() {
 }
 function updateExportSelection() {
   const count = exportSelection().length;
-  $("export-count").textContent =
-    `เลือก ${count} / ${metadata.strategies.length}`;
+  $("export-count").textContent = `${count}/${metadata.strategies.length}`;
   $("export-download").disabled = exporting || count === 0;
 }
 function openExport() {
@@ -1246,6 +1305,7 @@ async function init() {
   $("data-jump").addEventListener("click", () => localView({ offset: Math.max(0, Number($("data-goto").value) - 1) }));
   for (const tab of TABS)
     $(`tab-${tab}`).addEventListener("click", () => showTab(tab));
+  $("open-compare").addEventListener("click", () => showTab("compare"));
   $("goto-inspect").addEventListener("click", () => {
     showTab("inspect");
     $("bar").focus();

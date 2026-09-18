@@ -16,22 +16,27 @@
       type="font/ttf"
       crossorigin
     />
+    <link
+      rel="preload"
+      href="/fonts/IBMPlexMono-Regular.ttf"
+      as="font"
+      type="font/ttf"
+      crossorigin
+    />
     <link rel="stylesheet" href="/style.css" />
     <script src="/app.js" defer></script>
   </head>
   <body>
-    <a class="skip-link" href="#config">ข้ามไปตั้งค่าทดสอบ</a>
-    <header class="site-header">
-      <div class="header-inner">
-        <span class="brand"
-          >Signal bot <span aria-hidden="true">/</span>
-          <strong>Backtest</strong></span
-        >
-        <div class="header-actions">
-          <span class="muted">Binance Spot · เวลาไทย (Asia/Bangkok)</span
-          ><button
+    <a class="skip-link" href="#results">ข้ามไปผลการทดสอบ</a>
+    <div class="workspace">
+      <!-- left rail: every control stays on screen while results update -->
+      <form id="config" class="rail">
+        <div class="rail-head">
+          <span class="brand-mark" aria-hidden="true"></span>
+          <span class="brand">Signal bot <strong>Backtest</strong></span>
+          <button
             id="theme-toggle"
-            class="theme-toggle"
+            class="ghost icon-button"
             type="button"
             aria-pressed="true"
             aria-label="ใช้โหมดมืด"
@@ -39,43 +44,18 @@
             โหมดมืด
           </button>
         </div>
-      </div>
-    </header>
-    <main>
-      <div class="page-title">
-        <h1>ทดสอบกลยุทธ์</h1>
-        <p class="muted">เลือกข้อมูลและกลยุทธ์เพื่อเริ่มทดสอบย้อนหลัง</p>
-      </div>
-      <form id="config" class="settings">
-        <div class="settings-grid">
-          <fieldset>
-            <legend>ข้อมูลราคา</legend>
+        <div class="rail-body">
+          <section class="block">
+            <h2 class="block-title">ข้อมูลราคา</h2>
             <label
               >คู่เหรียญ<input
                 id="symbol"
+                class="mono"
                 value="BTCUSDT"
                 maxlength="24"
                 pattern="[A-Za-z0-9]{5,24}"
                 required
             /></label>
-            <div class="picker-actions">
-              <span class="picker-label">ช่วงแท่งเทียน</span
-              ><button id="interval-all" type="button">เลือกทั้งหมด</button
-              ><button id="interval-none" type="button">ล้าง</button
-              ><span id="interval-count" class="pill"></span>
-            </div>
-            <div
-              id="interval-list"
-              class="interval-list"
-              role="group"
-              aria-label="ช่วงแท่งเทียนที่ทดสอบ"
-            ></div>
-            <p id="interval-error" class="strategy-error" hidden>
-              ต้องเลือกอย่างน้อย 1 ช่วงแท่งเทียน
-            </p>
-            <p class="field-help">
-              กด ★ เพื่อตั้งช่วงหลัก คือช่วงที่ใช้วาดกราฟและดูค่ารายแท่ง
-            </p>
             <label
               >ข้อมูลย้อนหลัง<select id="source">
                 <option value="latest">แท่งล่าสุด</option>
@@ -84,19 +64,22 @@
               </select></label
             >
             <div id="local-fields" hidden>
-              <label>ชุดข้อมูล<select id="snapshot"></select></label>
-              <button id="refresh-datasets" type="button">
-                ตรวจชุดข้อมูลล่าสุด
-              </button>
-              <p id="local-summary" class="field-help"></p>
+              <label
+                >ชุดข้อมูล<select id="snapshot" class="mono"></select
+              ></label>
               <label class="check"
                 ><input id="local-full" type="checkbox" checked />ทดสอบครบช่วงที่บันทึกไว้</label
               >
+              <button id="refresh-datasets" class="ghost wide" type="button">
+                ตรวจชุดข้อมูลล่าสุด
+              </button>
+              <p id="local-summary" class="field-help"></p>
             </div>
             <div id="latest-fields">
               <label
                 >จำนวนแท่ง<input
                   id="limit"
+                  class="mono"
                   type="number"
                   min="500"
                   max="10000"
@@ -106,19 +89,74 @@
               /></label>
             </div>
             <div id="range-fields" hidden>
-              <label
-                >เริ่มต้น (เวลาไทย)<input
-                  id="from"
-                  type="datetime-local" /></label
-              ><label
-                >สิ้นสุด (เวลาไทย)<input id="to" type="datetime-local" /></label
-              ><small id="range-help"
-                >สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator</small
-              >
+              <div class="two">
+                <label
+                  >เริ่มต้น (เวลาไทย)<input
+                    id="from"
+                    class="mono"
+                    type="datetime-local" /></label
+                ><label
+                  >สิ้นสุด (เวลาไทย)<input
+                    id="to"
+                    class="mono"
+                    type="datetime-local"
+                /></label>
+              </div>
+              <p id="range-help" class="field-help">
+                สูงสุด 10,000 แท่ง พร้อมข้อมูลเตรียม indicator
+              </p>
             </div>
-          </fieldset>
-          <fieldset>
-            <legend>การซื้อขายจำลอง</legend>
+          </section>
+
+          <section class="block">
+            <h2 class="block-title">
+              ช่วงแท่งเทียน<span id="interval-count" class="count"></span>
+              <span class="grow"></span>
+              <button id="interval-all" class="link-button" type="button">
+                ทั้งหมด
+              </button>
+              <button id="interval-none" class="link-button" type="button">
+                ล้าง
+              </button>
+            </h2>
+            <div
+              id="interval-list"
+              class="interval-grid"
+              role="group"
+              aria-label="ช่วงแท่งเทียนที่ทดสอบ"
+            ></div>
+            <p id="interval-error" class="field-error" hidden>
+              ต้องเลือกอย่างน้อย 1 ช่วงแท่งเทียน
+            </p>
+            <p class="field-help">
+              ★ คือช่วงหลัก ใช้วาดกราฟและดูค่ารายแท่ง
+            </p>
+          </section>
+
+          <section class="block">
+            <h2 class="block-title">
+              กลยุทธ์<span id="strategy-count" class="count"></span>
+              <span class="grow"></span>
+              <button id="strategy-all" class="link-button" type="button">
+                ทั้งหมด
+              </button>
+              <button id="strategy-none" class="link-button" type="button">
+                ล้าง
+              </button>
+            </h2>
+            <div
+              id="strategy-list"
+              class="strategy-list"
+              role="group"
+              aria-label="กลยุทธ์ที่ทดสอบ"
+            ></div>
+            <p id="strategy-error" class="field-error" hidden>
+              ต้องเลือกอย่างน้อย 1 กลยุทธ์
+            </p>
+          </section>
+
+          <section class="block">
+            <h2 class="block-title">การซื้อขายจำลอง</h2>
             <label
               >ราคาเข้า–ออก<select id="mode">
                 <option value="both">เปรียบเทียบทั้งสองโหมด</option>
@@ -128,8 +166,9 @@
             >
             <div class="two">
               <label
-                >ค่าธรรมเนียมต่อขา (%)<input
+                >ค่าธรรมเนียม/ขา (%)<input
                   id="fee"
+                  class="mono"
                   type="number"
                   min="0"
                   max="5"
@@ -137,8 +176,9 @@
                   value="0.10"
                   required /></label
               ><label
-                >Slippage ต่อขา (%)<input
+                >Slippage/ขา (%)<input
                   id="slippage"
+                  class="mono"
                   type="number"
                   min="0"
                   max="5"
@@ -148,415 +188,477 @@
               /></label>
             </div>
             <p class="field-help">
-              Slippage ใช้กับราคาเปิดแท่งถัดไปเท่านั้น<br />ถือ Long
+              Slippage ใช้กับราคาเปิดแท่งถัดไปเท่านั้น · ถือ Long
               และปิดสถานะค้างเมื่อจบข้อมูล
             </p>
-          </fieldset>
-        </div>
-        <fieldset class="strategy-fieldset">
-          <legend>กลยุทธ์ที่ทดสอบ</legend>
-          <div class="picker-actions">
-            <button id="strategy-all" type="button">เลือกทั้งหมด</button
-            ><button id="strategy-none" type="button">ล้างการเลือก</button
-            ><span id="strategy-count" class="pill"></span
-            ><span class="muted">คำนวณเฉพาะกลยุทธ์ที่ติ๊กไว้</span>
-          </div>
-          <div
-            id="strategy-list"
-            class="strategy-list"
-            role="group"
-            aria-label="กลยุทธ์ที่ทดสอบ"
-          ></div>
-          <p id="strategy-error" class="strategy-error" hidden>
-            ต้องเลือกอย่างน้อย 1 กลยุทธ์
-          </p>
-          <details class="parameter-options">
+          </section>
+
+          <details id="param-block" class="block">
             <summary>ปรับพารามิเตอร์</summary>
-            <div class="parameter-head">
-              <label>พารามิเตอร์ของ<select id="param-target"></select></label>
-              <p id="description" class="field-help"></p>
-            </div>
+            <label>พารามิเตอร์ของ<select id="param-target"></select></label>
+            <p id="description" class="field-help"></p>
             <div id="params" class="params-grid"></div>
           </details>
-        </fieldset>
-        <div class="form-actions">
+        </div>
+        <div class="rail-foot">
           <button class="primary" id="run" type="submit">รันทดสอบ</button>
-          <button id="export-open" type="button" disabled>Export</button>
-          <button id="cancel-run" type="button" hidden>ยกเลิกงาน</button>
+          <button id="cancel-run" class="ghost wide" type="button" hidden>
+            ยกเลิกงาน
+          </button>
           <p id="status" role="status" aria-live="polite">
             พร้อมโหลดข้อมูลจาก Binance
           </p>
         </div>
       </form>
-      <section class="results" aria-label="ผลทดสอบ">
+
+      <!-- right: results -->
+      <main id="results" class="main" tabindex="-1">
+        <header class="topbar">
+          <h1 id="result-title">ทดสอบกลยุทธ์</h1>
+          <span id="dataset" class="mono topbar-meta"></span>
+          <span class="grow"></span>
+          <label id="display-mode-field" class="inline-field" hidden
+            >โหมด<select id="display-mode"></select
+          ></label>
+          <button id="export-open" class="ghost" type="button" disabled>
+            Export
+          </button>
+        </header>
         <div id="error" class="error" role="alert" hidden></div>
+        <details id="warnings" class="notice" hidden>
+          <summary id="warnings-summary"></summary>
+          <div id="warnings-list"></div>
+        </details>
         <div id="empty" class="empty">
           <h2>ยังไม่มีผลทดสอบ</h2>
-          <p>เลือกข้อมูลและกลยุทธ์ด้านบน แล้วกด “รันทดสอบ”</p>
+          <p>เลือกข้อมูล ช่วงแท่งเทียน และกลยุทธ์จากแถบซ้าย แล้วกด “รันทดสอบ”</p>
         </div>
-        <div id="output" hidden>
-          <div class="result-heading">
-            <div>
-              <h2 id="result-title"></h2>
-              <p id="dataset" class="muted"></p>
-            </div>
-            <label id="display-mode-field"
-              >โหมดที่แสดง<select id="display-mode"></select
-            ></label>
-          </div>
+        <div id="output" class="output" hidden>
           <div id="metrics" class="metrics"></div>
-          <details class="result-notes">
-            <summary>ข้อมูลและวิธีคำนวณ</summary>
-            <p id="method" class="method"></p>
-            <div id="warnings" class="notice"></div>
-          </details>
-          <div class="tabs" role="tablist" aria-label="ส่วนของผลทดสอบ">
-            <button
-              id="tab-chart"
-              class="tab"
-              type="button"
-              role="tab"
-              aria-controls="panel-chart"
-              aria-selected="true"
-            >
-              กราฟและสัญญาณ
-            </button>
-            <button
-              id="tab-compare"
-              class="tab"
-              type="button"
-              role="tab"
-              aria-controls="panel-compare"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              ผลการทดสอบ<span id="tab-compare-count" class="pill"></span>
-            </button>
-            <button
-              id="tab-trades"
-              class="tab"
-              type="button"
-              role="tab"
-              aria-controls="panel-trades"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              รายการเทรด<span id="tab-trades-count" class="pill"></span>
-            </button>
-            <button
-              id="tab-inspect"
-              class="tab"
-              type="button"
-              role="tab"
-              aria-controls="panel-inspect"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              ค่ารายแท่ง
-            </button>
+          <div class="tabrow">
+            <div class="tabs" role="tablist" aria-label="ส่วนของผลทดสอบ">
+              <button
+                id="tab-chart"
+                class="tab"
+                type="button"
+                role="tab"
+                aria-controls="panel-chart"
+                aria-selected="true"
+              >
+                กราฟและสัญญาณ
+              </button>
+              <button
+                id="tab-compare"
+                class="tab"
+                type="button"
+                role="tab"
+                aria-controls="panel-compare"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                ผลการทดสอบ<span id="tab-compare-count" class="count"></span>
+              </button>
+              <button
+                id="tab-trades"
+                class="tab"
+                type="button"
+                role="tab"
+                aria-controls="panel-trades"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                รายการเทรด<span id="tab-trades-count" class="count"></span>
+              </button>
+              <button
+                id="tab-inspect"
+                class="tab"
+                type="button"
+                role="tab"
+                aria-controls="panel-inspect"
+                aria-selected="false"
+                tabindex="-1"
+              >
+                ค่ารายแท่ง
+              </button>
+            </div>
+            <span class="grow"></span>
+            <details id="result-notes" class="notes">
+              <summary>ข้อมูลและวิธีคำนวณ</summary>
+              <div class="notes-body">
+                <p id="dataset-full" class="field-help"></p>
+                <p id="method" class="field-help"></p>
+              </div>
+            </details>
           </div>
 
-          <div id="panel-chart" role="tabpanel" aria-labelledby="tab-chart">
-            <section class="panel chart-panel" aria-labelledby="price-title">
-              <div class="section-title">
-                <h2 id="price-title">ราคาและสัญญาณซื้อ–ขาย</h2>
-                <span id="chart-label"></span>
-              </div>
-              <div class="price-summary">
-                <div class="selected-price">
-                  <span>ราคาปิดแท่งที่เลือก</span
-                  ><strong id="selected-price">—</strong
-                  ><small id="selected-time">—</small>
-                </div>
-                <div class="selected-signal">
-                  <span>สัญญาณของแท่งนี้</span
-                  ><strong id="selected-signal" class="signal-badge"
-                    >HOLD · รอ</strong
-                  ><small
-                    >สัญญาณจากกลยุทธ์ ไม่ใช่รายการเทรด ·
-                    <button id="goto-inspect" class="link-button" type="button">
-                      ดูค่า indicator ของแท่งนี้
-                    </button></small
+          <div class="panels">
+            <div id="panel-chart" role="tabpanel" aria-labelledby="tab-chart">
+              <section class="panel" aria-labelledby="price-title">
+                <div class="panel-bar">
+                  <h2 id="price-title" class="sr-only">
+                    ราคาและสัญญาณซื้อ–ขาย
+                  </h2>
+                  <label class="inline-field"
+                    >เส้น<select id="overlay" class="mono"></select
+                  ></label>
+                  <label class="inline-field"
+                    >ช่วงที่แสดง<select id="window" class="mono">
+                      <option value="50" selected>50 แท่ง</option>
+                      <option value="100">100 แท่ง</option>
+                      <option value="200">200 แท่ง</option>
+                      <option value="500">500 แท่ง</option>
+                      <option value="1000">1,000 แท่ง</option>
+                      <option value="2000">2,000 แท่ง</option>
+                      <option value="3000">3,000 แท่ง</option>
+                      <option value="4000">4,000 แท่ง</option>
+                      <option value="5000">5,000 แท่ง</option>
+                    </select></label
                   >
+                  <div class="stepper">
+                    <button
+                      id="chart-prev"
+                      class="ghost"
+                      type="button"
+                      aria-label="ดูแท่งก่อนหน้า"
+                    >
+                      ←</button
+                    ><button
+                      id="chart-next"
+                      class="ghost"
+                      type="button"
+                      aria-label="ดูแท่งถัดไป"
+                    >
+                      →
+                    </button>
+                  </div>
+                  <span class="grow"></span>
+                  <span id="buy-count" class="signal-chip buy">▲ ซื้อ 0</span
+                  ><span id="sell-count" class="signal-chip sell">▼ ขาย 0</span>
+                  <span id="chart-label" class="mono topbar-meta"></span>
                 </div>
-                <div class="signal-totals">
-                  <span>สัญญาณในช่วงกราฟ</span>
+                <canvas
+                  id="price-chart"
+                  aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
+                ></canvas>
+                <p id="hover" class="readout mono">
+                  เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
+                </p>
+                <div class="bar-readout">
                   <div>
-                    <span id="buy-count" class="signal-chip buy">▲ ซื้อ 0</span
-                    ><span id="sell-count" class="signal-chip sell"
-                      >▼ ขาย 0</span
+                    <span>ราคาปิดแท่งที่เลือก</span
+                    ><strong id="selected-price" class="mono">—</strong
+                    ><small id="selected-time" class="mono">—</small>
+                  </div>
+                  <div>
+                    <span>สัญญาณของแท่งนี้</span
+                    ><strong id="selected-signal" class="signal-badge hold"
+                      >HOLD · รอ</strong
+                    ><small
+                      ><button
+                        id="goto-inspect"
+                        class="link-button"
+                        type="button"
+                      >
+                        ดูค่า indicator ของแท่งนี้
+                      </button></small
                     >
                   </div>
-                  <small id="signal-note"
-                    >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</small
-                  >
+                  <div class="grow-cell">
+                    <span>หมายเหตุสัญญาณ</span>
+                    <small id="signal-note"
+                      >กดป้ายซื้อ–ขายเพื่อดูราคาและเวลาเกิดสัญญาณ</small
+                    >
+                  </div>
                 </div>
-              </div>
-              <div class="chart-controls">
-                <label>เส้น indicator<select id="overlay"></select></label
-                ><label
-                  >ช่วงที่แสดง<select id="window">
-                    <option value="50" selected>50 แท่ง · ขยาย</option>
-                    <option value="100">100 แท่ง</option>
-                    <option value="200">200 แท่ง</option>
-                    <option value="500">500 แท่ง</option>
-                    <option value="1000">1,000 แท่ง</option>
-                    <option value="2000">2,000 แท่ง</option>
-                    <option value="3000">3,000 แท่ง</option>
-                    <option value="4000">4,000 แท่ง</option>
-                    <option value="5000">5,000 แท่ง</option>
-                  </select></label
-                >
-                <div class="chart-paging">
-                  <button
-                    id="chart-prev"
-                    type="button"
-                    aria-label="ดูแท่งก่อนหน้า"
-                  >
-                    ←</button
-                  ><button
-                    id="chart-next"
-                    type="button"
-                    aria-label="ดูแท่งถัดไป"
-                  >
-                    →
+                <div id="local-paging" class="panel-bar dataset-paging" hidden>
+                  <button id="data-prev" class="ghost" type="button">
+                    ← ชุดก่อนหน้า
+                  </button>
+                  <span id="data-page" class="mono topbar-meta"></span>
+                  <button id="data-next" class="ghost" type="button">
+                    ชุดถัดไป →
+                  </button>
+                  <label class="inline-field"
+                    >ไปยังแท่งที่<input
+                      id="data-goto"
+                      class="mono"
+                      type="number"
+                      min="1"
+                      value="1"
+                  /></label>
+                  <button id="data-jump" class="ghost" type="button">
+                    เปิดช่วงนี้
                   </button>
                 </div>
-                <span class="line-key">— เส้น indicator ที่เลือก</span>
-              </div>
-              <div id="local-paging" class="chart-controls dataset-paging" hidden>
-                <button id="data-prev" type="button">← ชุดก่อนหน้า</button>
-                <span id="data-page"></span>
-                <button id="data-next" type="button">ชุดถัดไป →</button>
-                <label
-                  >ไปยังแท่งที่<input
-                    id="data-goto"
-                    type="number"
-                    min="1"
-                    value="1"
-                /></label>
-                <button id="data-jump" type="button">เปิดช่วงนี้</button>
-              </div>
-              <canvas
-                id="price-chart"
-                aria-label="กราฟแท่งเทียนและสัญญาณ ซื้อสีเขียว ขายสีแดง"
-              ></canvas>
-              <p id="hover" class="chart-readout">
-                เลื่อนเมาส์หรือแตะกราฟเพื่อดูแท่งเทียน
-              </p>
-            </section>
-            <section class="panel chart-panel" aria-labelledby="equity-title">
-              <div class="section-title">
-                <h2 id="equity-title">ผลตอบแทนสะสม</h2>
-                <span>เริ่มต้น 0%</span>
-              </div>
-              <p id="equity-note" class="field-help" hidden>
-                กราฟย่อเพื่อแสดงภาพรวม สถิติและรายการเทรดคำนวณจากแท่งจริงครบช่วง
-              </p>
-              <canvas id="equity-chart" aria-label="กราฟผลตอบแทนสะสม"></canvas>
-            </section>
-          </div>
+              </section>
 
-          <div
-            id="panel-compare"
-            role="tabpanel"
-            aria-labelledby="tab-compare"
-            hidden
-          >
-            <section class="panel" aria-labelledby="comparison-title">
-              <div class="section-title">
-                <h2 id="comparison-title">ผลการทดสอบ</h2>
-                <span>กดชื่อกลยุทธ์เพื่อตั้งเป็นกลยุทธ์หลักและดูกราฟ</span>
-              </div>
-              <div class="table-toolbar">
-                <label
-                  >เรียงตาม<select id="sort-key">
-                    <option value="returnPct" selected>ผลตอบแทน</option>
-                    <option value="maxDrawdownPct">Drawdown</option>
-                    <option value="winRate">Win rate</option>
-                    <option value="totalTrades">จำนวนเทรด</option>
-                    <option value="profitFactor">Profit factor</option>
-                    <option value="name">ชื่อกลยุทธ์</option>
-                    <option value="interval">ช่วงแท่งเทียน</option>
-                  </select></label
-                ><label
-                  >ลำดับ<select id="sort-dir">
-                    <option value="desc" selected>มาก → น้อย</option>
-                    <option value="asc">น้อย → มาก</option>
-                  </select></label
-                ><label id="compare-interval-field"
-                  >ช่วงแท่งเทียน<select id="compare-interval">
-                    <option value="">ทุกช่วง</option>
-                  </select></label
-                ><label id="compare-mode-field"
-                  >โหมดที่เปรียบเทียบ<select id="compare-mode">
-                    <option value="">ทุกโหมด</option>
-                  </select></label
-                ><label
-                  >ค้นหากลยุทธ์<input
-                    id="compare-search"
-                    type="search"
-                    placeholder="เช่น SMC"
-                /></label>
-                <span id="compare-count" class="muted"></span>
-              </div>
-              <div
-                class="table-wrap"
-                tabindex="0"
-                role="region"
-                aria-label="ตารางผลการทดสอบของกลยุทธ์ที่เลือก"
-              >
-                <table class="numeric-table compare-table">
-                  <thead>
-                    <tr>
-                      <th scope="col" class="rank-col">#</th>
-                      <th scope="col" data-sort="name">
-                        <button type="button">กลยุทธ์ / โหมด</button>
-                      </th>
-                      <th scope="col" data-sort="interval">
-                        <button type="button">ช่วง</button>
-                      </th>
-                      <th scope="col" data-sort="returnPct">
-                        <button type="button">ผลตอบแทน</button>
-                      </th>
-                      <th scope="col" data-sort="maxDrawdownPct">
-                        <button type="button">Drawdown</button>
-                      </th>
-                      <th scope="col" data-sort="winRate">
-                        <button type="button">Win rate</button>
-                      </th>
-                      <th scope="col" data-sort="totalTrades">
-                        <button type="button">เทรด</button>
-                      </th>
-                      <th scope="col" data-sort="profitFactor">
-                        <button type="button">Profit factor</button>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody id="comparison"></tbody>
-                </table>
-              </div>
-            </section>
-          </div>
-
-          <div
-            id="panel-trades"
-            role="tabpanel"
-            aria-labelledby="tab-trades"
-            hidden
-          >
-            <section class="panel" aria-labelledby="trades-title">
-              <div class="section-title">
-                <h2 id="trades-title">รายการเทรด</h2>
-                <span id="trade-count"></span>
-              </div>
-              <div
-                class="table-wrap"
-                tabindex="0"
-                role="region"
-                aria-label="ตารางรายการเทรด"
-              >
-                <table class="numeric-table trade-table">
-                  <thead>
-                    <tr>
-                      <th scope="col">เข้า → ออก (เวลาไทย)</th>
-                      <th scope="col">ราคาเข้า</th>
-                      <th scope="col">ราคาออก</th>
-                      <th scope="col">สุทธิ / เทรด</th>
-                      <th scope="col">แท่ง</th>
-                      <th scope="col">เหตุผลออก</th>
-                    </tr>
-                  </thead>
-                  <tbody id="trades"></tbody>
-                </table>
-              </div>
-              <div class="pager">
-                <button id="trade-prev" type="button">ก่อนหน้า</button
-                ><span id="trade-page"></span
-                ><button id="trade-next" type="button">ถัดไป</button>
-              </div>
-            </section>
-          </div>
-
-          <div
-            id="panel-inspect"
-            role="tabpanel"
-            aria-labelledby="tab-inspect"
-            hidden
-          >
-            <div class="inspection">
-              <section class="panel" aria-labelledby="inspection-title">
-                <div class="section-title">
-                  <h2 id="inspection-title">ค่า indicator รายแท่ง</h2>
-                </div>
-                <label>แท่งที่เลือก<select id="bar"></select></label>
-                <p id="bar-summary"></p>
-                <div
-                  class="table-wrap values"
-                  tabindex="0"
-                  role="region"
-                  aria-label="ค่า indicator รายแท่ง"
-                >
-                  <table class="numeric-table">
+              <div class="split">
+                <section class="panel" aria-labelledby="equity-title">
+                  <div class="panel-bar">
+                    <h2 id="equity-title" class="panel-title">
+                      ผลตอบแทนสะสม
+                    </h2>
+                    <span class="grow"></span>
+                    <span class="topbar-meta">เริ่มต้น 0%</span>
+                  </div>
+                  <p id="equity-note" class="field-help" hidden>
+                    กราฟย่อเพื่อแสดงภาพรวม
+                    สถิติและรายการเทรดคำนวณจากแท่งจริงครบช่วง
+                  </p>
+                  <canvas
+                    id="equity-chart"
+                    aria-label="กราฟผลตอบแทนสะสม"
+                  ></canvas>
+                </section>
+                <section class="panel" aria-labelledby="ranking-title">
+                  <div class="panel-bar">
+                    <h2 id="ranking-title" class="panel-title">
+                      อันดับผลตอบแทน
+                    </h2>
+                    <span class="grow"></span>
+                    <button id="open-compare" class="link-button" type="button">
+                      เปิดตารางเต็ม
+                    </button>
+                  </div>
+                  <table class="numeric-table rank-table">
                     <thead>
                       <tr>
-                        <th scope="col">Indicator</th>
-                        <th scope="col">ค่าที่คำนวณ</th>
+                        <th scope="col">กลยุทธ์</th>
+                        <th scope="col">ช่วง</th>
+                        <th scope="col">ผลตอบแทน</th>
+                        <th scope="col">Drawdown</th>
                       </tr>
                     </thead>
-                    <tbody id="indicator-values"></tbody>
+                    <tbody id="top-ranking"></tbody>
+                  </table>
+                </section>
+              </div>
+            </div>
+
+            <div
+              id="panel-compare"
+              role="tabpanel"
+              aria-labelledby="tab-compare"
+              hidden
+            >
+              <section class="panel" aria-labelledby="comparison-title">
+                <div class="panel-bar">
+                  <h2 id="comparison-title" class="panel-title">
+                    ผลการทดสอบ
+                  </h2>
+                  <span class="topbar-meta"
+                    >กดชื่อกลยุทธ์เพื่อตั้งเป็นกลยุทธ์หลักและดูกราฟ</span
+                  >
+                </div>
+                <div class="panel-bar toolbar">
+                  <label class="inline-field"
+                    >เรียงตาม<select id="sort-key">
+                      <option value="returnPct" selected>ผลตอบแทน</option>
+                      <option value="maxDrawdownPct">Drawdown</option>
+                      <option value="winRate">Win rate</option>
+                      <option value="totalTrades">จำนวนเทรด</option>
+                      <option value="profitFactor">Profit factor</option>
+                      <option value="name">ชื่อกลยุทธ์</option>
+                      <option value="interval">ช่วงแท่งเทียน</option>
+                    </select></label
+                  ><label class="inline-field"
+                    >ลำดับ<select id="sort-dir">
+                      <option value="desc" selected>มาก → น้อย</option>
+                      <option value="asc">น้อย → มาก</option>
+                    </select></label
+                  ><label id="compare-interval-field" class="inline-field"
+                    >ช่วง<select id="compare-interval" class="mono">
+                      <option value="">ทุกช่วง</option>
+                    </select></label
+                  ><label id="compare-mode-field" class="inline-field"
+                    >โหมด<select id="compare-mode">
+                      <option value="">ทุกโหมด</option>
+                    </select></label
+                  ><label class="inline-field"
+                    >ค้นหา<input
+                      id="compare-search"
+                      type="search"
+                      placeholder="เช่น SMC"
+                  /></label>
+                  <span class="grow"></span>
+                  <span id="compare-count" class="topbar-meta mono"></span>
+                </div>
+                <div
+                  class="table-wrap"
+                  tabindex="0"
+                  role="region"
+                  aria-label="ตารางผลการทดสอบของกลยุทธ์ที่เลือก"
+                >
+                  <table class="numeric-table compare-table">
+                    <thead>
+                      <tr>
+                        <th scope="col" class="rank-col">#</th>
+                        <th scope="col" data-sort="name">
+                          <button type="button">กลยุทธ์ / โหมด</button>
+                        </th>
+                        <th scope="col" data-sort="interval">
+                          <button type="button">ช่วง</button>
+                        </th>
+                        <th scope="col" data-sort="returnPct">
+                          <button type="button">ผลตอบแทน</button>
+                        </th>
+                        <th scope="col" data-sort="maxDrawdownPct">
+                          <button type="button">Drawdown</button>
+                        </th>
+                        <th scope="col" data-sort="winRate">
+                          <button type="button">Win rate</button>
+                        </th>
+                        <th scope="col" data-sort="totalTrades">
+                          <button type="button">เทรด</button>
+                        </th>
+                        <th scope="col" data-sort="profitFactor">
+                          <button type="button">Profit factor</button>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody id="comparison"></tbody>
                   </table>
                 </div>
               </section>
-              <section class="panel" aria-labelledby="telegram-title">
-                <div class="section-title">
-                  <h2 id="telegram-title">ตัวอย่างข้อความ Telegram</h2>
-                  <span>ไม่ส่งจริง</span>
+            </div>
+
+            <div
+              id="panel-trades"
+              role="tabpanel"
+              aria-labelledby="tab-trades"
+              hidden
+            >
+              <section class="panel" aria-labelledby="trades-title">
+                <div class="panel-bar">
+                  <h2 id="trades-title" class="panel-title">รายการเทรด</h2>
+                  <span id="trade-count" class="topbar-meta mono"></span>
+                  <span class="grow"></span>
+                  <div class="stepper">
+                    <button id="trade-prev" class="ghost" type="button">
+                      ←</button
+                    ><button id="trade-next" class="ghost" type="button">
+                      →
+                    </button>
+                  </div>
+                  <span id="trade-page" class="mono topbar-meta"></span>
                 </div>
-                <div class="telegram"><pre id="telegram"></pre></div>
-                <p class="field-help">
-                  ใช้ราคาปิดของแท่งที่เลือก
-                  บอทจริงจะตรวจเวลาและป้องกันการส่งซ้ำก่อนแจ้งเตือน
-                </p>
+                <div
+                  class="table-wrap"
+                  tabindex="0"
+                  role="region"
+                  aria-label="ตารางรายการเทรด"
+                >
+                  <table class="numeric-table trade-table">
+                    <thead>
+                      <tr>
+                        <th scope="col">เข้า → ออก (เวลาไทย)</th>
+                        <th scope="col">ราคาเข้า</th>
+                        <th scope="col">ราคาออก</th>
+                        <th scope="col">สุทธิ / เทรด</th>
+                        <th scope="col">แท่ง</th>
+                        <th scope="col">เหตุผลออก</th>
+                      </tr>
+                    </thead>
+                    <tbody id="trades"></tbody>
+                  </table>
+                </div>
               </section>
+            </div>
+
+            <div
+              id="panel-inspect"
+              role="tabpanel"
+              aria-labelledby="tab-inspect"
+              hidden
+            >
+              <div class="split">
+                <section class="panel" aria-labelledby="inspection-title">
+                  <div class="panel-bar">
+                    <h2 id="inspection-title" class="panel-title">
+                      ค่า indicator รายแท่ง
+                    </h2>
+                    <span class="grow"></span>
+                    <label class="inline-field"
+                      >แท่งที่เลือก<select id="bar" class="mono"></select
+                    ></label>
+                  </div>
+                  <p id="bar-summary" class="readout mono"></p>
+                  <div
+                    class="table-wrap"
+                    tabindex="0"
+                    role="region"
+                    aria-label="ค่า indicator รายแท่ง"
+                  >
+                    <table class="numeric-table value-table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Indicator</th>
+                          <th scope="col">ค่าที่คำนวณ</th>
+                        </tr>
+                      </thead>
+                      <tbody id="indicator-values"></tbody>
+                    </table>
+                  </div>
+                </section>
+                <section class="panel" aria-labelledby="telegram-title">
+                  <div class="panel-bar">
+                    <h2 id="telegram-title" class="panel-title">
+                      ตัวอย่างข้อความ Telegram
+                    </h2>
+                    <span class="grow"></span>
+                    <span class="topbar-meta">ไม่ส่งจริง</span>
+                  </div>
+                  <pre id="telegram" class="telegram"></pre>
+                  <p class="field-help">
+                    ใช้ราคาปิดของแท่งที่เลือก
+                    บอทจริงจะตรวจเวลาและป้องกันการส่งซ้ำก่อนแจ้งเตือน
+                  </p>
+                </section>
+              </div>
             </div>
           </div>
         </div>
-      </section>
-      <footer>
-        <span>Signal bot · Backtest</span
-        ><span>แจ้งเตือนอย่างเดียว ไม่ส่งคำสั่งซื้อขาย</span>
-      </footer>
-    </main>
+      </main>
+    </div>
     <dialog
       id="export-dialog"
       aria-labelledby="export-title"
       aria-describedby="export-description"
     >
-      <div class="section-title">
-        <h2 id="export-title">Export ข้อมูลและชุดโค้ด</h2>
-        <button id="export-close" type="button" aria-label="ปิดหน้าต่าง Export">
+      <div class="panel-bar">
+        <h2 id="export-title" class="panel-title">Export ข้อมูลและชุดโค้ด</h2>
+        <span class="grow"></span>
+        <button
+          id="export-close"
+          class="ghost"
+          type="button"
+          aria-label="ปิดหน้าต่าง Export"
+        >
           ปิด
         </button>
       </div>
       <p id="export-description" class="field-help">
         ใช้ข้อมูลและพารามิเตอร์จากรอบทดสอบเดิม รวม CSV, JSON, วิธีคำนวณ
-        และโค้ดคำนวณซ้ำในไฟล์ ZIP
+        และโค้ดคำนวณซ้ำในไฟล์ ZIP แยกโฟลเดอร์ตามช่วงแท่งเทียน
       </p>
-      <p id="export-dataset" class="field-help"></p>
-      <fieldset>
-        <legend>กลยุทธ์ที่ส่งออก</legend>
-        <div class="export-select-actions">
-          <button id="export-all" type="button">เลือกทั้งหมด</button
-          ><button id="export-clear" type="button">ล้างการเลือก</button
-          ><span id="export-count" class="muted"></span>
-        </div>
+      <p id="export-dataset" class="field-help mono"></p>
+      <div class="block">
+        <h3 class="block-title">
+          กลยุทธ์ที่ส่งออก<span id="export-count" class="count"></span>
+          <span class="grow"></span>
+          <button id="export-all" class="link-button" type="button">
+            ทั้งหมด
+          </button>
+          <button id="export-clear" class="link-button" type="button">
+            ล้าง
+          </button>
+        </h3>
         <div id="export-options" class="export-options"></div>
-      </fieldset>
+      </div>
       <p class="field-help">
         กลยุทธ์ที่ยังไม่ได้แสดงผลจะคำนวณเพิ่มจากแท่งชุดเดิม ไม่ดึงราคาชุดใหม่
       </p>
-      <p id="export-status" role="status" aria-live="polite"></p>
+      <p id="export-status" class="field-help" role="status" aria-live="polite"></p>
       <div class="export-actions">
         <button id="export-download" class="primary" type="button">
           ดาวน์โหลด ZIP
