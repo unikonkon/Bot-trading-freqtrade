@@ -590,6 +590,44 @@ details[open] > summary {
 .strategy-list {
   display: flex;
   flex-direction: column;
+  max-height: 420px;
+  overflow-y: auto;
+}
+.strategy-filter {
+  width: 100%;
+  margin-bottom: 6px;
+}
+/* หัวข้อคั่นระหว่างกลยุทธ์เวอร์ชัน 1 กับเวอร์ชัน 2 */
+.strategy-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 6px 0 4px;
+  background: var(--surface, #fff);
+  color: var(--muted);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.strategy-group:not(:first-child) {
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+/* ป้ายกลุ่มการใช้งานของอินดิเคเตอร์ v2 */
+.strategy-badge {
+  flex-shrink: 0;
+  margin-left: 6px;
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 0.625rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+/* ตัวแปรที่มีชุดตัวกรอง ย่อหน้าให้เห็นว่าเป็นคู่ของตัวด้านบน */
+.strategy-item.is-filtered .check {
+  padding-left: 12px;
 }
 .strategy-item {
   display: flex;
@@ -598,6 +636,8 @@ details[open] > summary {
   height: 32px;
 }
 .strategy-item .check {
+  display: flex;
+  align-items: center;
   flex-grow: 1;
   min-width: 0;
   font-size: 0.8125rem;

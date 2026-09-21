@@ -121,26 +121,34 @@ function parameters() {
   $("description").textContent = s.descriptionTh;
   $("params").replaceChildren(
     ...Object.entries(params[id]).map(([key, value]) => {
+      // กลยุทธ์ v2 ส่ง paramMeta มาจาก lib/indicators-v2.ts จึงใช้ป้ายและขอบเขตจากที่นั่น
+      const meta = s.paramMeta?.[key];
       const shortLabel = id === "smc_adaptive_short"
         ? { rsiThreshold: "RSI สูงสุดก่อนงดเข้า", adxThreshold: "ADX ระดับขาลงแรงที่งดซื้อ" }[key]
         : null;
-      const label = node("label", shortLabel || parameterLabels[key] || key);
+      const label = node("label", meta?.label || shortLabel || parameterLabels[key] || key);
       label.title = key;
       const input = node("input");
       input.type = "number";
       input.value = value;
-      const period = /period|length|size|bars|len/i.test(key);
-      input.step = period ? "1" : "0.01";
-      input.min = period ? "2" : key === "volumeThresh" ? "0" : "0.01";
-      input.max = period
-        ? "200"
-        : key.includes("Threshold")
-          ? "100"
-          : key === "volumeThresh"
-            ? "1000"
-            : key === "fibFactor"
-              ? "1"
-              : "20";
+      if (meta) {
+        input.step = String(meta.step);
+        input.min = String(meta.min);
+        input.max = String(meta.max);
+      } else {
+        const period = /period|length|size|bars|len/i.test(key);
+        input.step = period ? "1" : "0.01";
+        input.min = period ? "2" : key === "volumeThresh" ? "0" : "0.01";
+        input.max = period
+          ? "200"
+          : key.includes("Threshold")
+            ? "100"
+            : key === "volumeThresh"
+              ? "1000"
+              : key === "fibFactor"
+                ? "1"
+                : "20";
+      }
       input.required = true;
       input.addEventListener(
         "input",
@@ -221,34 +229,62 @@ function syncIntervals() {
   $("interval-error").hidden = selectedIntervals.size > 0;
   updateDatasetSummary();
 }
+const GROUP_TITLES = {
+  1: "เวอร์ชัน 1 — กลยุทธ์เดิม",
+  2: "เวอร์ชัน 2 — 20 อินดิเคเตอร์จากเอกสาร TradingView",
+};
+function strategyVersion(s) {
+  return s.version === 2 ? 2 : 1;
+}
+// รายการยาวขึ้นมากหลังเพิ่มชุด v2 จึงแบ่งตามเวอร์ชันและมีช่องค้นหา
 function buildStrategyPicker() {
-  $("strategy-list").replaceChildren(
-    ...metadata.strategies.map((s) => {
-      const item = node("div", undefined, "strategy-item");
-      item.dataset.id = s.id;
-      const label = node("label", undefined, "check");
-      const input = node("input");
-      input.type = "checkbox";
-      input.value = s.id;
-      input.addEventListener("change", () => {
-        if (input.checked) selectedStrategies.add(s.id);
-        else {
-          selectedStrategies.delete(s.id);
-          if (mainStrategy === s.id) mainStrategy = [...selectedStrategies][0] ?? "";
-        }
-        syncPicker();
-      });
-      label.append(input, node("span", s.name, "strategy-name"));
-      label.title = s.descriptionTh;
-      const star = node("button", "★", "star");
-      star.type = "button";
-      star.title = `ตั้ง ${s.name} เป็นกลยุทธ์หลัก`;
-      star.setAttribute("aria-label", star.title);
-      star.addEventListener("click", () => setMainStrategy(s.id));
-      item.append(label, star);
-      return item;
-    }),
-  );
+  const query = ($("strategy-filter").value ?? "").trim().toLowerCase();
+  const children = [];
+  let shownVersion = 0;
+  for (const s of metadata.strategies) {
+    const haystack = `${s.name} ${s.id} ${s.group ?? ""} ${s.descriptionTh}`.toLowerCase();
+    if (query && !haystack.includes(query)) continue;
+    const version = strategyVersion(s);
+    if (version !== shownVersion) {
+      children.push(node("div", GROUP_TITLES[version], "strategy-group"));
+      shownVersion = version;
+    }
+    const item = node("div", undefined, "strategy-item");
+    item.dataset.id = s.id;
+    item.dataset.version = String(version);
+    if (s.id.endsWith("_filtered")) item.classList.add("is-filtered");
+    const label = node("label", undefined, "check");
+    const input = node("input");
+    input.type = "checkbox";
+    input.value = s.id;
+    input.addEventListener("change", () => {
+      if (input.checked) selectedStrategies.add(s.id);
+      else {
+        selectedStrategies.delete(s.id);
+        if (mainStrategy === s.id) mainStrategy = [...selectedStrategies][0] ?? "";
+      }
+      syncPicker();
+    });
+    label.append(input, node("span", s.name, "strategy-name"));
+    if (s.group) label.append(node("span", s.group, "strategy-badge"));
+    label.title = s.descriptionTh;
+    const star = node("button", "★", "star");
+    star.type = "button";
+    star.title = `ตั้ง ${s.name} เป็นกลยุทธ์หลัก`;
+    star.setAttribute("aria-label", star.title);
+    star.addEventListener("click", () => setMainStrategy(s.id));
+    item.append(label, star);
+    children.push(item);
+  }
+  if (!children.length)
+    children.push(node("p", "ไม่พบกลยุทธ์ที่ตรงกับคำค้น", "field-help"));
+  $("strategy-list").replaceChildren(...children);
+}
+/** เลือกทุกกลยุทธ์ของเวอร์ชันที่ระบุ โดยไม่แตะเวอร์ชันอื่น */
+function selectVersion(version) {
+  for (const s of metadata.strategies)
+    if (strategyVersion(s) === version) selectedStrategies.add(s.id);
+  syncPicker();
 }
 // The main strategy drives the chart, per-bar values and the Telegram preview,
 // so it is always part of the run.
@@ -267,8 +303,9 @@ function syncPicker() {
   if (!mainStrategy && selectedStrategies.size)
     mainStrategy = [...selectedStrategies][0];
   for (const item of [...$("strategy-list").children]) {
-    const id = item.dataset.id,
-      main = id === mainStrategy;
+    const id = item.dataset.id;
+    if (!id) continue; // ข้ามหัวข้อกลุ่มและข้อความว่าง
+    const main = id === mainStrategy;
     item.querySelector("input").checked = selectedStrategies.has(id);
     item.classList.toggle("is-main", main);
     item.querySelector(".star").setAttribute("aria-pressed", String(main));
@@ -549,8 +586,9 @@ function selectDetail(mode) {
     trendlines: "trendlines.upper",
     squeeze_momentum: "squeezeMomentum.value",
   };
-  if (numeric.some(([key]) => key === defaults[detail.id]))
-    $("overlay").value = defaults[detail.id];
+  // กลยุทธ์ v2 ส่งคอลัมน์ที่ควรวาดมาเองผ่าน defaultOverlay
+  const preferred = strategy(detail.id)?.defaultOverlay ?? defaults[detail.id];
+  if (numeric.some(([key]) => key === preferred)) $("overlay").value = preferred;
   else $("overlay").value = "";
   render();
 }
@@ -1386,7 +1424,10 @@ async function init() {
     metadata = await r.json();
     for (const s of metadata.strategies) params[s.id] = { ...s.params };
     buildStrategyPicker();
-    for (const s of metadata.strategies) selectedStrategies.add(s.id);
+    // เลือกไว้ให้ทั้งหมดยกเว้น Lorentzian ซึ่งค้นเพื่อนบ้านย้อนหลังหลายพันแท่งต่อหนึ่งแท่ง
+    // จึงใช้เวลานานกว่าตัวอื่นมาก ให้ผู้ใช้เลือกเองเมื่อพร้อมรอ
+    for (const s of metadata.strategies)
+      if (!s.id.startsWith("lorentzian_v2")) selectedStrategies.add(s.id);
     setMainStrategy("supertrend");
     buildIntervalPicker();
     setMainInterval("1h");
@@ -1409,6 +1450,16 @@ async function init() {
       selectedStrategies.clear();
       mainStrategy = "";
       syncPicker();
+    });
+    $("strategy-v1").addEventListener("click", () => selectVersion(1));
+    $("strategy-v2").addEventListener("click", () => selectVersion(2));
+    $("strategy-filter").addEventListener("input", () => {
+      buildStrategyPicker();
+      syncPicker();
+    });
+    // ช่องค้นหาอยู่ในฟอร์มเดียวกับปุ่มรัน กด Enter จึงต้องไม่เริ่มทดสอบโดยไม่ตั้งใจ
+    $("strategy-filter").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") e.preventDefault();
     });
     $("source").addEventListener("change", sourceFields);
     $("mode").addEventListener("change", () => {

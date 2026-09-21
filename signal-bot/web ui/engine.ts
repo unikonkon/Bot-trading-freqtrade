@@ -6,6 +6,11 @@ import {
   type SignalAction,
   type StrategyId,
 } from "../../lib/backtest";
+import {
+  V2_STRATEGY_IDS,
+  resolveV2Strategy,
+  type V2StrategyId,
+} from "../../lib/indicators-v2";
 import type { AllIndicators } from "../../lib/indicators";
 import type { KlineData } from "../../lib/types/kline";
 
@@ -126,7 +131,13 @@ function indicatorColumns(ind: Partial<AllIndicators>, n: number) {
   return columns;
 }
 
+/** กลยุทธ์ v2 ทุกตัวชี้ไปที่คีย์ผลลัพธ์ของอินดิเคเตอร์ต้นทางของมัน */
+const V2_INDICATOR_KEYS = Object.fromEntries(
+  V2_STRATEGY_IDS.map((id) => [id, resolveV2Strategy(id).def.key]),
+) as Record<V2StrategyId, keyof AllIndicators>;
+
 export const INDICATOR_KEYS: Record<StrategyId, keyof AllIndicators> = {
+  ...V2_INDICATOR_KEYS,
   rsi: "rsi", cdc_actionzone: "cdcActionZone", smc: "smc", smc_adaptive: "smcAdaptive",
   smc_adaptive_v2: "smcAdaptiveV2", smc_adaptive_short: "smcAdaptiveShort", cm_macd: "cmMacd",
   supertrend: "supertrend", squeeze_momentum: "squeezeMomentum", msb_ob: "msbOb",

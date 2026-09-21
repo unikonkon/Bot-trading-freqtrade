@@ -7,6 +7,11 @@ import {
   type KlineData,
 } from "../../lib/types/kline";
 import { STRATEGIES, type StrategyId } from "../../lib/backtest";
+import {
+  isV2StrategyId,
+  v2WarmupBars,
+  validateV2Params,
+} from "../../lib/indicators-v2";
 
 export interface RequestConfig {
   symbol: string;
@@ -110,6 +115,12 @@ export function validate(input: unknown): RequestConfig {
     params[s.id] = { ...s.params };
     for (const [key, value] of Object.entries(custom)) {
       if (!Object.hasOwn(s.params, key)) throw new Error(`ไม่พบพารามิเตอร์ ${key}`);
+      // กลยุทธ์ v2 ประกาศขอบเขตของตัวเองไว้ใน lib/indicators-v2.ts จึงใช้ค่านั้นตรง ๆ
+      const meta = s.paramMeta?.[key];
+      if (meta) {
+        params[s.id][key] = number(value, key, meta.min, meta.max, meta.integer);
+        continue;
+      }
       const period = /period|length|size|bars|len/i.test(key);
       params[s.id][key] = number(
         value,
@@ -142,6 +153,10 @@ export function validate(input: unknown): RequestConfig {
     if (s.id === "smc_adaptive_short" &&
       (p.fastPeriod >= p.trendPeriod || p.internalSize >= p.swingSize || p.rsiThreshold >= 100))
       throw new Error("SMC Adaptive Short: EMA เร็ว < EMA เทรนด์, Internal < Swing และ RSI < 100");
+    if (isV2StrategyId(s.id)) {
+      const problem = validateV2Params(s.id, p);
+      if (problem) throw new Error(`${s.name}: ${problem}`);
+    }
   }
   const result: RequestConfig = {
     symbol,
@@ -173,14 +188,24 @@ export function validate(input: unknown): RequestConfig {
   return result;
 }
 
+/**
+ * กลยุทธ์ v1 คงพฤติกรรมเดิมทุกประการ (คาดเดาช่วงจากชื่อพารามิเตอร์ เพดาน 1,000 แท่ง)
+ * กลยุทธ์ v2 ประกาศความต้องการของตัวเองผ่าน v2WarmupBars เพราะบางตัว เช่น Lorentzian
+ * ไม่ให้สัญญาณเลยจนกว่าจะมีแท่งครบ maxBarsBack เพดานรวมจึงขยายเป็น 4,000 แท่ง
+ */
 export function warmupBars(cfg: RequestConfig) {
-  const active = cfg.strategies.map((id) => cfg.params[id]);
-  const periods = active.flatMap((p) =>
-    Object.entries(p)
+  const legacy = cfg.strategies.filter((id) => !isV2StrategyId(id));
+  const periods = legacy.flatMap((id) =>
+    Object.entries(cfg.params[id])
       .filter(([key]) => /period|length|size|bars|len/i.test(key))
       .map(([, v]) => v),
   );
-  return Math.min(1000, Math.max(300, Math.max(...periods) * 5));
+  let bars = periods.length
+    ? Math.min(1000, Math.max(300, Math.max(...periods) * 5))
+    : 300;
+  for (const id of cfg.strategies)
+    if (isV2StrategyId(id)) bars = Math.max(bars, v2WarmupBars(id, cfg.params[id]));
+  return Math.min(4000, bars);
 }
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));

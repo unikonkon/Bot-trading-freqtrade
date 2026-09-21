@@ -1,5 +1,16 @@
 import type { KlineData } from "@/lib/types/kline";
 import { computeAll, SMC_ADAPTIVE_DEFAULTS, SMC_ADAPTIVE_V2_DEFAULTS, SMC_ADAPTIVE_SHORT_DEFAULTS, type AllIndicators } from "@/lib/indicators";
+import {
+  V2_STRATEGY_IDS,
+  V2_PARAM_META,
+  isV2StrategyId,
+  resolveV2Strategy,
+  v2Defaults,
+  v2SignalOf,
+  type V2Base,
+  type V2ParamMeta,
+  type V2StrategyId,
+} from "@/lib/indicators-v2";
 
 // ─── Types ─────────────────────────────────────────────────────
 export type SignalAction = "BUY" | "SELL" | "HOLD";
@@ -37,7 +48,8 @@ export interface BacktestResult {
   buyAndHoldPct: number;
 }
 
-export type StrategyId =
+/** กลยุทธ์ชุดเดิม อิง lib/indicators.ts */
+export type V1StrategyId =
   | "rsi"
   | "cdc_actionzone"
   | "smc"
@@ -52,15 +64,26 @@ export type StrategyId =
   | "trendlines"
   | "ut_bot";
 
+/** กลยุทธ์ทั้งหมดที่ระบบรู้จัก: ชุดเดิม + ชุด v2 จาก lib/indicators-v2.ts */
+export type StrategyId = V1StrategyId | V2StrategyId;
+
 export interface StrategyConfig {
   id: StrategyId;
   name: string;
   descriptionEn: string;
   descriptionTh: string;
   params: Record<string, number>;
+  /** 1 = ชุดเดิม, 2 = ชุดใหม่ตามเอกสาร tradingview-popular-indicators-th.md */
+  version?: 1 | 2;
+  /** กลุ่มการใช้งาน เช่น แนวโน้ม / โมเมนตัม / ความผันผวน */
+  group?: string;
+  /** ป้ายและขอบเขตของแต่ละพารามิเตอร์ (มีเฉพาะกลยุทธ์ v2) */
+  paramMeta?: Record<string, V2ParamMeta>;
+  /** คอลัมน์ที่ Web UI เลือกวาดทับกราฟราคาโดยปริยาย */
+  defaultOverlay?: string;
 }
 
-export const STRATEGIES: StrategyConfig[] = [
+const V1_STRATEGIES: StrategyConfig[] = [
   {
     id: "rsi",
     name: "RSI Overbought/Oversold",
@@ -154,6 +177,43 @@ export const STRATEGIES: StrategyConfig[] = [
   },
 ];
 
+// ─── กลยุทธ์เวอร์ชัน 2 ─────────────────────────────────────────
+/**
+ * สร้างจากทะเบียนใน lib/indicators-v2.ts โดยตรง อินดิเคเตอร์หนึ่งตัวให้สองกลยุทธ์
+ *   <id>            = กฎพื้นฐานของอินดิเคเตอร์นั้นล้วน ๆ
+ *   <id>_filtered   = กฎเดิม + ตัวกรองเทรนด์/ADX/ความผันผวน + ATR stop/trailing/เวลาถือ
+ * เทียบสองตัวนี้บนข้อมูลชุดเดียวกันจะเห็นว่าตัวกรองช่วยหรือทำลายสัญญาณดิบ
+ */
+const V2_STRATEGIES: StrategyConfig[] = V2_STRATEGY_IDS.map((id) => {
+  const { def, filtered } = resolveV2Strategy(id);
+  const params = v2Defaults(id);
+  const paramMeta: Record<string, V2ParamMeta> = {};
+  for (const key of Object.keys(params)) {
+    const meta = V2_PARAM_META[key];
+    if (meta) paramMeta[key] = meta;
+  }
+  return {
+    id,
+    name: filtered ? `${def.name} + ตัวกรอง` : def.name,
+    descriptionEn: filtered
+      ? `${def.descriptionEn}. Gated by trend/ADX/volatility filters with ATR stop, trailing and max hold.`
+      : def.descriptionEn,
+    descriptionTh: filtered
+      ? `${def.descriptionTh} · เพิ่มตัวกรอง EMA เทรนด์ + ADX/DI + ความผันผวน และบริหารการออกด้วย ATR stop/trailing/เวลาถือ`
+      : def.descriptionTh,
+    params,
+    version: 2 as const,
+    group: def.group,
+    paramMeta,
+    defaultOverlay: filtered ? `${def.key}.filterStop` : def.overlay,
+  };
+});
+
+export const STRATEGIES: StrategyConfig[] = [
+  ...V1_STRATEGIES.map((s) => ({ ...s, version: 1 as const })),
+  ...V2_STRATEGIES,
+];
+
 // ─── Signal Generators ─────────────────────────────────────────
 type SignalFn = (klines: KlineData[], ind: AllIndicators, params: Record<string, number>) => SignalAction[];
 
@@ -241,7 +301,25 @@ function utBotStrategy(_k: KlineData[], ind: AllIndicators): SignalAction[] {
   });
 }
 
+/**
+ * ตัวสร้างสัญญาณของกลยุทธ์ v2 ทุกตัวใช้รูปแบบเดียวกัน
+ * อ่านผลลัพธ์ของอินดิเคเตอร์ต้นทางจาก AllIndicators แล้วเลือกคอลัมน์สัญญาณตามโหมด
+ */
+const V2_STRATEGY_FNS = Object.fromEntries(
+  V2_STRATEGY_IDS.map((id) => {
+    const { def } = resolveV2Strategy(id);
+    const fn: SignalFn = (_k, ind) => {
+      const result = (ind as unknown as Record<string, unknown>)[def.key] as V2Base | undefined;
+      if (!result)
+        throw new Error(`ยังไม่ได้คำนวณอินดิเคเตอร์ ${def.key} สำหรับกลยุทธ์ ${id}`);
+      return v2SignalOf(id, result).map((s) => s ?? "HOLD");
+    };
+    return [id, fn];
+  }),
+) as Record<V2StrategyId, SignalFn>;
+
 export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
+  ...V2_STRATEGY_FNS,
   rsi: rsiStrategy,
   cdc_actionzone: cdcActionZoneStrategy,
   smc: smcStrategy,
@@ -276,9 +354,12 @@ export function computeStrategyIndicators(
   params: Record<string, number> = {},
   opts: SignalOptions = {},
 ): AllIndicators {
+  const v2 = isV2StrategyId(strategyId);
   return computeAll(klines, {
     lazy: opts.lazyIndicators,
     confirmedPivots: opts.confirmedPivots,
+    v2Strategy: v2 ? strategyId : undefined,
+    v2Params: v2 ? params : undefined,
     smcAdaptiveParams: strategyId === "smc_adaptive" ? params : undefined,
     smcAdaptiveV2Params: strategyId === "smc_adaptive_v2" ? params : undefined,
     smcAdaptiveShortParams: strategyId === "smc_adaptive_short" ? params : undefined,

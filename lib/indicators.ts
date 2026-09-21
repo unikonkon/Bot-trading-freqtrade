@@ -1,5 +1,14 @@
 import { PriceSearch } from "./price-search";
 import type { KlineData } from "@/lib/types/kline";
+import {
+  resolveV2Strategy,
+  type V2StrategyId,
+  type SmaV2Result, type EmaV2Result, type RsiV2Result, type MacdV2Result,
+  type BollingerV2Result, type AtrV2Result, type StochasticV2Result, type StochRsiV2Result,
+  type AdxV2Result, type IchimokuV2Result, type SupertrendV2Result, type VwapV2Result,
+  type VolumeV2Result, type ObvV2Result, type VolumeProfileV2Result, type SmcV2Result,
+  type SqueezeV2Result, type WaveTrendV2Result, type UtBotV2Result, type LorentzianV2Result,
+} from "@/lib/indicators-v2";
 
 // ─── Helper ────────────────────────────────────────────────────
 function closes(k: KlineData[]): number[] { return k.map(x => +x.close); }
@@ -1957,6 +1966,31 @@ export interface AllIndicators {
   supportResistance: SupportResistanceResult;
   trendlines: TrendlinesResult;
   utBot: UTBotResult;
+  /**
+   * อินดิเคเตอร์เวอร์ชัน 2 (lib/indicators-v2.ts)
+   * คำนวณเฉพาะตัวที่กลยุทธ์ v2 ที่เลือกใช้เท่านั้น ตัวอื่นเป็น undefined
+   * จึงไม่กระทบผลลัพธ์ของ v1 และไม่เพิ่มคอลัมน์ให้ freqtrade/scripts/dump-indicators.ts
+   */
+  smaV2?: SmaV2Result;
+  emaV2?: EmaV2Result;
+  rsiV2?: RsiV2Result;
+  macdV2?: MacdV2Result;
+  bollingerV2?: BollingerV2Result;
+  atrV2?: AtrV2Result;
+  stochasticV2?: StochasticV2Result;
+  stochRsiV2?: StochRsiV2Result;
+  adxV2?: AdxV2Result;
+  ichimokuV2?: IchimokuV2Result;
+  supertrendV2?: SupertrendV2Result;
+  vwapV2?: VwapV2Result;
+  volumeV2?: VolumeV2Result;
+  obvV2?: ObvV2Result;
+  volumeProfileV2?: VolumeProfileV2Result;
+  smcV2?: SmcV2Result;
+  squeezeV2?: SqueezeV2Result;
+  waveTrendV2?: WaveTrendV2Result;
+  utBotV2?: UtBotV2Result;
+  lorentzianV2?: LorentzianV2Result;
 }
 
 export function computeAll(klines: KlineData[], overrides?: {
@@ -1994,10 +2028,14 @@ export function computeAll(klines: KlineData[], overrides?: {
    * false = พฤติกรรม TS เดิม ใช้เฉพาะ harness `--mode ts` ห้ามใช้เทรดหรือ backtest จริง
    */
   confirmedPivots?: boolean;
+  /** กลยุทธ์ v2 ที่เลือก — กำหนดว่าจะคำนวณอินดิเคเตอร์ v2 ตัวไหน */
+  v2Strategy?: V2StrategyId;
+  /** พารามิเตอร์ของกลยุทธ์ v2 ตัวนั้น */
+  v2Params?: Record<string, number>;
 }): AllIndicators {
   const c = closes(klines);
   const confirmed = overrides?.confirmedPivots ?? true;
-  const calculations = {
+  const calculations: Record<string, () => unknown> = {
     rsi: () => rsi(c, overrides?.rsiPeriod ?? 14),
     atr: () => atr(klines, 14),
     obv: () => obv(klines),
@@ -2015,8 +2053,15 @@ export function computeAll(klines: KlineData[], overrides?: {
     trendlines: () => trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr", confirmed),
     utBot: () => utBot(klines, overrides?.utBotKey ?? 1, overrides?.utBotAtrPeriod ?? 10),
   };
+  // อินดิเคเตอร์ v2 เพิ่มเข้ามาเฉพาะตัวที่กลยุทธ์ที่เลือกต้องใช้
+  if (overrides?.v2Strategy) {
+    const { def } = resolveV2Strategy(overrides.v2Strategy);
+    const v2Params = overrides.v2Params ?? {};
+    const v2Start = overrides.smcAdaptiveStartIndex ?? 0;
+    calculations[def.key] = () => def.compute(klines, v2Params, v2Start);
+  }
   const result = {} as AllIndicators;
-  for (const key of Object.keys(calculations) as (keyof AllIndicators)[]) {
+  for (const key of Object.keys(calculations)) {
     const calculate = calculations[key];
     if (overrides?.lazy) {
       Object.defineProperty(result, key, { enumerable: true, configurable: true, get() {
