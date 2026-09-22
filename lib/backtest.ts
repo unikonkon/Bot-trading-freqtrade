@@ -18,7 +18,7 @@ import {
   isV3StrategyId,
   v3Defaults,
   type V3StrategyId,
-} from "@/lib/indicators-v3-core";
+} from "@/lib/indicators-v3";
 
 // ─── Types ─────────────────────────────────────────────────────
 /**
@@ -83,7 +83,7 @@ export type V1StrategyId =
   | "trendlines"
   | "ut_bot";
 
-/** กลยุทธ์ทั้งหมดที่ระบบรู้จัก: ชุดเดิม + v2 (20 อินดิเคเตอร์) + v3 (ShortTrade สองทาง) */
+/** กลยุทธ์ทั้งหมดที่ระบบรู้จัก: ชุดเดิม + v2 (20 อินดิเคเตอร์) + v3 (OrderFlow สองทาง) */
 export type StrategyId = V1StrategyId | V2StrategyId | V3StrategyId;
 
 export interface StrategyConfig {
@@ -92,7 +92,7 @@ export interface StrategyConfig {
   descriptionEn: string;
   descriptionTh: string;
   params: Record<string, number>;
-  /** 1 = ชุดเดิม, 2 = 20 อินดิเคเตอร์ตามเอกสาร TradingView, 3 = ShortTrade สองทาง */
+  /** 1 = ชุดเดิม, 2 = 20 อินดิเคเตอร์ตามเอกสาร TradingView, 3 = OrderFlow สองทาง */
   version?: 1 | 2 | 3;
   /** true = กลยุทธ์เทรดสองทาง ต้องใช้ตัวจำลองที่รองรับสถานะขายและขนาดไม้ */
   twoWay?: boolean;
@@ -230,7 +230,7 @@ const V2_STRATEGIES: StrategyConfig[] = V2_STRATEGY_IDS.map((id) => {
   };
 });
 
-// ─── กลยุทธ์เวอร์ชัน 3: ShortTrade สองทางสำหรับ 1m–15m ─────────
+// ─── กลยุทธ์เวอร์ชัน 3: OrderFlow สองทาง (swing) ───────────────
 /**
  * ต่างจาก v1/v2 ตรงที่เป็นกลยุทธ์สองทาง (เปิดสถานะขายได้) และกำหนดขนาดไม้เอง
  * จึงต้องใช้ตัวจำลอง simulateExposure ไม่ใช่ simulateNextOpen แบบ Spot ทางเดียว

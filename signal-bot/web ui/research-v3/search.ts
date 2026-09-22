@@ -4,7 +4,7 @@
  * ประเมินสามโครงสร้างต้นทุน เพราะต้นทุนเป็นตัวแปรที่ใหญ่กว่าพารามิเตอร์ทุกตัวรวมกัน
  */
 import { load, split, run, f2, tstat } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 
 const TF = process.argv[2] ?? "30m";
 const all = load(TF);

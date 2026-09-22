@@ -15,7 +15,7 @@ import {
   V3_STRATEGY_IDS,
   isV3StrategyId,
   type V3StrategyId,
-} from "../../lib/indicators-v3-core";
+} from "../../lib/indicators-v3";
 import type { AllIndicators } from "../../lib/indicators";
 import type { KlineData } from "../../lib/types/kline";
 

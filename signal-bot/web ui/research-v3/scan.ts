@@ -1,6 +1,6 @@
 /** สแกนพารามิเตอร์ที่มีอยู่แล้วบนช่วง train เพื่อดูว่าการปรับค่าอย่างเดียวพอให้เป็นบวกไหม */
 import { load, split, run, f2, tstat } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 
 const TF = (process.argv[2] ?? "30m");
 const all = load(TF);

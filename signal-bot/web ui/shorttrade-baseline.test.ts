@@ -2,9 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  SHORT_TRADE_V3_DEFAULTS, SHORT_TRADE_V3_PARAM_META, shortTradeV3, sessionAllowed,
-} from '../../lib/indicators-v3-ShortTrade';
-import { V3_PARAM_META, V3_STRATEGY_IDS } from '../../lib/indicators-v3-core';
+  SHORT_TRADE_V3_DEFAULTS, shortTradeV3, sessionAllowed,
+} from './research-v3/shorttrade-baseline';
+import { V3_STRATEGY_IDS } from '../../lib/indicators-v3';
 import { parseKline, type KlineData } from '../../lib/types/kline';
 
 const fixture: KlineData[] = JSON.parse(
@@ -18,26 +18,17 @@ function bars(prices: number[], stepMs = 3600000, startMs = 0): KlineData[] {
       startMs + (i + 1) * stepMs - 1, '1000', 10, '50', '500']));
 }
 
-// ตระกูล SMC นี้ถูกถอดออกจาก `V3_REGISTRY` แล้ว (ดูหัวข้อ 7 ของเอกสาร) เทสต์ทั้งไฟล์
-// จึงเรียก `shortTradeV3()` ตรง ไม่ผ่าน `computeV3` ส่วนการต่อเข้าเว็บตรวจใน
-// `indicators-v3-core.test.ts`
+// อินดิเคเตอร์นี้เป็นเส้นฐานงานวิจัย ไม่ใช่โค้ดของผลิตภัณฑ์ (ดูหัวข้อ 7 ของเอกสาร)
+// เทสต์ยังเก็บไว้เพราะสคริปต์ใน research-v3/ ยังอ้างผลของมันเป็นเส้นเทียบ
+// ถ้ามันคำนวณผิด ข้อสรุปในเอกสารหัวข้อ 7 ก็ผิดตาม
 
-test('ShortTrade is not registered as a selectable strategy any more', () => {
+test('ShortTrade stays out of the product: it is not a selectable strategy', () => {
   assert.ok(!V3_STRATEGY_IDS.some((id) => id.startsWith('shorttrade')),
     'กลยุทธ์ที่วัดแล้วขาดทุนต้องไม่กลับเข้าทะเบียนโดยไม่ได้ตั้งใจ');
-  // ป้ายพารามิเตอร์ของมันย้ายมาอยู่ที่ไฟล์นี้ และต้องไม่ค้างอยู่ในแกนกลาง
-  for (const key of Object.keys(SHORT_TRADE_V3_PARAM_META))
-    assert.ok(!(key in V3_PARAM_META), `${key} ยังค้างอยู่ใน V3_PARAM_META ของแกนกลาง`);
-});
-
-test('ShortTrade defaults all carry a label and sit inside their own bounds', () => {
-  for (const [key, value] of Object.entries(SHORT_TRADE_V3_DEFAULTS)) {
-    if (key === 'allowLong' || key === 'allowShort') continue;
-    const meta = SHORT_TRADE_V3_PARAM_META[key] ?? V3_PARAM_META[key];
-    assert.ok(meta, `ขาดป้ายของ ${key}`);
-    assert.ok(value >= meta.min && value <= meta.max, `${key} = ${value} อยู่นอก ${meta.min}–${meta.max}`);
-    if (meta.integer) assert.ok(Number.isInteger(value), `${key} ต้องเป็นจำนวนเต็ม`);
-  }
+  // ค่าตั้งต้นต้องยังสมเหตุสมผลในตัวเอง แม้ไม่มีตารางป้ายพารามิเตอร์แล้ว
+  const p = SHORT_TRADE_V3_DEFAULTS;
+  assert.ok(p.fastPeriod < p.trendPeriod && p.internalSize < p.swingSize);
+  assert.ok(p.minSizePct > 0 && p.minSizePct <= p.maxSizePct && p.maxSizePct <= 100);
 });
 test('ShortTrade scales holding time by timeframe instead of using a fixed bar count', () => {
   // ปัญหาของ v1: maxHoldBars ชุดเดียวหมายถึง 48 นาทีบน 1m แต่ 12 ชั่วโมงบน 15m

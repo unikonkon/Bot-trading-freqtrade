@@ -1,14 +1,20 @@
 /**
- * indicators-v3-ShortTrade.ts — อินดิเคเตอร์ SMC เทรดสั้น (เส้นฐานงานวิจัย)
+ * shorttrade-baseline.ts — อินดิเคเตอร์ SMC เทรดสั้น (เส้นฐานงานวิจัยเท่านั้น)
  *
- * **ไม่ใช่กลยุทธ์ที่เลือกได้ในเว็บ** — วัดบน BTCUSDT เต็มปีแล้วขาดทุนทุก timeframe
- * และพิสูจน์ได้ว่าแก้ด้วยการปรับค่าไม่ได้ (ดู `indicators-v3-shorttrade-th.md` หัวข้อ 7)
- * จึงถูกถอดออกจาก `V3_REGISTRY` เหลือไว้เพื่อสองอย่างเท่านั้น:
- *   1) ใช้เป็นเส้นฐานเทียบในสคริปต์ `signal-bot/web ui/research-v3/`
- *   2) เป็นตัวอย่างที่ครบถ้วนของกลยุทธ์ที่คืน `V3Result` ตามสัญญาของแกนกลาง
+ * **ไม่ใช่โค้ดของผลิตภัณฑ์** — วัดบน BTCUSDT เต็มปีแล้วขาดทุนทุก timeframe
+ * และพิสูจน์ได้ว่าแก้ด้วยการปรับค่าไม่ได้: ผลตอบแทนล่วงหน้า 5–80 แท่งในทิศที่
+ * สัญญาณบอกมีค่า t ระหว่าง −2.15 ถึง +2.10 และสลับเครื่องหมายระหว่างช่วง train
+ * กับ test ทุกครั้ง ส่วนการค้นหา 5,076 ชุดค่าให้สหสัมพันธ์ผลตอบแทน train↔test
+ * ก่อนหักต้นทุนเท่ากับ −0.570 คือค่าที่ดีบน train เป็นค่าที่แย่บน test อย่างเป็นระบบ
+ * (รายละเอียดอยู่ใน `indicators-v3-shorttrade-th.md` หัวข้อ 7)
  *
- * ชนิดผลลัพธ์ ทะเบียนกลยุทธ์ และป้ายพารามิเตอร์ของกลยุทธ์ที่ลงทะเบียนจริง
- * อยู่ใน `indicators-v3-core.ts` ไม่ได้อยู่ในไฟล์นี้
+ * จึงถูกถอดออกจาก `V3_REGISTRY` และย้ายออกจาก `lib/` มาอยู่ที่นี่ เพราะผู้ใช้
+ * ที่เหลืออยู่มีแต่สคริปต์ในโฟลเดอร์นี้ ซึ่งใช้มันเป็นเส้นฐานเทียบ:
+ * `diagnose.ts`, `entry-edge.ts`, `scan.ts`, `search.ts`, `pick-defaults.ts`, `final-report.ts`
+ *
+ * ผลลัพธ์ใช้ชนิด `ShortTradeResult` ของตัวเอง ไม่ใช่ `V3Result` ของผลิตภัณฑ์
+ * เพราะอินดิเคเตอร์นี้เติมช่องที่กลยุทธ์ที่ลงทะเบียนอยู่ไม่ได้ใช้ (stop, target,
+ * แนวรับ/ต้าน, RSI, ADX) และ `V3Result` ถูกตัดให้เหลือเฉพาะช่องที่มีค่าจริงแล้ว
  *
  * ต้นแบบ: `smcAdaptiveShort` ใน lib/indicators.ts (v1) ซึ่งเป็น Spot ทางเดียว
  * คณิตศาสตร์พื้นฐาน: ใช้ร่วมกับ lib/indicators-v2.ts เพื่อไม่ให้มีสูตรซ้ำสองชุด
@@ -49,15 +55,49 @@
  * • ไม่มีข้อมูล order book จึงประมาณสภาพคล่องด้วย relative volume เท่านั้น
  */
 import type { KlineData } from "@/lib/types/kline";
-import {
-  type V3Result, type V3Setup, type V3ParamMeta,
-  detectTimeframeMinutes, metaBars, metaPct, metaTimes,
-} from "@/lib/indicators-v3-core";
+import { detectTimeframeMinutes } from "@/lib/indicators-v3";
 import {
   sma, ema, atr, dmi, findPivots, rsiV2, highest, lowest,
   closes, highs, lows, opens, volumes,
   type Series,
 } from "@/lib/indicators-v2";
+
+/** ชนิดจังหวะเข้าของตระกูล SMC */
+export type ShortTradeSetup = "sweep" | "retest" | "reversion";
+
+/** ผลลัพธ์ของอินดิเคเตอร์นี้ ทุกช่องถูกเติมค่าจริง */
+export interface ShortTradeResult {
+  exposure: number[];
+  signal: ("BUY" | "SELL" | "SHORT" | "COVER" | null)[];
+  reason: string[];
+  regime: ("warmup" | "range" | "uptrend" | "downtrend" | "shock")[];
+  setup: (ShortTradeSetup | null)[];
+  direction: number[];
+  size: Series;
+  confidence: Series;
+  stop: Series;
+  target: Series;
+  initialRisk: Series;
+  netRewardRisk: Series;
+  atr: Series;
+  fastEMA: Series;
+  trendEMA: Series;
+  rsi: Series;
+  adx: Series;
+  plusDI: Series;
+  minusDI: Series;
+  volumeRatio: Series;
+  internalSupport: Series;
+  internalResistance: Series;
+  swingSupport: Series;
+  swingResistance: Series;
+  utcHour: Series;
+  sessionOk: (boolean | null)[];
+  timeframeMinutes: number;
+  resolvedHoldBars: number;
+  resolvedSetupBars: number;
+  resolvedCooldownBars: number;
+}
 
 // ─── พารามิเตอร์ ───────────────────────────────────────────────
 /**
@@ -270,7 +310,7 @@ export function shortTradeV3(
   k: KlineData[],
   overrides: Partial<ShortTradeV3Params> | Record<string, number> = {},
   startIndex = 0,
-): V3Result {
+): ShortTradeResult {
   const p = { ...SHORT_TRADE_V3_DEFAULTS, ...overrides } as ShortTradeV3Params;
   for (const [key, v] of Object.entries(p)) {
     if (!Number.isFinite(v) || v < 0) throw new Error(`Invalid ShortTrade V3 parameter: ${key}`);
@@ -327,7 +367,7 @@ export function shortTradeV3(
   const events = structureEvents(k, p.internalSize);
 
   const blank = (): Series => new Array(n).fill(null);
-  const r: V3Result = {
+  const r: ShortTradeResult = {
     exposure: new Array(n).fill(0),
     signal: new Array(n).fill(null),
     reason: new Array(n).fill("warmup"),
@@ -515,7 +555,7 @@ export function shortTradeV3(
         side * (c[i] - o[i]) > 0 && side * (c[i] - c[i - 1]) > 0 &&
         side * (f - c[i]) > 0;
 
-      let setupType: V3Setup;
+      let setupType: ShortTradeSetup;
       let structureExtreme: number;
       if (sweepOk) { setupType = "sweep"; structureExtreme = sweepExtreme; }
       else if (retestOk) {
@@ -593,88 +633,3 @@ export function shortTradeV3(
   }
   return r;
 }
-
-/**
- * ป้ายของพารามิเตอร์ที่มีแต่ ShortTrade ใช้ เก็บไว้ที่นี่เพราะ `V3_PARAM_META`
- * ในแกนกลางมีเฉพาะพารามิเตอร์ของกลยุทธ์ที่ลงทะเบียนอยู่จริง
- * (ส่วน fastPeriod / trendPeriod / atrPeriod ใช้ร่วมกับ OrderFlow จึงอยู่ในแกนกลาง)
- */
-export const SHORT_TRADE_V3_PARAM_META: Record<string, V3ParamMeta> = {
-  internalSize: metaBars("ความกว้าง pivot ย่อย (แท่ง)", 2, 100),
-  swingSize: metaBars("ความกว้าง pivot ใหญ่ (แท่ง)", 3, 200),
-  adxPeriod: metaBars("ช่วง ADX/DI", 2, 200),
-  rsiPeriod: metaBars("ช่วง RSI", 2, 200),
-  volumePeriod: metaBars("ช่วงค่าเฉลี่ยปริมาณซื้อขาย", 2, 200),
-  holdMinutes: metaBars("ถือได้นานสุด (นาที)", 5, 2880),
-  setupMinutes: metaBars("อายุจังหวะตั้งท่า (นาที)", 1, 480),
-  cooldownMinutes: metaBars("พักหลังปิดสถานะ (นาที)", 0, 480),
-  giveUpMinutes: metaBars("ตัดใจออกถ้าไม่ไปไหน (นาที, 0 = ปิด)", 0, 2880),
-  adxThreshold: metaPct("ADX ที่ถือว่าเทรนด์แรง", 1, 100, 1),
-  rsiMax: metaPct("RSI สูงสุดก่อนงดซื้อ (ฝั่งขายใช้ 100 − ค่านี้)", 50, 99, 1),
-  minVolumeRatio: metaTimes("ปริมาณซื้อขาย / ค่าเฉลี่ย ขั้นต่ำ", 0, 10),
-  maxExtensionAtr: metaTimes("ระยะห่าง EMA เร็วสูงสุด × ATR", 0.1, 20),
-  maxVolatilityRatio: metaTimes("ATR เร็ว/ช้าสูงสุดก่อนงดเข้า", 0.5, 20),
-  shockAtr: metaTimes("True Range สูงสุด × ATR ก่อนหน้า", 1, 20),
-  shockBars: metaBars("พักหลังแท่ง shock (แท่ง)", 0, 100),
-  sessionMode: metaBars("ช่วงเวลา (0=ทุกชั่วโมง 1=เลี่ยงช่วงเงียบ 2=EU+US)", 0, 2),
-  stopAtr: metaTimes("ระยะ Stop × ATR", 0.1, 20),
-  targetAtr: metaTimes("เพดานเป้าหมาย × ATR", 0.2, 30),
-  targetReachRatio: metaTimes("สัดส่วนช่วงราคาที่วิ่งได้จริงในเวลาที่ถือ", 0.05, 2),
-  trailAtr: metaTimes("ระยะ Trailing × ATR", 0.1, 20),
-  trailStartR: metaTimes("เริ่มป้องกันกำไรที่กี่ R", 0.1, 10),
-  riskCostMult: metaTimes("Stop ขั้นต่ำ = กี่เท่าของต้นทุน (0 = ปิด)", 0, 5),
-  minRiskPct: metaPct("ระยะ Stop ขั้นต่ำ (%)", 0.01, 10),
-  costPct: metaPct("ต้นทุนไป–กลับที่เผื่อไว้ (%)", 0, 5),
-  minNetProfitPct: metaPct("กำไรสุทธิขั้นต่ำ (%)", 0, 10),
-  minNetRewardRisk: metaTimes("Reward/Risk หลังต้นทุน ขั้นต่ำ", 0, 10),
-  reversionEnabled: metaBars("เปิดขาเข้าสวนในกรอบ (0/1)", 0, 1),
-  reversionStretchAtr: metaTimes("ระยะยืดจาก EMA เร็ว × ATR", 0.2, 10),
-  minSizePct: metaPct("ขนาดไม้ต่ำสุด (% ของพอร์ต)", 1, 100, 1),
-  maxSizePct: metaPct("ขนาดไม้สูงสุด (% ของพอร์ต)", 1, 100, 1),
-};
-
-/**
- * กฎฉบับเต็มของอินดิเคเตอร์นี้ เก็บไว้เป็นบันทึกของงานวิจัย
- * ไม่ได้ถูกใช้ในไฟล์ Export อีกแล้ว เพราะกลยุทธ์นี้ไม่ได้ลงทะเบียน
- */
-export const SHORT_TRADE_V3_RULE_TH =
-  "ShortTrade V3 เทรดสั้นสองทางสำหรับ 1m/3m/5m/15m/30m พัฒนาจาก smcAdaptiveShort (v1) ซึ่งเป็น Spot ทางเดียว. " +
-  "ตรวจ timeframe จากค่ามัธยฐานของระยะห่าง openTime ระหว่างแท่ง แล้วแปลงค่าที่ตั้งเป็น 'นาที' " +
-  "(holdMinutes, setupMinutes, cooldownMinutes) เป็นจำนวนแท่งเอง กลยุทธ์เดียวจึงใช้ได้ทุก timeframe " +
-  "โดยเวลาถือจริงเท่ากัน ไม่ใช่จำนวนแท่งเท่ากัน. " +
-  "ทุก pivot ใช้แบบยืนยันแล้ว (ใช้ได้ตั้งแต่แท่ง pivotIndex + size) จึงไม่มีการมองอนาคต. " +
-  "จังหวะเข้ามี 3 แบบ สะท้อนกระจกครบทั้งฝั่งซื้อและฝั่งขาย: " +
-  "(1) sweep — ราคาแทงผ่าน internal pivot แล้วปิดกลับฝั่งเดิมเป็นแท่งสวน จากนั้นภายใน setupBars ต้องปิดเลย high/low แท่งก่อน " +
-  "ผ่านระดับที่ถูกกวาด และ RSI เคลื่อนไปทางเดียวกับที่จะเข้า; " +
-  "(2) retest — หลัง BOS/CHoCH ยืนยันแล้ว ราคาย่อกลับมาแตะระดับ break ในระยะ 0.25 ATR แล้วปิดกลับฝั่งเดิม ต้องมีเทรนด์หนุน; " +
-  "(3) reversion — ทำงานเฉพาะ regime 'range' และ ADX ต่ำกว่าเกณฑ์: ราคายืดออกจาก EMA เร็วเกิน reversionStretchAtr × ATR " +
-  "แล้วกลับตัว เป้าหมายคือกลับไปหา EMA เร็ว เป็นขาที่เพิ่มมาตามงานวิจัยที่พบว่า intraday reversal เป็นลักษณะเฉพาะของคริปโต. " +
-  "ด่านร่วม: ไม่อยู่ในช่วง shock, ไม่อยู่ใน cooldown, ผ่านตัวกรองช่วงเวลา (sessionMode 1 ข้าม 00:00–05:59 UTC ซึ่งเป็นช่วง volume ต่ำสุด, " +
-  "2 = เฉพาะ 07:00–20:59 UTC), relative volume เทียบค่าเฉลี่ยของแท่งก่อนหน้า >= minVolumeRatio. " +
-  "ด่านรายทิศ: ห้ามซื้อในขาลงแรงและห้ามขายในขาขึ้นแรง (ยืนยันด้วย ADX >= adxThreshold), RSI ไม่สุดขั้วในทิศที่จะเข้า, " +
-  "ราคาไม่ห่าง EMA เร็วเกิน maxExtensionAtr × ATR และแท่งต้องปิดไปทางเดียวกับที่จะเข้า (เฉพาะ sweep/retest). " +
-  "Risk = max(stopAtr × ATR, ระยะถึงจุดสุดขั้วของ setup + 0.15 ATR, ราคา × minRiskPct/100). " +
-  "Reward ถูกจำกัดหลายชั้น โดยชั้นที่ผูกกับข้อมูลจริงเป็นตัวตัดสิน: " +
-  "(ก) เพดาน targetAtr × ATR เป็นขอบบนกว้าง ๆ ไม่ใช่ตัวจำกัดหลัก — ตั้งเล็กเกินไปไม่ได้ เพราะบนกราฟ 1–5 นาที " +
-  "ATR ของ BTC อยู่ราว 0.05–0.10% ของราคา ถ้าตั้ง 3 ATR เป้าหมายจะเล็กกว่าต้นทุนไป–กลับ 0.31% ทำให้ reward − cost " +
-  "ติดลบทุกครั้ง (วัดจริงบน BTCUSDT 5m 3,000 แท่ง: netRR ผ่านเกณฑ์ 0/63 ครั้ง); " +
-  "(ข) ระยะถึง swing pivot ฝั่งตรงข้าม − 0.1 ATR คือโครงสร้างราคาจริงที่ขวางอยู่; " +
-  "(ค) targetReachRatio × ช่วง High–Low ของ holdBars แท่งล่าสุด คือระยะที่ราคา 'วิ่งได้จริง' ในกรอบเวลาเท่ากับที่ตั้งใจถือ " +
-  "ชั้นนี้แก้จุดอ่อนของ v1 ที่เมื่อไม่มีแนวต้านขวาง เป้าหมายจะกลายเป็น 14 ATR โดยไม่มีหลักฐานว่าราคาเคยไปถึง; " +
-  "(ง) สำหรับขา reversion คือระยะกลับไปหา EMA เร็ว. " +
-  "วัดจริงบน BTCUSDT 3,000 แท่ง ต้นทุน 0.31% คิดเป็น 6.6 ATR บน 1m, 4.0 บน 3m, 2.7 บน 5m และ 1.2 บน 15m. " +
-  "ขา reversion ไม่บังคับ regime = range เพราะขัดกันเองเชิงโครงสร้าง (แท่งที่ราคายืดออกจาก EMA 1.8 ATR " +
-  "regime เป็น range เพียง 87/447 ครั้งบน 1m) จึงใช้ ADX ต่ำกว่าเกณฑ์ร่วมกับด่านห้ามเข้าสวนเทรนด์แรงแทน. " +
-  "Cost gate: cost = ราคา × costPct/100; ต้องได้ (reward − cost)/ราคา × 100 >= minNetProfitPct และ " +
-  "(reward − cost)/(risk + cost) >= minNetRewardRisk มิฉะนั้นงดเข้า โดยไม่ขยับเป้าหมายให้ไกลขึ้นเพื่อให้ผ่าน. " +
-  "ขนาดไม้: ความมั่นใจ = 0.30×คะแนน RR + 0.20×คะแนนปริมาณ + 0.25×คะแนน regime + 0.15×คะแนน ADX + 0.10×คะแนนช่วงเวลา " +
-  "(ทุกองค์ประกอบอยู่ในช่วง 0–1; ขา reversion กลับด้านคะแนน ADX เพราะต้องการตลาดที่ไม่มีเทรนด์) " +
-  "แล้วแปลงเป็นสัดส่วนพอร์ตระหว่าง minSizePct ถึง maxSizePct. ไม่มีการเติมไม้ระหว่างถือ. " +
-  "ออกเมื่อ: ราคาปิดชน stop, ถึงเป้าหมาย, โครงสร้างพลิกสวนสถานะพร้อมราคาปิดเลย EMA เร็ว หรือถือครบ holdBars. " +
-  "เริ่มป้องกันกำไรเมื่อราคาปิดที่ดีที่สุดห่างจุดเข้าเกิน trailStartR เท่าของความเสี่ยงตั้งต้น จากนั้น stop เลื่อนเข้าหากำไรอย่างเดียว; " +
-  "ถ้าตั้ง giveUpMinutes ไว้ จะตัดใจออกเมื่อครบเวลานั้นแล้วไม้ยังไม่กำไรพอกลบต้นทุน. " +
-  "Risk มีพื้นสี่ชั้น ชั้นที่สี่คือ costPct x riskCostMult ซึ่งกัน stop ที่แคบกว่าต้นทุนจนถูก noise เขี่ยทิ้ง. " +
-  "ทุก stop/target เทียบราคาปิด ไม่ใช่คำสั่งระหว่างแท่ง engine จะ fill ที่ราคาเปิดแท่งถัดไปพร้อม fee/slippage/funding. " +
-  "คอลัมน์ exposure คือสัดส่วนพอร์ตเป้าหมาย (+ ซื้อ, − ขาย) ซึ่งเป็นสิ่งที่ตัวจำลองอ่านจริง ส่วน signal มีไว้แสดงผล. " +
-  "ข้อจำกัด: ฝั่งขายสมมติว่าเทรดบน perpetual futures ต้นทุน funding เป็นค่าที่ผู้ใช้ตั้งใน engine ไม่ได้ดึงจาก funding จริง; " +
-  "ขนาดไม้เป็นสัดส่วนพอร์ต ไม่ใช่การคำนวณ margin/leverage; ไม่มีข้อมูล order book จึงประมาณสภาพคล่องด้วย relative volume เท่านั้น";

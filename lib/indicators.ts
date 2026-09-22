@@ -14,7 +14,7 @@ import {
   isV3StrategyId,
   type V3Result,
   type V3StrategyId,
-} from "@/lib/indicators-v3-core";
+} from "@/lib/indicators-v3";
 
 // ─── Helper ────────────────────────────────────────────────────
 function closes(k: KlineData[]): number[] { return k.map(x => +x.close); }

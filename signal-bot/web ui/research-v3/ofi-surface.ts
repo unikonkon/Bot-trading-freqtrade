@@ -1,6 +1,6 @@
 /** ที่ราบของสัญญาณแรงซื้อขายสุทธิแบบลบอคติ: นับช่องที่เป็นบวกทั้ง train และ test */
 import { load, split, TFS, run, f2 } from "./lib";
-import { detectTimeframeMinutes } from "../../../lib/indicators-v3-core";
+import { detectTimeframeMinutes } from "../../../lib/indicators-v3";
 import type { KlineData } from "../../../lib/types/kline";
 
 function ofiRaw(k: KlineData[], L: number) {

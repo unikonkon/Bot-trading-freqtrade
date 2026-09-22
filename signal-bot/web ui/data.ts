@@ -16,7 +16,7 @@ import {
   isV3StrategyId,
   v3WarmupBars,
   validateV3Params,
-} from "../../lib/indicators-v3-core";
+} from "../../lib/indicators-v3";
 
 export interface RequestConfig {
   symbol: string;

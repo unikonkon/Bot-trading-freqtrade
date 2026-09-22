@@ -6,7 +6,7 @@
  * ที่จะทำให้กลยุทธ์เป็นบวกได้ เพราะต้นทุนเป็นค่าคงที่ที่หักจากศูนย์
  */
 import { load, split, TFS, f2, tstat } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 import { closes } from "../../../lib/indicators-v2";
 
 const HORIZONS = [5, 10, 20, 40, 80];

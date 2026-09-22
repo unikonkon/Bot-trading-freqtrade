@@ -3,7 +3,7 @@
  * ประเด็นที่ต้องตัดทิ้งให้ได้: ได้กำไรเพราะ "ขายในตลาดขาลง" เฉย ๆ หรือเพราะจำนวนเทรดน้อยแล้วโชคดี
  */
 import { load, split, run, f2, tstat } from "./lib";
-import { detectTimeframeMinutes } from "../../../lib/indicators-v3-core";
+import { detectTimeframeMinutes } from "../../../lib/indicators-v3";
 import type { KlineData } from "../../../lib/types/kline";
 
 function ofiSeries(k: KlineData[], L: number) {

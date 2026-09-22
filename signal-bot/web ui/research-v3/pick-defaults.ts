@@ -1,6 +1,6 @@
 /** เลือกค่าตั้งต้นของกลไกใหม่จากช่วง train เท่านั้น แล้วรายงานผลบน test */
 import { load, split, TFS, run, f2 } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 const FEE = 0.05, SLIP = 0.03;
 for (const key of ["trailStartR", "riskCostMult", "giveUpMinutes"] as const) {
   const values = key === "trailStartR" ? [1, 1.5, 2, 3, 99]

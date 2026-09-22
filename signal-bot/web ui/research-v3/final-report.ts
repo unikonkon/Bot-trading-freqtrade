@@ -3,7 +3,7 @@
  * ไม่ได้ลงทะเบียนเป็นกลยุทธ์อีกแล้ว จึงเรียกอินดิเคเตอร์ตรงและกำหนดทิศเอง
  */
 import { load, TFS, run, f2, tstat } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 const WARM = 1000;
 const COSTS = [
   { name: "spot-taker  (0.10+0.05/ขา)", fee: 0.1, slip: 0.05 },

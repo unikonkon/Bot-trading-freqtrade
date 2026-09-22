@@ -4,7 +4,7 @@
  * แก้ด้วยการเทียบกับค่าเฉลี่ยระยะยาวของตัวมันเอง (ยังใช้เฉพาะข้อมูลในอดีต)
  */
 import { load, split, run, f2, tstat } from "./lib";
-import { detectTimeframeMinutes } from "../../../lib/indicators-v3-core";
+import { detectTimeframeMinutes } from "../../../lib/indicators-v3";
 import type { KlineData } from "../../../lib/types/kline";
 
 function ofiRaw(k: KlineData[], L: number) {

@@ -1,6 +1,6 @@
 /** แยกดูว่าความได้เปรียบ (ก่อนหักต้นทุน) ซ่อนอยู่ในกลุ่มย่อยไหนบ้าง — เฉพาะช่วง train */
 import { load, split, TFS, run, tstat, f2 } from "./lib";
-import { shortTradeV3 } from "../../../lib/indicators-v3-ShortTrade";
+import { shortTradeV3 } from "./shorttrade-baseline";
 
 const groups: Record<string, Record<string, number[]>> = {};
 const add = (dim: string, key: string, v: number) => {

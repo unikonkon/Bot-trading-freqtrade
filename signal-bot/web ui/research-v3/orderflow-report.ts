@@ -6,7 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { load, run, f2, tstat, SPLIT_AT } from "./lib";
-import { computeV3, V3_STRATEGY_IDS, V3_REGISTRY } from "../../../lib/indicators-v3-core";
+import { computeV3, V3_STRATEGY_IDS, V3_REGISTRY } from "../../../lib/indicators-v3";
 import type { KlineData } from "../../../lib/types/kline";
 
 const ALT = process.argv[2];

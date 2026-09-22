@@ -4,7 +4,7 @@
  */
 import { load, split, TFS, run, f2, tstat } from "./lib";
 import { closes, atr } from "../../../lib/indicators-v2";
-import { detectTimeframeMinutes } from "../../../lib/indicators-v3-core";
+import { detectTimeframeMinutes } from "../../../lib/indicators-v3";
 import type { KlineData } from "../../../lib/types/kline";
 
 function exposureOf(k: KlineData[], start: number, Lbars: number, mult: number, Hbars: number) {
