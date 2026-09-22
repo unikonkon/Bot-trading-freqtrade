@@ -26,3 +26,4 @@ signal-bot/logs/
 
 # Downloaded historical market data (kept locally; reproducible from manifest)
 data-test/BTCUSDT/
+data-test/crosscoin/
