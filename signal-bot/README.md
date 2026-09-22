@@ -55,6 +55,9 @@ indicator ทุกตัวคำนวณจากราคาปิด ถ้
 - state เก็บใน `signal-bot/data/signal-bot-state.json` (เขียนแบบ atomic: tmp แล้ว rename) มี `paused`, `lastAlert[botId] = {closeTime, signal, price}`, `telegramOffset`
 - หลัง restart บอทสแกนทันที 1 รอบเพื่อให้ `/status` ตอบได้ แต่จะ **ไม่ส่ง** สัญญาณที่ (ก) เคยส่งแล้ว (closeTime เท่าเดิม) หรือ (ข) เก่ากว่า 1 ช่วง interval — กันสแปมสัญญาณย้อนหลังตอนเครื่องดับนาน
 - `/pause` ไม่หยุดสแกน แค่ไม่ส่ง; สัญญาณที่เกิดระหว่าง pause ถูกบันทึกว่าเห็นแล้ว เพื่อไม่ให้ทะลักออกมาตอน `/resume`
+- **บอทจะไม่ส่ง BUY สองครั้งติดกัน** เพราะ `STRATEGY_FNS` บังคับให้สตรีมสัญญาณสลับเปิด–ปิดก่อนถึงมือบอท
+  ก่อนมีกฎนี้ กลยุทธ์อย่าง `rsi` ที่ตอบว่า "RSI ยังต่ำกว่า 30 อยู่" จะยิง BUY ซ้ำได้ถึง 78 แท่งติดกัน
+  ทั้งที่ควรแจ้งครั้งเดียวตอนเข้าเงื่อนไข รายละเอียดและตัวเลขที่วัดได้อยู่ใน [`README.md`](../README.md) ของ repo
 
 ### 2.4 Telegram
 
@@ -94,7 +97,7 @@ indicator ทุกตัวคำนวณจากราคาปิด ถ้
 | `signal-bot/state.ts` | state JSON เขียนแบบ atomic |
 | `signal-bot/telegram.ts` | Telegram Bot API (sendMessage, getUpdates long polling, setMyCommands) |
 | `signal-bot/format.ts` | ข้อความแจ้งเตือน/สถานะ (แก้หน้าตาข้อความที่นี่) |
-| `lib/backtest.ts → computeSignals()` | จุดร่วมของ backtest และบอท: indicator → สัญญาณ (เพิ่มใหม่) |
+| `lib/backtest.ts → computeSignals()` | จุดร่วมของ backtest และบอท: indicator → สัญญาณ (เพิ่มใหม่) · ผ่านกฎสลับเปิด–ปิดของ `alternateSignals()` แล้วเสมอ |
 | `lib/indicators.ts → pivotEvents()` | pivot แบบ confirmed ใช้ร่วมกันโดย S/R, Trendlines, SMC (เพิ่มใหม่) |
 | `signal-bot/deploy/ecosystem.config.cjs` | pm2 |
 | `signal-bot/deploy/signal-bot.service` | systemd |

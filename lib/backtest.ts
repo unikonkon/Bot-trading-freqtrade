@@ -383,7 +383,64 @@ const V3_STRATEGY_FNS = Object.fromEntries(
   }),
 ) as Record<V3StrategyId, SignalFn>;
 
-export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
+/**
+ * บังคับให้สตรีมสัญญาณสลับ "เปิด" กับ "ปิด" เสมอ — สัญญาณซื้อสองครั้งติดกันเป็นไปไม่ได้
+ *
+ * ═══ ทำไมต้องมี ══════════════════════════════════════════════════════════
+ * ตัวสร้างสัญญาณส่วนใหญ่ตอบคำถามว่า "ตอนนี้เงื่อนไขเป็นจริงไหม" ไม่ใช่ "ควรลงมือไหม"
+ * RSI ต่ำกว่า 30 ติดกัน 78 แท่งจึงกลายเป็น BUY 78 ครั้งติดกัน วัดบน BTCUSDT 30m เต็มปี
+ * พบว่า 17 จาก 57 กลยุทธ์มีสัญญาณซ้ำฝั่งแบบนี้ รวม 11,898 ครั้งจาก 36,976 สัญญาณ (32%)
+ * หนักสุดคือ `rsi` (ซ้ำ 1,533 ครั้ง ชุดยาวสุด 78) และ `volume_v2` (2,091 ครั้ง ชุดยาวสุด 62)
+ *
+ * ตัวจำลองไม่เคยเห็นปัญหานี้เพราะมันเมินคำสั่งซื้อตอนที่ถือของอยู่แล้ว **ผลตอบแทนจึงไม่เปลี่ยน**
+ * (วัดแล้ว: เท่ากันทุกหลักใน 15 จาก 17 กลยุทธ์ ส่วนอีก 2 ตัวต่างเพราะการตัดสัญญาณขาย
+ * ที่มาก่อนการซื้อครั้งแรกทิ้ง) แต่สิ่งที่ **เห็นปัญหา** คือคนกับบอท: คอลัมน์สัญญาณในเว็บ
+ * ไฟล์ Export และการแจ้งเตือนของบอทสัญญาณ ซึ่งเคยแจ้ง "ซื้อ" ซ้ำ ๆ ทั้งที่ถือของอยู่แล้ว
+ *
+ * ═══ กฎที่ใช้ ════════════════════════════════════════════════════════════
+ * เป็นเครื่องสถานะเครื่องเดียวที่ครอบทั้งกลยุทธ์ทางเดียวและสองทาง
+ *   ว่าง  → BUY เปิดสถานะซื้อ · SHORT เปิดสถานะขาย (เฉพาะกลยุทธ์สองทาง)
+ *   ซื้อ  → SELL ปิด · SHORT พลิกข้าง (เฉพาะสองทาง)
+ *   ขาย  → COVER ปิด · BUY พลิกข้าง
+ * สัญญาณที่ทำไม่ได้จากสถานะปัจจุบันจะถูกตัดเป็น HOLD
+ *
+ * สำหรับกลยุทธ์ Spot ทางเดียว กฎนี้ให้ผลเป็น BUY → SELL → BUY → SELL เป๊ะ ๆ ตามที่ต้องการ
+ * และตัดสัญญาณขายที่มาก่อนการซื้อครั้งแรกทิ้งไปด้วย เพราะไม่มีของให้ขาย
+ *
+ * ตระกูล v3 ไม่ถูกกระทบ: ที่ดูเหมือน "ซ้ำฝั่ง" ของมันคือคู่ SELL→SHORT และ COVER→BUY
+ * ซึ่งเป็นการปิดแล้วเปิดใหม่ ไม่ใช่การเปิดซ้ำ วัดแล้วได้ 33/33 และ 32/32 เป็นคู่ปิด→เปิดทั้งหมด
+ * ถ้าบังคับให้สลับ BUY/SELL แบบเคร่งครัดกับมัน คอลัมน์สัญญาณจะขัดกับคอลัมน์ exposure
+ * ที่ตัวจำลองใช้จริง แล้วหน้าเว็บจะแสดงข้อมูลที่ไม่ตรงกับสิ่งที่จำลอง
+ *
+ * ═══ สิ่งที่พิจารณาแล้วไม่เอา ════════════════════════════════════════════
+ * "เก็บสัญญาณตัวสุดท้ายของชุดแทนตัวแรก" ฟังดูดีกว่าแต่ **ทำไม่ได้** เพราะจะรู้ว่าแท่งไหน
+ * เป็นตัวสุดท้ายก็ต่อเมื่อชุดจบไปแล้ว การเขียนสัญญาณย้อนกลับไปที่แท่งนั้นคือการมองอนาคต
+ * ส่วนรุ่นที่เป็นเหตุเป็นผลตามเวลาคือ "รอจนเงื่อนไขหยุดเป็นจริงแล้วค่อยเข้า" ซึ่งวัดแล้ว
+ * แย่ลงบนช่วง train (มัธยฐาน −32.04% เทียบกับ −31.02%) จึงตกไปตามเกณฑ์ที่ใช้เลือกค่าทุกครั้ง
+ * รายละเอียดอยู่ใน `signal-bot/web ui/research/signal-alternation-policy.ts`
+ */
+export function alternateSignals(signals: SignalAction[], twoWay = false): SignalAction[] {
+  const out: SignalAction[] = new Array(signals.length).fill("HOLD");
+  let state: "flat" | "long" | "short" = "flat";
+  for (let i = 0; i < signals.length; i++) {
+    const s = signals[i];
+    if (s === "HOLD") continue;
+    const next: "flat" | "long" | "short" | null =
+      state === "flat" ? (s === "BUY" ? "long" : s === "SHORT" && twoWay ? "short" : null)
+        : state === "long" ? (s === "SELL" ? "flat" : s === "SHORT" && twoWay ? "short" : null)
+          : s === "COVER" ? "flat" : s === "BUY" ? "long" : null;
+    if (next === null) continue;
+    out[i] = s;
+    state = next;
+  }
+  return out;
+}
+
+/**
+ * ตัวสร้างสัญญาณดิบ ก่อนผ่านกฎสลับเปิด–ปิด
+ * ไม่ส่งออกนอกไฟล์ เพราะทุกผู้เรียกต้องได้สตรีมที่ผ่านกฎแล้วเสมอ
+ */
+const RAW_STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   ...V2_STRATEGY_FNS,
   ...V3_STRATEGY_FNS,
   rsi: rsiStrategy,
@@ -400,6 +457,21 @@ export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   trendlines: trendlinesStrategy,
   ut_bot: utBotStrategy,
 };
+
+/**
+ * สัญญาณของทุกกลยุทธ์ทุกเวอร์ชัน ผ่านกฎสลับเปิด–ปิดแล้ว
+ *
+ * ห่อไว้ที่นี่ที่เดียวแทนที่จะไปห่อใน `computeSignals` เพราะ `engine.ts` เรียกตารางนี้ตรง ๆ
+ * การห่อที่ตัวตารางจึงเป็นจุดเดียวที่เลี่ยงไม่ได้ ไม่ว่าใครจะเรียกทางไหน
+ */
+export const STRATEGY_FNS: Record<StrategyId, SignalFn> = Object.fromEntries(
+  (Object.keys(RAW_STRATEGY_FNS) as StrategyId[]).map((id) => {
+    const raw = RAW_STRATEGY_FNS[id];
+    const twoWay = isV3StrategyId(id);
+    const fn: SignalFn = (k, ind, params) => alternateSignals(raw(k, ind, params), twoWay);
+    return [id, fn];
+  }),
+) as Record<StrategyId, SignalFn>;
 
 // ─── Signal computation (ใช้ร่วมกันโดย backtest และบอทสัญญาณ signal-bot/) ───
 export interface SignalOptions {

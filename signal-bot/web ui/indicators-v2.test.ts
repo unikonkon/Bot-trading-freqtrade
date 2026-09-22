@@ -10,7 +10,7 @@ import {
   type V2StrategyId,
 } from '../../lib/indicators-v2';
 import { parseKline, type KlineData } from '../../lib/types/kline';
-import { STRATEGIES, STRATEGY_FNS, computeSignals, computeStrategyIndicators } from '../../lib/backtest';
+import { STRATEGIES, STRATEGY_FNS, computeSignals, computeStrategyIndicators, alternateSignals, type SignalAction } from '../../lib/backtest';
 import { RULES, INDICATOR_KEY } from './export-calculations';
 import { INDICATOR_KEYS } from './engine';
 import { validate, warmupBars } from './data';
@@ -99,8 +99,14 @@ test('V2 every strategy produces aligned signals through the whole stack', () =>
     const direct = v2SignalOf(id, computeV2(id, fixture, params, 0)).map(s => s ?? 'HOLD');
     const viaStack = computeSignals(fixture, id, params, { confirmedPivots: true, startIndex: 0 });
     assert.equal(viaStack.length, fixture.length, `${id}: ความยาวสัญญาณต้องเท่าจำนวนแท่ง`);
-    assert.deepEqual(viaStack, direct, `${id}: เส้นทางผ่าน backtest ต้องให้ผลเดียวกับการเรียกตรง`);
+    // เส้นทางผ่าน backtest ต้องเป็นสัญญาณดิบของอินดิเคเตอร์ตัวเดียวกัน หลังผ่านกฎสลับเปิด-ปิด
+    // ไม่ใช่สัญญาณดิบตรง ๆ เพราะ STRATEGY_FNS บังคับกฎนั้นให้ทุกผู้เรียกแล้ว
+    assert.deepEqual(viaStack, alternateSignals(direct), `${id}: เส้นทางผ่าน backtest ต้องให้ผลเดียวกับการเรียกตรงแล้วบังคับกฎสลับ`);
     assert.ok(viaStack.every(s => s === 'BUY' || s === 'SELL' || s === 'HOLD'));
+    // และผลที่ออกมาต้องสลับซื้อ-ขายจริง โดยเริ่มด้วยซื้อเสมอ
+    const acted = viaStack.filter(s => s !== 'HOLD');
+    for (let i = 0; i < acted.length; i++)
+      assert.equal(acted[i], i % 2 === 0 ? 'BUY' : 'SELL', `${id}: สัญญาณลำดับที่ ${i} ต้องสลับซื้อ-ขาย`);
   }
 });
 
@@ -286,4 +292,59 @@ test('V2 request validation uses the declared bounds and relationships', () => {
   // กลยุทธ์ v1 ล้วนต้องได้ warmup เท่าเดิมทุกประการ
   const legacy = validate({ ...base, strategies: ['rsi'], selected: 'rsi', params: {} });
   assert.equal(warmupBars(legacy), 300);
+});
+
+// ══ กฎสลับเปิด–ปิดของสตรีมสัญญาณ (ใช้กับทุกเวอร์ชัน) ══════════
+
+test('alternateSignals: กลยุทธ์ทางเดียวได้ BUY → SELL → BUY → SELL เป๊ะ ๆ', () => {
+  const raw: SignalAction[] = ['BUY', 'BUY', 'BUY', 'HOLD', 'SELL', 'SELL', 'BUY', 'HOLD', 'SELL'];
+  assert.deepEqual(alternateSignals(raw),
+    ['BUY', 'HOLD', 'HOLD', 'HOLD', 'SELL', 'HOLD', 'BUY', 'HOLD', 'SELL']);
+  // ความยาวต้องเท่าเดิมเสมอ เพราะดัชนีของสัญญาณผูกกับดัชนีของแท่ง
+  assert.equal(alternateSignals(raw).length, raw.length);
+  // ขายก่อนซื้อครั้งแรกต้องถูกตัดทิ้ง เพราะบัญชี Spot ไม่มีของให้ขาย
+  assert.deepEqual(alternateSignals(['SELL', 'SELL', 'BUY', 'SELL']), ['HOLD', 'HOLD', 'BUY', 'SELL']);
+  // สัญญาณของกลยุทธ์สองทางต้องไม่หลุดเข้ามาในกลยุทธ์ทางเดียว
+  assert.deepEqual(alternateSignals(['SHORT', 'COVER', 'BUY']), ['HOLD', 'HOLD', 'BUY']);
+  assert.deepEqual(alternateSignals([]), []);
+  assert.deepEqual(alternateSignals(['HOLD', 'HOLD']), ['HOLD', 'HOLD']);
+});
+
+test('alternateSignals: กลยุทธ์สองทางปิดก่อนเปิดใหม่ได้ และพลิกข้างได้ แต่เปิดซ้ำไม่ได้', () => {
+  // ปิดแล้วเปิดใหม่: SELL ปิดสถานะซื้อ แล้ว SHORT เปิดสถานะขาย — ทั้งคู่ต้องผ่าน
+  assert.deepEqual(alternateSignals(['BUY', 'SELL', 'SHORT', 'COVER'], true),
+    ['BUY', 'SELL', 'SHORT', 'COVER']);
+  // พลิกข้างโดยไม่ผ่านสถานะว่างก็ต้องผ่าน เพราะตัวจำลองสองทางรองรับ
+  assert.deepEqual(alternateSignals(['BUY', 'SHORT', 'BUY'], true), ['BUY', 'SHORT', 'BUY']);
+  // เปิดซ้ำทางเดิมโดยยังไม่ปิด คือสิ่งเดียวที่ต้องถูกตัด
+  assert.deepEqual(alternateSignals(['BUY', 'BUY', 'SELL'], true), ['BUY', 'HOLD', 'SELL']);
+  assert.deepEqual(alternateSignals(['SHORT', 'SHORT', 'COVER'], true), ['SHORT', 'HOLD', 'COVER']);
+  // ปิดสถานะที่ไม่ได้ถืออยู่ต้องถูกตัด
+  assert.deepEqual(alternateSignals(['COVER', 'BUY', 'COVER', 'SELL'], true), ['HOLD', 'BUY', 'HOLD', 'SELL']);
+});
+
+test('alternateSignals: เป็นการสแกนไปข้างหน้าอย่างเดียว จึงไม่มีทางมองอนาคต', () => {
+  const raw: SignalAction[] = ['BUY', 'BUY', 'SELL', 'SELL', 'BUY', 'HOLD', 'SELL', 'BUY', 'BUY', 'SELL'];
+  const full = alternateSignals(raw);
+  for (let end = 0; end <= raw.length; end++)
+    assert.deepEqual(alternateSignals(raw.slice(0, end)), full.slice(0, end), `prefix ${end}`);
+});
+
+test('alternateSignals: ทุกกลยุทธ์ที่ลงทะเบียนผ่านกฎนี้แล้ว ไม่มีทางเลี่ยง', () => {
+  // ตารางที่ส่งออกต้องเป็นตัวที่ห่อแล้ว ไม่ใช่ตัวดิบ — engine.ts เรียกตารางนี้ตรง ๆ
+  for (const cfg of STRATEGIES) {
+    const signals = computeSignals(fixture, cfg.id, cfg.params, { confirmedPivots: true, startIndex: 0 });
+    const viaTable = STRATEGY_FNS[cfg.id](
+      fixture, computeStrategyIndicators(fixture, cfg.id, cfg.params, { confirmedPivots: true, startIndex: 0 }), cfg.params);
+    assert.deepEqual(viaTable, signals, `${cfg.id}: สองเส้นทางต้องให้ผลเดียวกัน`);
+    let state = 'flat';
+    for (let i = 0; i < signals.length; i++) {
+      const s = signals[i];
+      if (s === 'HOLD') continue;
+      if (s === 'BUY') { assert.notEqual(state, 'long', `${cfg.id}: ซื้อซ้ำขณะถือของอยู่ที่แท่ง ${i}`); state = 'long'; }
+      else if (s === 'SELL') { assert.equal(state, 'long', `${cfg.id}: ขายขณะไม่ได้ถือของที่แท่ง ${i}`); state = 'flat'; }
+      else if (s === 'SHORT') { assert.notEqual(state, 'short', `${cfg.id}: เปิดขายซ้ำที่แท่ง ${i}`); state = 'short'; }
+      else if (s === 'COVER') { assert.equal(state, 'short', `${cfg.id}: ปิดขายขณะไม่ได้เปิดขายที่แท่ง ${i}`); state = 'flat'; }
+    }
+  }
 });
