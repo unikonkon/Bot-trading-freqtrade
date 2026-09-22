@@ -18,7 +18,8 @@ import path from "node:path";
 import { parseKline, type BinanceKlineRaw, type KlineData } from "../lib/types/kline";
 
 const OUT = process.argv[2] ?? "data-test/crosscoin";
-const SYMBOLS = ["ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT"];
+/** ตั้ง env SYMBOLS=BTCUSDT เพื่อดึง BTCUSDT ช่วงเวลาเดียวกัน (ใช้ใน `frequent-pooled.ts`) */
+const SYMBOLS = (process.env.SYMBOLS ?? "ETHUSDT,SOLUSDT,BNBUSDT,XRPUSDT").split(",").map((s) => s.trim()).filter(Boolean);
 /**
  * ปลายทางตรงกับไฟล์ BTCUSDT ส่วนต้นทางย้อนไปไกลกว่านั้นราว 4 เดือนครึ่ง โดยตั้งใจ
  *

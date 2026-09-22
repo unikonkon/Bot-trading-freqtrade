@@ -73,22 +73,26 @@ export function parseBots(spec: string, paramsByStrategy: Record<string, Record<
   for (const item of spec.split(",").map((s) => s.trim()).filter(Boolean)) {
     const [symbolRaw, interval, strategyId] = item.split(":").map((s) => s.trim());
     if (!symbolRaw || !interval || !strategyId) {
-      throw new Error(`BOTS รูปแบบผิด "${item}" ต้องเป็น SYMBOL:INTERVAL:STRATEGY เช่น BTCUSDT:1h:supertrend`);
+      throw new Error(`BOTS รูปแบบผิด "${item}" ต้องเป็น SYMBOL:INTERVAL:STRATEGY เช่น BTCUSDT:1h:supertrend หรือ BTCUSDT+ETHUSDT:30m:orderflow_v3`);
     }
-    const symbol = symbolRaw.toUpperCase();
     if (!INTERVAL_SET.has(interval)) throw new Error(`interval "${interval}" ไม่รองรับ (${INTERVALS.join(", ")})`);
     if (!STRATEGY_IDS.has(strategyId)) {
       throw new Error(`strategy "${strategyId}" ไม่รู้จัก (${[...STRATEGY_IDS].join(", ")})`);
     }
-    const id = `${symbol}:${interval}:${strategyId}`;
-    if (seen.has(id)) continue;
-    seen.add(id);
     const defaults = STRATEGIES.find((s) => s.id === strategyId)!.params;
-    bots.push({
-      id, symbol, interval,
-      strategyId: strategyId as StrategyId,
-      params: { ...defaults, ...(paramsByStrategy[strategyId] ?? {}) },
-    });
+    // หลายเหรียญในรายการเดียว: BTCUSDT+ETHUSDT+SOLUSDT:30m:orderflow_v3
+    // กลยุทธ์ v3 ให้สัญญาณราว 0.2–0.4 ครั้งต่อวันต่อเหรียญ การเพิ่มเหรียญคือทางเดียวที่วัดแล้ว
+    // ว่าเพิ่มความถี่ได้โดยไม่ทำลายความได้เปรียบ (trade-planning-1m-30m-th.md หัวข้อ 13.4)
+    for (const symbol of symbolRaw.split("+").map((s) => s.trim().toUpperCase()).filter(Boolean)) {
+      const id = `${symbol}:${interval}:${strategyId}`;
+      if (seen.has(id)) continue;
+      seen.add(id);
+      bots.push({
+        id, symbol, interval,
+        strategyId: strategyId as StrategyId,
+        params: { ...defaults, ...(paramsByStrategy[strategyId] ?? {}) },
+      });
+    }
   }
   return bots;
 }

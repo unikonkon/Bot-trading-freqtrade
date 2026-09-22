@@ -10,18 +10,50 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/** เพดานการไล่หน้า = 50 คำขอ เพราะ Binance ให้ 1,000 แท่งต่อคำขอ */
+export const MAX_KLINES = 50_000;
+
+/**
+ * ดึงแท่งที่ปิดแล้วให้ครบตามจำนวนที่ขอ โดยไล่ย้อนทีละหน้าเมื่อเกิน 1,000 แท่ง
+ *
+ * ก่อนแก้จุดนี้ฟังก์ชันยิงคำขอเดียวและถูกตัดที่ 1,000 แท่งเสมอ ขณะที่กลยุทธ์ v3
+ * ต้องการ 6,002 แท่งที่ 30m (125 วัน) ผลคือชั้นทิศทางสะสมไม่ครบสักครั้ง
+ * และบอท **ไม่เคยส่งสัญญาณ v3 ออกมาเลย** ทุก timeframe ที่สั้นกว่า 4h
+ */
 export async function fetchClosedKlines(
   symbol: string,
   interval: string,
   limit: number,
   opts: { timeoutMs?: number; retries?: number } = {},
 ): Promise<KlineData[]> {
-  const lim = Math.min(Math.max(Math.floor(limit) || 200, 50), 1000);
+  const want = Math.min(Math.max(Math.floor(limit) || 200, 50), MAX_KLINES);
+  const out: KlineData[] = [];
+  let endTime: number | null = null;
+  while (out.length < want) {
+    const page = await fetchKlinePage(symbol, interval, Math.min(want - out.length + 1, 1000), endTime, opts);
+    if (!page.length) break;
+    const nextEnd = page[0].openTime - 1;
+    if (endTime !== null && nextEnd >= endTime) break; // ไม่ถอยหลัง — กันวนไม่รู้จบ
+    out.unshift(...page);
+    endTime = nextEnd;
+    if (page.length < 2) break;
+  }
+  return out.length > want ? out.slice(-want) : out;
+}
+
+async function fetchKlinePage(
+  symbol: string,
+  interval: string,
+  lim: number,
+  endTime: number | null,
+  opts: { timeoutMs?: number; retries?: number } = {},
+): Promise<KlineData[]> {
   const params = new URLSearchParams({
     symbol: symbol.toUpperCase(),
     interval,
-    limit: String(Math.min(lim + 1, 1000)), // เผื่อ 1 แท่งสำหรับตัดแท่งที่ยังไม่ปิด
+    limit: String(Math.min(Math.max(lim, 2), 1000)),
   });
+  if (endTime !== null) params.set("endTime", String(endTime));
   const url = `${BINANCE_BASE}/api/v3/klines?${params.toString()}`;
   const retries = opts.retries ?? 3;
   const timeoutMs = opts.timeoutMs ?? 10_000;

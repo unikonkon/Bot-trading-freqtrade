@@ -1,11 +1,12 @@
 /**
  * indicators-v3.ts — กลยุทธ์เวอร์ชัน 3 ทั้งหมดในไฟล์เดียว
  *
- * ไฟล์นี้มีสี่ส่วน เรียงตามลำดับที่ควรอ่าน
+ * ไฟล์นี้มีห้าส่วน เรียงตามลำดับที่ควรอ่าน
  *   1) สัญญาของผลลัพธ์ — ชนิด `V3Result` ที่กลยุทธ์ v3 ทุกตัวต้องคืน
  *   2) ตระกูล OrderFlow — กลยุทธ์เดียวที่ผ่านการวัดแล้วเป็นบวก (ดูหัวข้อถัดไป)
  *   3) ตระกูล TradePlan — ชั้นแผนเทรดที่บังคับข้อจำกัดเรื่องต้นทุนกับแหล่งสัญญาณใดก็ได้
- *   4) ทะเบียน `V3_REGISTRY` — จุดต่อขยายเดียวที่ระบบทั้งหมดอ่านค่าจากมัน
+ *   4) ตระกูล FlowGate — ชั้นทิศทางจาก OrderFlow คูณชั้นจังหวะจากอินดิเคเตอร์ราคา
+ *   5) ทะเบียน `V3_REGISTRY` — จุดต่อขยายเดียวที่ระบบทั้งหมดอ่านค่าจากมัน
  *
  * ═══ ทำไมสัญญาณมาจาก order flow ไม่ใช่รูปแบบราคา ══════════════════════════
  * ตระกูลสัญญาณ SMC เดิม (ShortTrade V3) วัดแล้วว่า **ไม่มีข้อมูลเชิงทิศทางเลย**
@@ -54,7 +55,8 @@
  *   ไม่ใช่การเทรดรายวัน
  */
 import type { KlineData } from "@/lib/types/kline";
-import { atr, ema, closes, type Series } from "@/lib/indicators-v2";
+import { atr, ema, closes, emaV2, utBotV2, type Series, type V2Signal } from "@/lib/indicators-v2";
+import { trendlinesWithBreaks } from "@/lib/indicators";
 
 // ══ 1) สัญญาของผลลัพธ์ ═════════════════════════════════════════
 /** สัญญาณของ v3 รองรับสองทาง: เปิด/ปิด ทั้งฝั่งซื้อและฝั่งขาย */
@@ -111,6 +113,8 @@ export interface V3Result {
   holdBars?: Series;
   /** ATR% ปัจจุบันเป็นกี่เท่าของค่าปกติของตัวเอง — ด่านความผันผวนที่ใช้แทนตัวกรองเวลา */
   volRatio?: Series;
+  /** ทิศที่ชั้นจังหวะยิงรายแท่ง (1 ซื้อ, −1 ขาย, 0 ไม่ยิง) — ใช้ตรวจว่าทำไมเข้าหรือไม่เข้า */
+  triggerDir?: Series;
 }
 
 /**
@@ -263,7 +267,11 @@ export function orderFlowV3(
   for (let i = 0; i < n; i++) {
     r.utcHour[i] = new Date(k[i].openTime).getUTCHours();
     const v = flow[i];
-    if (v === null) { dir = 0; continue; }
+    if (v === null) {
+      // บอกให้ชัดว่าขาดอีกกี่แท่ง แทนการเงียบ — ผู้ใช้จะได้รู้ว่าต้องโหลดเพิ่มเท่าไร
+      r.reason[i] = `รอสะสมแรงซื้อขายสุทธิ: มี ${i + 1} แท่ง ต้องมี ${L + M - 1} แท่ง (ขาดอีก ${L + M - 1 - (i + 1)})`;
+      dir = 0; continue;
+    }
     r.regime[i] = v > 0 ? "uptrend" : v < 0 ? "downtrend" : "range";
     if (i < startIndex) { r.reason[i] = "warmup (no position)"; dir = 0; continue; }
 
@@ -688,7 +696,343 @@ export const TRADE_PLAN_RULE_TH =
   "ชั้นนี้ไม่สร้างความได้เปรียบ มันบังคับได้แค่ว่าแผนจะไม่ตายด้วยเลขคณิตของต้นทุน " +
   "ถ้าแหล่งสัญญาณไม่รู้ทิศทาง ผลจะยังเป็นลบ เพียงแต่ลบช้าลงเพราะเทรดน้อยลง";
 
-// ══ 4) ทะเบียนกลยุทธ์ v3 — จุดต่อขยายเดียวของทั้งระบบ ══════════
+// ══ 4) ตระกูล FlowGate — ชั้นทิศทางช้า + ชั้นจังหวะเร็ว ═════════
+/**
+ * ═══ ที่มา ═══════════════════════════════════════════════════════════════
+ * OrderFlow V3 มีความได้เปรียบเชิงทิศทางแต่เปลี่ยนค่าช้ามาก (สะสม 5 วัน ลบอคติ 120 วัน)
+ * จึงบอกได้แค่ "ตอนนี้ควรอยู่ฝั่งไหน" ไม่ได้บอกว่า "ควรเข้าแท่งไหน"
+ * ส่วนอินดิเคเตอร์ราคาอย่าง Trendlines / EMA Cross / UT Bot บอกจังหวะได้ละเอียด
+ * แต่วัดแล้วไม่มีข้อมูลเชิงทิศทางเลยเมื่อใช้ลำพัง
+ *
+ * ตระกูลนี้ประกอบสองชั้นเข้าด้วยกัน: **เข้าเมื่อตัวเร็วให้จังหวะ และแรงซื้อขายสุทธิเห็นด้วย**
+ *
+ * ═══ หลักฐานที่ทำให้เชื่อว่าสองชั้นนี้ไม่ใช่การเดา ═══════════════════════
+ * วัดผลตอบแทนล่วงหน้าในทิศที่ตัวเร็วบอก โดยยังไม่มีกฎการออกเลย แล้วแยกเป็นสามกลุ่ม
+ * (BTCUSDT เต็มปี · % ต่อไม้ ก่อนหักต้นทุน · ต้นทุนไป-กลับ futures taker = 0.16%)
+ *
+ * | ตัวเร็ว · 30m · N=80 | ทั้งหมด train/test | flow เห็นด้วย | flow ค้าน |
+ * |---|---|---|---|
+ * | EMA Cross V2    | −0.008 / +0.118 | **+1.112 / +0.816** | −0.879 / −0.802 |
+ * | Trendlines      | +0.052 / +0.244 | **+0.781 / +0.483** | −0.432 / −0.479 |
+ * | UT Bot V2       | +0.004 / +0.002 | **+0.588 / +0.231** | −0.554 / −0.219 |
+ *
+ * สองอย่างที่ทำให้ผลนี้ต่างจากทุกครั้งก่อนหน้าในโปรเจกต์นี้
+ *   1) **กลุ่ม "ค้าน" ติดลบสม่ำเสมอ** ทุกตัวเร็ว ทุก timeframe ทั้ง train และ test
+ *      ซึ่งเป็นลายเซ็นของประตูที่กรองทิศทางได้จริง ไม่ใช่ผลจากจำนวนไม้ที่ลดลง
+ *      (ถ้าเป็นอย่างหลัง กลุ่มค้านจะกระจายรอบศูนย์ ไม่ใช่ติดลบเป็นระบบ)
+ *   2) **เครื่องหมายไม่สลับระหว่าง train กับ test** ซึ่งเป็นด่านที่ตระกูล SMC
+ *      และ TradePlan ตกทุกครั้ง (เอกสาร v3 หัวข้อ 7.1)
+ *
+ * ═══ สิ่งที่วัดแล้วไม่เอา ════════════════════════════════════════════════
+ * • **Smart Money Concepts V2** ถูกตัดออกจากรายการตัวเร็ว แม้จะอยู่ในคำขอตั้งต้น
+ *   เพราะแม้ใส่ชั้นทิศทางแล้วก็ยังสลับเครื่องหมาย train→test ทั้งสอง timeframe
+ *   (15m N=80: +0.537% → −0.069% · 30m: +0.451% → −0.394%) ตรงกับที่หัวข้อ 7.1
+ *   วัดไว้ว่าตระกูล SMC ไม่มีข้อมูลเชิงทิศทาง ผู้ที่มาแทนคือ UT Bot V2 ซึ่งถูกเลือก
+ *   **จากช่วง train เท่านั้น** ในบรรดาผู้สมัครสามตัว (Supertrend V2 / UT Bot V2 / MACD V2)
+ *   ด้วยเหตุผลว่ามีตัวอย่างมากที่สุด (680 เทียบกับ 118 และ 395) และค่า t สูงที่สุด
+ *   (3.6–4.2 บน train) ไม่ใช่เพราะค่าเฉลี่ยสูงสุด — Supertrend มีค่าเฉลี่ยสูงกว่าเล็กน้อย
+ *   แต่ตัวอย่างน้อยกว่าห้าเท่า
+ * • **stop/target ตามราคา** ไม่ใส่ เพราะตระกูล TradePlan วัดแล้วว่าการครอบสัญญาณที่มี
+ *   จังหวะเวลาของตัวเองด้วยกรอบ R ทำให้เสียความได้เปรียบ (หัวข้อ 9 ของเอกสารการวางแผน)
+ *   การออกจึงมาจากสัญญาณล้วน ๆ เหมือน OrderFlow V3
+ *
+ * ═══ ข้อจำกัดเรื่อง timeframe ที่ต้องรู้ก่อนใช้ ══════════════════════════
+ * ชั้นทิศทางต้องสะสม `flowLookbackDays + flowDebiasDays` = 125 วันก่อนให้ค่าแรก
+ * คิดเป็นจำนวนแท่ง: 1m = 180,000 · 3m = 60,000 · 5m = 36,000 · 15m = 12,000 · 30m = 6,000
+ * ขณะที่เว็บรับได้สูงสุด 10,000 แท่งต่อคำขอ **ใช้งานได้จริงบนเว็บจึงมีแต่ 30m**
+ * ส่วน 15m ต้องโหลดผ่านสคริปต์วิจัยที่ไม่ติดเพดานนั้น
+ * และบน 5m ลงไป ความได้เปรียบของกลุ่ม "เห็นด้วย" วัดได้เพียง +0.04% ถึง +0.12% ต่อไม้
+ * ซึ่ง **ต่ำกว่าต้นทุนไป-กลับ 0.16%** จึงไม่ควรใช้
+ *
+ * ═══ สถานะ: วัดครบสองรอบ ลงทะเบียนหนึ่งตัว ═════════════════════════════
+ * **รอบแรก** (`research-v3/flowgate-eval.ts`) ตั้งเกณฑ์สามข้อไว้ก่อนเห็นผล
+ *   ข้อ 1 บวกทั้ง train และ test ทั้ง 15m และ 30m บน BTCUSDT — ผ่านทั้ง 5 ตัว
+ *         และที่ราบของ `flowBand` เป็นบวกทั้งสองช่วง 29 จาก 30 ช่อง
+ *   ข้อ 2 ชนะเส้นฐาน "ถือฝั่งเดียวตลอดเวลา" ในช่วง test — ผ่าน (เส้นฐาน −1.04% และ −5.76%)
+ *   ข้อ 3 พอร์ต 4 เหรียญที่ไม่เคยถูกใช้เลือกค่าเลย ต้องบวกทั้งสองช่วง ทุก band
+ *         ทั้ง 15m และ 30m (6/6) — **ตกทั้ง 5 ตัว**: utbot 4/6 · confluence 3/6 ·
+ *         trendlines 1/6 · ema 0/6 · emaFiltered 0/6
+ *
+ * **รอบสอง** ไล่หาสาเหตุแทนการปรับค่าไปเรื่อย ๆ สมมติฐานตั้งต้นคือค่าตัวเร็ว
+ * (EMA 20/50, ATR 10, pivot 14) เหมาะกับความผันผวนของ BTCUSDT เท่านั้น จึงควรปรับตาม ATR
+ * ของแต่ละเหรียญ — `research-v3/flowgate-transfer.ts` วัดแล้ว **สมมติฐานนั้นผิด**
+ *   • ตัวเร็วยิงถี่เท่ากันแทบทุกเหรียญ แม้ ATR ต่างกันถึง 1.66 เท่า (ต่อ 1000 แท่ง:
+ *     trendlines 28.6–30.7 · ema 19.1–20.8 · utbot 119.9–132.7 · confluence 47.3–49.3)
+ *     เพราะเกณฑ์ของ UT Bot และ Trendlines เป็นตัวคูณ ATR ของเหรียญนั้นเองอยู่แล้ว
+ *     ส่วนจุดตัดของ EMA ขึ้นกับ**รูปร่าง**ของเส้นราคา ไม่ใช่ขนาดของมัน คูณผลตอบแทน
+ *     ทั้งเส้นด้วย 1.4 แล้ว EMA ก็ยังตัดกันที่แท่งเดิม จึงไม่มีสเกลอะไรให้ปรับตั้งแต่ต้น
+ *   • ในบรรดาแท่งที่ชั้นทิศทางเปิดทางอยู่แล้ว แท่งที่ตัวเร็วพาเข้ากับแท่งที่ตัวเร็วทำให้พลาด
+ *     ต่างกันไม่เกิน 0.02% ต่อแท่ง และ |t| < 2 ใน 39 จาก 40 ช่อง — ตัวเร็วไม่ได้เลือกแท่งผิด
+ *   • `research-v3/flowgate-ladder.ts` ไต่ทีละขั้นแล้วพบผู้ร้ายตัวจริงคือ **กฎการออก**
+ *     ที่ตระกูลนี้ตรึงไว้ที่ขอบ band โดยไม่เคยตั้งคำถาม: เอา OrderFlow เปล่า ๆ มาใช้กฎ
+ *     เดียวกันบนพอร์ต 4 เหรียญได้ −5.91%/−2.86% (15m band 0.01) และเทรด 706 ครั้ง
+ *     เทียบกับ 166 ครั้งของกฎออกที่ศูนย์ ส่วนชั้นจังหวะที่เคยถูกกล่าวหากลับเป็นฝ่าย
+ *     กู้สถานการณ์ — ใส่ตัวเร็วเข้าไปบนกฎออกเดิม ผลขึ้นเป็น +21.77%/+0.97%
+ *
+ * จึงเปิดพารามิเตอร์ `gateExitMult` แล้วเลือกค่าด้วยลำดับเดียวกับหัวข้อ 10 ของเอกสาร
+ * (`flowgate-exit-select.ts`: มัธยฐานของ 18 ชุดค่าบน **train ของ BTCUSDT เท่านั้น**)
+ * ได้ utbot 0 · emaFiltered 0 · trendlines 0.25 · ema −1 · confluence −1 ทุกตัวมีที่ราบรองรับ
+ * แล้ววัดข้อ 3 ใหม่ทั้งหมด: **`utbot` ผ่าน 6/6** และชนะ `orderflow_v3_zero` ที่ลงทะเบียน
+ * ไว้แล้วทั้งสองช่วงเวลาที่ band ตั้งต้น ส่วนที่เหลือยังตก (emaFiltered 3/6 ·
+ * trendlines 2/6 · confluence 2/6 · ema 0/6)
+ *
+ * `flowgate_utbot_v3` จึงเป็นตัวเดียวที่ถูกลงทะเบียน อีกสี่ตัวยังอยู่ที่นี่ในฐานะ
+ * **เส้นฐานที่วัดผลแล้ว** พร้อมให้รันซ้ำและต่อยอด ไม่ใช่กลยุทธ์ที่รอเปิดใช้
+ * มีเทสต์บังคับไว้ว่ารหัส `flowgate*` ตัวอื่นต้องไม่โผล่ในทะเบียน
+ */
+export const FLOW_GATE_V3_DEFAULTS = {
+  /** 1 = อนุญาตฝั่งซื้อ, 0 = ปิด (มาจากรหัสกลยุทธ์) */
+  allowLong: 1,
+  /** 1 = อนุญาตฝั่งขาย (ต้องเทรดบน futures), 0 = ปิด */
+  allowShort: 1,
+
+  // ── ชั้นทิศทาง: ค่าเดียวกับ OrderFlow V3 ทุกตัว เพราะผ่านการตรวจข้ามเหรียญมาแล้ว ──
+  flowLookbackDays: 5,
+  flowDebiasDays: 120,
+  flowBand: 0.01,
+
+  // ── ชั้นจังหวะ: ใช้ค่าตั้งต้นเดิมของอินดิเคเตอร์ต้นทางทุกตัว ไม่ปรับใหม่ ──
+  /** Trendlines with Breaks: ความกว้าง pivot */
+  trendLength: 14,
+  /** Trendlines with Breaks: ตัวคูณความชัน */
+  trendMult: 1,
+  /** EMA Cross V2: EMA เร็ว */
+  emaFastLength: 20,
+  /** EMA Cross V2: EMA ช้า */
+  emaSlowLength: 50,
+  /** UT Bot V2: ตัวคูณ ATR ของแนวลาก */
+  utBotKeyValue: 1,
+  /** UT Bot V2: ช่วง ATR */
+  utBotAtrLength: 10,
+
+  // ── เฉพาะรหัสที่ต้องเห็นพ้องหลายตัว ──
+  /** ต้องมีตัวเร็วอย่างน้อยกี่ตัวชี้ทางเดียวกัน */
+  gateConfluenceMin: 2,
+  /** นับว่า "เพิ่งชี้" ถ้าเกิดสัญญาณภายในกี่แท่งล่าสุด */
+  gateConfluenceBars: 10,
+
+  /**
+   * 1 = ออกเมื่อตัวเร็วยิงสวนทางด้วย · 0 = ตัวเร็วมีหน้าที่เข้าอย่างเดียว ออกด้วยชั้นทิศทางล้วน
+   *
+   * ค่านี้สำคัญกว่าที่คิด เพราะความได้เปรียบที่วัดได้อยู่ที่ขอบเขต 40–80 แท่ง
+   * ถ้าปล่อยให้ตัวเร็วสั่งออกด้วย ไม้จะถูกตัดก่อนถึงขอบเขตนั้นและจ่ายค่าธรรมเนียมซ้ำ ๆ
+   * วัดบน UT Bot V2 ที่ยิงถี่ที่สุด: เปิดข้อนี้ได้ 680 ไม้ต่อครึ่งปีบน 15m
+   * ซึ่งเป็นค่าธรรมเนียมล้วน ๆ 109% ของทุน
+   */
+  gateExitOnFlip: 0,
+  /**
+   * ระดับที่ชั้นทิศทางเลิกหนุนแล้วจึงออก คิดเป็นกี่เท่าของ `flowBand`
+   * ความหมายเหมือน `flowExitMult` ของ OrderFlow V3 ทุกประการ
+   *   +1 = ออกทันทีที่ค่าหลุดเกณฑ์เข้า · 0 = ออกเมื่อค่าข้ามศูนย์ · −1 = ออกเมื่อกลับข้างเต็มเกณฑ์
+   *
+   * เดิมตระกูลนี้ถูกตรึงไว้ที่ +1 โดยไม่ได้ตั้งคำถาม ซึ่ง `research-v3/flowgate-ladder.ts`
+   * วัดได้ว่าเป็นสาเหตุหลักที่ย้ายข้ามเหรียญไม่ได้ ไม่ใช่ชั้นจังหวะอย่างที่เข้าใจกันตอนแรก
+   */
+  gateExitMult: 1,
+  /** ขนาดไม้เป็น % ของพอร์ต */
+  gateSizePct: 100,
+  /** ช่วง ATR ที่ใช้รายงานความผันผวนอ้างอิง (ไม่ใช่ stop จริง) */
+  atrPeriod: 14,
+  /** EMA ที่ใช้แสดงผลเท่านั้น */
+  fastPeriod: 21,
+  trendPeriod: 55,
+};
+export type FlowGateV3Params = typeof FLOW_GATE_V3_DEFAULTS;
+
+/** ตัวเร็วที่ใช้เป็นชั้นจังหวะ — เลือกด้วยรหัสกลยุทธ์ ไม่ใช่พารามิเตอร์ */
+export type FlowGateTrigger = "trendlines" | "ema" | "emaFiltered" | "utbot" | "confluence";
+
+/** ทิศที่ตัวเร็วยิงรายแท่ง: 1 ซื้อ, −1 ขาย, 0 ไม่ยิง */
+function triggerDirections(k: KlineData[], p: FlowGateV3Params, which: FlowGateTrigger): number[] {
+  const n = k.length;
+  const dirOf = (s: V2Signal) => (s === "BUY" ? 1 : s === "SELL" ? -1 : 0);
+  if (which === "trendlines") {
+    const tl = trendlinesWithBreaks(k, Math.max(2, Math.round(p.trendLength)), p.trendMult, "Atr", true);
+    return tl.breakUp.map((up, i) => (up ? 1 : tl.breakDown[i] ? -1 : 0));
+  }
+  if (which === "ema" || which === "emaFiltered") {
+    const r = emaV2(k, { emaFastLength: p.emaFastLength, emaSlowLength: p.emaSlowLength }, 0);
+    const src = which === "ema" ? r.signal : r.signalFiltered;
+    return src.map(dirOf);
+  }
+  if (which === "utbot") {
+    const r = utBotV2(k, { utBotKeyValue: p.utBotKeyValue, utBotAtrLength: p.utBotAtrLength }, 0);
+    return r.signal.map(dirOf);
+  }
+  // confluence: ต้องมีตัวเร็วอย่างน้อย gateConfluenceMin ตัวยิงทางเดียวกันภายในหน้าต่างล่าสุด
+  const parts = [
+    triggerDirections(k, p, "trendlines"),
+    triggerDirections(k, p, "ema"),
+    triggerDirections(k, p, "utbot"),
+  ];
+  const window = Math.max(1, Math.round(p.gateConfluenceBars));
+  const need = Math.max(1, Math.min(parts.length, Math.round(p.gateConfluenceMin)));
+  // แท่งล่าสุดที่แต่ละตัวยิงไปทางไหน — ใช้เฉพาะแท่งที่ผ่านมาแล้ว จึงไม่มองอนาคต
+  const lastBar = parts.map(() => -1), lastDir = parts.map(() => 0);
+  const out = new Array(n).fill(0);
+  for (let i = 0; i < n; i++) {
+    for (let t = 0; t < parts.length; t++)
+      if (parts[t][i] !== 0) { lastBar[t] = i; lastDir[t] = parts[t][i]; }
+    let up = 0, dn = 0;
+    for (let t = 0; t < parts.length; t++) {
+      if (lastBar[t] < 0 || i - lastBar[t] >= window) continue;
+      if (lastDir[t] > 0) up++; else if (lastDir[t] < 0) dn++;
+    }
+    // ยิงเฉพาะแท่งที่เพิ่งครบเงื่อนไข ไม่ใช่ทุกแท่งที่เงื่อนไขยังเป็นจริง
+    const fired = parts.some((q) => q[i] !== 0);
+    if (fired && up >= need && dn === 0) out[i] = 1;
+    else if (fired && dn >= need && up === 0) out[i] = -1;
+  }
+  return out;
+}
+
+/**
+ * ชั้นทิศทางช้า × ชั้นจังหวะเร็ว
+ *
+ * ทุกแท่ง (ใช้ข้อมูลถึงแท่งปัจจุบันเท่านั้น)
+ *   1) bias = +1 / −1 / 0 จากแรงซื้อขายสุทธิเทียบ `flowBand`
+ *   2) ถ้าว่าง: เข้าเมื่อตัวเร็วยิงทิศ d และ bias เท่ากับ d และรหัสอนุญาตทิศนั้น
+ *   3) ถ้าถืออยู่: ออกเมื่อ bias เลิกเห็นด้วย (เป็นกลางหรือกลับข้าง) หรือตัวเร็วยิงสวน
+ *      ถ้าออกเพราะตัวเร็วยิงสวน **และ** bias เห็นด้วยกับทิศใหม่ ให้พลิกข้างทันที
+ *
+ * ไม่มี stop ตามราคา — เหตุผลอยู่ในหัวข้อ "สิ่งที่วัดแล้วไม่เอา" ข้างบน
+ */
+export function flowGateV3(
+  k: KlineData[],
+  trigger: FlowGateTrigger,
+  overrides: Partial<FlowGateV3Params> | Record<string, number> = {},
+  startIndex = 0,
+): V3Result {
+  const p = { ...FLOW_GATE_V3_DEFAULTS, ...overrides } as FlowGateV3Params;
+  for (const [key, v] of Object.entries(p))
+    if (!Number.isFinite(v) || (v < 0 && key !== "gateExitMult"))
+      throw new Error(`Invalid FlowGate V3 parameter: ${key}`);
+  if (p.gateExitMult > 1 || p.gateExitMult < -1)
+    throw new Error("FlowGate V3 requires -1 <= gateExitMult <= 1");
+  if (p.flowLookbackDays <= 0 || p.flowDebiasDays <= 0)
+    throw new Error("FlowGate V3 requires positive lookback and debias windows");
+  if (p.flowLookbackDays >= p.flowDebiasDays)
+    throw new Error("FlowGate V3 requires flowLookbackDays < flowDebiasDays");
+  if (p.flowBand <= 0 || p.flowBand >= 1)
+    throw new Error("FlowGate V3 requires 0 < flowBand < 1");
+  if (p.emaFastLength >= p.emaSlowLength)
+    throw new Error("FlowGate V3 requires emaFastLength < emaSlowLength");
+  if (p.gateSizePct <= 0 || p.gateSizePct > 100)
+    throw new Error("FlowGate V3 requires 0 < gateSizePct <= 100");
+  if (p.allowLong < 0.5 && p.allowShort < 0.5)
+    throw new Error("FlowGate V3 requires at least one direction enabled");
+  if (!Number.isInteger(startIndex) || startIndex < 0 || startIndex > k.length)
+    throw new Error("Invalid FlowGate V3 startIndex");
+
+  const n = k.length;
+  const c = closes(k);
+  const tfMinutes = detectTimeframeMinutes(k);
+  const perDay = tfMinutes > 0 ? 1440 / tfMinutes : 1;
+  const L = Math.max(1, Math.round(p.flowLookbackDays * perDay));
+  const M = Math.max(2, Math.round(p.flowDebiasDays * perDay));
+  const flow = removeOwnMean(orderFlowImbalance(k, L), M);
+  const dirs = triggerDirections(k, p, trigger);
+  const size = p.gateSizePct / 100;
+  const exitLevel = p.flowBand * p.gateExitMult;
+
+  const blank = (): Series => new Array(n).fill(null);
+  const triggerSeries: Series = dirs.map((d) => d);
+  const r: V3Result = {
+    exposure: new Array(n).fill(0),
+    signal: new Array(n).fill(null) as V3Signal[],
+    reason: new Array(n).fill("รอสะสมแรงซื้อขายสุทธิให้ครบหน้าต่าง"),
+    regime: new Array(n).fill("warmup"),
+    direction: new Array(n).fill(0),
+    size: blank(),
+    confidence: blank(),
+    signalValue: flow,
+    atr: atr(k, Math.max(2, Math.round(p.atrPeriod))),
+    fastEMA: ema(c, Math.max(2, Math.round(p.fastPeriod))),
+    trendEMA: ema(c, Math.max(3, Math.round(p.trendPeriod))),
+    utcHour: blank(),
+    timeframeMinutes: tfMinutes,
+    resolvedLookbackBars: L,
+    resolvedDebiasBars: M,
+    triggerDir: triggerSeries,
+  };
+
+  let dir = 0;
+  for (let i = 0; i < n; i++) {
+    r.utcHour[i] = new Date(k[i].openTime).getUTCHours();
+    const v = flow[i];
+    if (v === null) {
+      r.reason[i] = `รอสะสมแรงซื้อขายสุทธิ: มี ${i + 1} แท่ง ต้องมี ${L + M - 1} แท่ง (ขาดอีก ${L + M - 1 - (i + 1)})`;
+      dir = 0; continue;
+    }
+    const bias = v > p.flowBand ? 1 : v < -p.flowBand ? -1 : 0;
+    r.regime[i] = bias > 0 ? "uptrend" : bias < 0 ? "downtrend" : "range";
+    if (i < startIndex) { r.reason[i] = "warmup (no position)"; dir = 0; continue; }
+
+    const fired = dirs[i];
+    const allowed = (d: number) => (d === 1 ? p.allowLong >= 0.5 : p.allowShort >= 0.5);
+    const prev = dir;
+    const pct = (v * 100).toFixed(2);
+
+    const flipExit = p.gateExitOnFlip >= 0.5 && fired === -dir;
+    // ถือต่อตราบที่แรงซื้อขายสุทธิยังอยู่ฝั่งเดียวกันเกินระดับออก — ที่ gateExitMult = 1
+    // เงื่อนไขนี้เท่ากับ `bias === dir` พอดี จึงเป็นค่าที่รักษาพฤติกรรมเดิมไว้ทุกประการ
+    const holding = dir === 1 ? v > exitLevel : dir === -1 ? v < -exitLevel : false;
+    if (dir !== 0 && (!holding || flipExit)) {
+      // ตัวเร็วยิงสวนขณะที่ชั้นทิศทางเห็นด้วยกับทิศใหม่ = พลิกข้างทันที
+      dir = fired === -prev && bias === -prev && allowed(-prev) ? -prev : 0;
+    }
+    if (dir === 0 && fired !== 0 && bias === fired && allowed(fired)) dir = fired;
+
+    r.direction[i] = dir;
+    r.exposure[i] = dir * size;
+    if (dir !== 0) {
+      r.size[i] = size;
+      r.confidence[i] = Math.min(1, Math.abs(v) / (p.flowBand * 4));
+    }
+    if (dir !== prev) {
+      if (prev !== 0 && dir === 0) {
+        r.signal[i] = prev === 1 ? "SELL" : "COVER";
+        r.reason[i] = !holding
+          ? `ออก: แรงซื้อขายสุทธิเลิกหนุน (${pct}%)`
+          : `ออก: ตัวเร็วยิงสวนทาง (แรงซื้อขายสุทธิ ${pct}%)`;
+
+      } else {
+        r.signal[i] = dir === 1 ? "BUY" : "SHORT";
+        r.reason[i] = `${dir === 1 ? "ซื้อ" : "ขาย"}: ตัวเร็วให้จังหวะและแรงซื้อขายสุทธิ ${pct}% เห็นด้วย`;
+      }
+    } else if (dir !== 0) {
+      r.reason[i] = `ถือ${dir === 1 ? "ซื้อ" : "ขาย"}: แรงซื้อขายสุทธิ ${pct}%`;
+    } else if (fired !== 0) {
+      r.reason[i] = `ข้าม: ตัวเร็วยิง${fired === 1 ? "ซื้อ" : "ขาย"} แต่แรงซื้อขายสุทธิ ${pct}% ไม่เห็นด้วย`;
+    } else {
+      r.reason[i] = `ว่าง: รอจังหวะจากตัวเร็ว (แรงซื้อขายสุทธิ ${pct}%)`;
+    }
+  }
+  return r;
+}
+
+/** กฎฉบับเต็มของตระกูล FlowGate สำหรับไฟล์ Export */
+export const FLOW_GATE_RULE_TH =
+  "FlowGate V3 ประกอบสองชั้นเข้าด้วยกัน: ชั้นทิศทางช้าจากแรงซื้อขายสุทธิ (order-flow imbalance) " +
+  "และชั้นจังหวะเร็วจากอินดิเคเตอร์ราคา. " +
+  "ชั้นทิศทางคำนวณเหมือน OrderFlow V3 ทุกประการ: ofi = ผลรวม(2 x takerBuyBase - volume) หารด้วย ผลรวม(volume) " +
+  "ย้อนหลัง flowLookbackDays วัน แล้วลบค่าเฉลี่ยเคลื่อนที่ของตัวเอง flowDebiasDays วันออก " +
+  "ได้ bias = +1 เมื่อค่าเกิน flowBand, -1 เมื่อต่ำกว่า -flowBand, 0 เมื่ออยู่ระหว่างกลาง. " +
+  "เข้าไม้เมื่อ **ตัวเร็วยิงและ bias เห็นด้วยกับทิศนั้น** เท่านั้น ถ้าตัวเร็วยิงสวนทาง bias จะไม่เข้า. " +
+  "ออกเมื่อแรงซื้อขายสุทธิกลับเข้ามาถึง gateExitMult เท่าของ flowBand (ค่า 0 = ออกเมื่อข้ามศูนย์) " +
+  "และพลิกข้างทันทีเมื่อตัวเร็วยิงสวนขณะที่ bias เห็นด้วยกับทิศใหม่. " +
+  "ไม่มี stop loss ตามราคา เพราะตระกูล TradePlan วัดแล้วว่าการครอบสัญญาณที่มีจังหวะของตัวเองด้วยกรอบ R " +
+  "ทำให้เสียความได้เปรียบ (เอกสาร trade-planning-1m-30m-th.md หัวข้อ 9). " +
+  "หลักฐานที่ทำให้เชื่อว่าชั้นทิศทางมีผลจริง: วัดผลตอบแทนล่วงหน้า 80 แท่งในทิศที่ตัวเร็วบอกโดยยังไม่มีกฎการออก " +
+  "แล้วแยกกลุ่ม พบว่ากลุ่มที่ bias เห็นด้วยเป็นบวกทั้ง train และ test ขณะที่กลุ่มที่ bias ค้านติดลบเป็นระบบ " +
+  "และเครื่องหมายไม่สลับระหว่าง train กับ test ซึ่งเป็นด่านที่ตระกูล SMC และ TradePlan ตกทุกครั้ง. " +
+  "ข้อจำกัดเรื่อง timeframe: ชั้นทิศทางต้องสะสม flowLookbackDays + flowDebiasDays = 125 วันก่อนให้ค่าแรก " +
+  "คิดเป็น 12,000 แท่งที่ 15m และ 6,000 แท่งที่ 30m ขณะที่เว็บรับได้สูงสุด 10,000 แท่งต่อคำขอ " +
+  "ใช้งานบนเว็บได้จริงจึงมีแต่ 30m ส่วน 15m ต้องโหลดผ่านสคริปต์วิจัย " +
+  "และบน 5m ลงไปไม่ควรใช้ เพราะความได้เปรียบของกลุ่มที่ bias เห็นด้วยวัดได้เพียง 0.04-0.12% ต่อไม้ " +
+  "ซึ่งต่ำกว่าต้นทุนไป-กลับ 0.16%";
+
+// ══ 5) ทะเบียนกลยุทธ์ v3 — จุดต่อขยายเดียวของทั้งระบบ ══════════
 /**
  * ทุกอย่างที่ระบบต้องรู้เกี่ยวกับกลยุทธ์ v3 หนึ่งตัว อยู่ในรายการเดียวของ `V3_REGISTRY`
  * ส่วนฟังก์ชันที่ผู้เรียกใช้ (`v3Defaults`, `computeV3`, `V3_STRATEGY_INFO`, …)
@@ -716,7 +1060,8 @@ export type V3StrategyId =
   | "orderflow_v3"
   | "orderflow_v3_zero"
   | "orderflow_v3_long"
-  | "orderflow_v3_short";
+  | "orderflow_v3_short"
+  | "flowgate_utbot_v3";
 
 /** ทุกสิ่งที่ระบบต้องรู้เกี่ยวกับกลยุทธ์ v3 หนึ่งตัว */
 export interface V3Definition {
@@ -732,8 +1077,11 @@ export interface V3Definition {
   /** ค่าตั้งต้นที่ผู้ใช้ปรับได้ (ต้องไม่มี allowLong/allowShort) */
   defaults: Record<string, number>;
   compute: (k: KlineData[], params: Record<string, number>, startIndex: number) => V3Result;
-  /** จำนวนแท่งอุ่นเครื่องที่ควรโหลดก่อนช่วงที่จะประเมินผล */
-  warmupBars: (params: Record<string, number>) => number;
+  /**
+   * จำนวนแท่งอุ่นเครื่องที่ควรโหลดก่อนช่วงที่จะประเมินผล
+   * ผู้เรียกที่รู้ timeframe ต้องส่ง `timeframeMinutes` มาด้วย มิฉะนั้นจะได้ค่าประมาณที่น้อยเกินไป
+   */
+  warmupBars: (params: Record<string, number>, timeframeMinutes?: number) => number;
   /** ตรวจพารามิเตอร์ที่เกี่ยวพันกัน คืนข้อความเมื่อไม่ผ่าน */
   validate: (params: Record<string, number>) => string | null;
   /** กฎฉบับเต็มสำหรับไฟล์ Export */
@@ -745,6 +1093,19 @@ function orderFlowDefaults(overrides: Record<string, number> = {}): Record<strin
   const { allowLong: _l, allowShort: _s, ...rest } = ORDER_FLOW_V3_DEFAULTS;
   return { ...rest, ...overrides };
 }
+/** ค่าตั้งต้นของ FlowGate โดยตัดทิศทางออก เพราะทิศมาจากรหัสกลยุทธ์ */
+function flowGateDefaults(overrides: Record<string, number> = {}): Record<string, number> {
+  const { allowLong: _l, allowShort: _s, ...rest } = FLOW_GATE_V3_DEFAULTS;
+  return { ...rest, ...overrides };
+}
+function flowGateValidate(p: Record<string, number>): string | null {
+  if (p.flowLookbackDays >= p.flowDebiasDays)
+    return "ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย มิฉะนั้นการลบค่าเฉลี่ยจะหักล้างสัญญาณทิ้ง";
+  if (p.emaFastLength >= p.emaSlowLength) return "EMA เร็วต้องสั้นกว่า EMA ช้า";
+  if (p.fastPeriod >= p.trendPeriod) return "EMA เร็วต้องสั้นกว่า EMA เทรนด์";
+  if (p.gateExitMult > 1 || p.gateExitMult < -1) return "ระดับการออกต้องอยู่ระหว่าง -1 ถึง 1";
+  return null;
+}
 function orderFlowValidate(p: Record<string, number>): string | null {
   if (p.flowLookbackDays >= p.flowDebiasDays)
     return "ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย มิฉะนั้นการลบค่าเฉลี่ยจะหักล้างสัญญาณทิ้ง";
@@ -752,11 +1113,20 @@ function orderFlowValidate(p: Record<string, number>): string | null {
   return null;
 }
 /**
- * OrderFlow ต้องการข้อมูลย้อนหลังเป็น "วัน" (ค่าตั้งต้น 125 วัน) ซึ่งแปลงเป็นแท่งได้
- * ต่อเมื่อรู้ timeframe จึงขอ warm-up ไว้เต็มเพดาน ส่วนที่เหลือกลยุทธ์จะรอสะสมเอง
- * ภายในช่วงที่เลือก และรายงานในคอลัมน์เหตุผลว่ายังสะสมไม่ครบ
+ * จำนวนแท่งที่ชั้นทิศทางต้องมีก่อนให้ค่าแรก
+ *
+ * หน้าต่างถูกกำหนดเป็น **วัน** จำนวนแท่งจึงคำนวณไม่ได้จนกว่าจะรู้ว่าแต่ละแท่งกว้างกี่นาที
+ * เดิมฟังก์ชันนี้คืนค่าคงที่ 2,000 เสมอ ซึ่ง **น้อยกว่าที่ต้องใช้จริงทุก timeframe**
+ * (30m ต้องการ 6,000 · 15m 12,000 · 1m 180,000) ผลคือทั้งเว็บและบอทเตรียมแท่งไม่พอ
+ * แล้วไม่มีสัญญาณออกมาเลยแม้แต่ครั้งเดียว — เป็นสาเหตุที่วัดได้ของอาการ "ไม่มีสัญญาณ"
+ * ตอนนี้จึงคำนวณจาก timeframe จริงเมื่อผู้เรียกบอกมา และคงค่าเดิมไว้เมื่อไม่รู้
  */
-const orderFlowWarmup = () => 2000;
+const orderFlowWarmup = (p: Record<string, number>, timeframeMinutes?: number) => {
+  if (!timeframeMinutes || timeframeMinutes <= 0) return 2000;
+  const days = (p.flowLookbackDays ?? 5) + (p.flowDebiasDays ?? 120);
+  // +2 แท่งกันการปัดเศษ เพื่อให้แท่งแรกของช่วงที่ผู้ใช้เลือกมีค่าสัญญาณแล้วจริง ๆ
+  return Math.ceil((days * 1440) / timeframeMinutes) + 2;
+};
 
 /** คำต่อท้ายกฎ บอกว่ารหัสนี้เปิดทิศไหนและมีผลต่อต้นทุนอย่างไร */
 const SCOPE = {
@@ -774,6 +1144,21 @@ const SCOPE = {
     "ข้อจำกัดเฉพาะของรหัสนี้: ในช่วงที่ไม่เคยถูกใช้เลือกค่าทั้งเหรียญและเวลา มันดีกว่ากฎเดิม 6 จาก 6 ช่อง " +
     "แต่ในช่วงที่เวลาทับกับ train ของ BTCUSDT มันดีกว่าเพียง 2 จาก 6 ช่อง " +
     "ส่วนต่างจึงยังอยู่ในระดับที่ข้อมูลหนึ่งปีแยกไม่ออกจากความบังเอิญ ใช้เทียบกับ orderflow_v3 ไม่ใช่แทนที่",
+  gate:
+    "รหัสนี้เปิดทั้งสองฝั่ง และเป็นตัวเดียวในตระกูล FlowGate ที่ถูกลงทะเบียน. " +
+    "ที่มาของ gateExitMult = 0: ตระกูลนี้เคยตรึงกฎการออกไว้ที่ขอบ band แล้วตกด่านตรวจข้ามเหรียญทั้ง 5 ตัว. " +
+    "การไล่หาสาเหตุ (research-v3/flowgate-transfer.ts) ตัดสมมติฐานเรื่องสเกลของตัวเร็วออกไปก่อน " +
+    "เพราะตัวเร็วยิงถี่เท่ากันแทบทุกเหรียญแม้ ATR ต่างกัน 1.66 เท่า และแท่งที่ตัวเร็วพาเข้ากับแท่งที่ทำให้พลาด " +
+    "ต่างกันไม่เกิน 0.02% ต่อแท่ง. บันไดแยกสาเหตุ (flowgate-ladder.ts) ชี้ไปที่กฎการออก: " +
+    "OrderFlow เปล่า ๆ ที่ใช้กฎออกที่ขอบ band ได้ -5.91%/-2.86% บนพอร์ต 4 เหรียญและเทรด 706 ครั้ง " +
+    "เทียบกับ 166 ครั้งของกฎออกที่ศูนย์. " +
+    "ค่า 0 ถูกเลือกด้วยค่ามัธยฐานของ 18 ชุดค่าบนช่วง train ของ BTCUSDT เท่านั้น (28.28% เทียบกับ 14.95% ของค่าเดิม 1) " +
+    "แล้วจึงวัดด่านข้ามเหรียญครั้งเดียว: พอร์ต ETH/SOL/BNB/XRP เป็นบวกทั้งสองช่วง ทุก band ทั้ง 15m และ 30m ครบ 6 จาก 6 ช่อง " +
+    "และชนะ orderflow_v3_zero ทั้งสองช่วงที่ band ตั้งต้น (15m 11.61%/9.47% เทียบกับ 6.16%/8.53% · 30m 16.78%/9.82% เทียบกับ 3.25%/8.54%). " +
+    "ที่ราบรองรับกว้าง: เปลี่ยน utBotAtrLength เป็น 5/7/14/20 และ utBotKeyValue เป็น 0.5/0.75/1.5/2 ยังได้ 6 จาก 6 ช่องทุกแบบ. " +
+    "ข้อจำกัด: รายเหรียญยังมีตัวที่ขาดทุน (XRP ติดลบทั้งสองช่วงบน 30m) ผลบวกจึงมาจากการกระจายพอร์ต ไม่ใช่จากทุกเหรียญ " +
+    "และ gateExitMult ค่าข้างเคียง (0.25, 0.5, -0.5) ได้เพียง 4 จาก 6 ช่อง ค่านี้จึงไวกว่าพารามิเตอร์ตัวอื่น. " +
+    "ใช้งานบนเว็บได้เฉพาะ 30m เพราะชั้นทิศทางต้องสะสม 125 วัน = 12,000 แท่งที่ 15m ซึ่งเกินเพดาน 10,000 แท่งต่อคำขอ",
   long: "รหัสนี้เปิดเฉพาะฝั่งซื้อ จึงใช้กับบัญชี Spot ได้และไม่มีต้นทุน funding",
   short: "รหัสนี้เปิดเฉพาะฝั่งขาย ต้องเทรดบน perpetual futures และมีต้นทุน funding",
 } as const;
@@ -834,6 +1219,19 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     validate: orderFlowValidate,
     rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.short}`,
   },
+  flowgate_utbot_v3: {
+    name: "FlowGate UT Bot V3 (สองทาง)",
+    th: "แรงซื้อขายสุทธิเป็นชั้นทิศทาง UT Bot V2 เป็นชั้นจังหวะ เข้าเฉพาะเมื่อทั้งสองชั้นเห็นตรงกัน ออกเมื่อแรงซื้อขายสุทธิข้ามศูนย์ เป็นตัวเดียวในตระกูล FlowGate ที่ผ่านการตรวจข้ามเหรียญ 6 จาก 6 ช่อง และชนะ orderflow_v3_zero ทั้งสองช่วงเวลา ใช้ได้จริงบนเว็บเฉพาะ 30m เพราะชั้นทิศทางต้องสะสม 125 วัน",
+    en: "Net taker flow as the direction layer, UT Bot V2 as the timing layer; enters only when both agree and exits when flow crosses zero. The only FlowGate variant that clears the cross-coin bar 6/6 and beats orderflow_v3_zero in both windows. Web-usable at 30m only, since the direction layer needs 125 days of history",
+    group: FLOW_GROUP,
+    overlay: FLOW_OVERLAY,
+    direction: { allowLong: 1, allowShort: 1 },
+    defaults: flowGateDefaults({ gateExitMult: 0 }),
+    compute: (k, params, startIndex) => flowGateV3(k, "utbot", params, startIndex),
+    warmupBars: orderFlowWarmup,
+    validate: flowGateValidate,
+    rule: `${FLOW_GATE_RULE_TH}. ${SCOPE.gate}`,
+  },
 };
 
 export const V3_STRATEGY_IDS = Object.keys(V3_REGISTRY) as V3StrategyId[];
@@ -875,13 +1273,71 @@ export function validateV3Params(id: V3StrategyId, p: Record<string, number>): s
 }
 
 /** จำนวนแท่งอุ่นเครื่องที่ต้องการก่อนให้สัญญาณที่เชื่อถือได้ */
-export function v3WarmupBars(id: V3StrategyId, params: Record<string, number> = {}): number {
-  return V3_REGISTRY[id].warmupBars(params);
+export function v3WarmupBars(
+  id: V3StrategyId,
+  params: Record<string, number> = {},
+  timeframeMinutes?: number,
+): number {
+  const def = V3_REGISTRY[id];
+  return def.warmupBars({ ...def.defaults, ...params }, timeframeMinutes);
 }
 
 /** กฎฉบับเต็มของแต่ละรหัส ใช้ในไฟล์ Export */
 export function v3RuleFor(id: V3StrategyId): string {
   return V3_REGISTRY[id].rule;
+}
+
+/**
+ * สรุปของแท่งเดียวสำหรับคนที่ต้องตัดสินใจจากสัญญาณสด (บอท Telegram)
+ *
+ * สัญญาณ BUY/SELL บอกแค่ว่า "เกิดอะไรขึ้น" แต่ไม่บอกว่าสัญญาณแรงแค่ไหน
+ * หรือต้องเกิดอะไรจึงจะออก ซึ่งกลยุทธ์ v3 ไม่มี stop ตามราคา — การออกมาจากค่าสัญญาณล้วน
+ * ผู้ถือสถานะจึงต้องรู้ **ระดับที่จะออก** เป็นตัวเลข ไม่ใช่รอให้บอทบอกทีหลัง
+ */
+export interface V3BarInsight {
+  /** ชั้นทิศทางสะสมครบแล้วหรือยัง — false = ยังให้สัญญาณไม่ได้ */
+  ready: boolean;
+  reason: string;
+  /** 1 = ถือซื้อ, −1 = ถือขาย, 0 = ว่าง */
+  direction: number;
+  /** แรงซื้อขายสุทธิหลังลบอคติ (สัดส่วน เช่น 0.012 = 1.2%) */
+  flow: number | null;
+  /** เกณฑ์เข้า: ซื้อเมื่อ flow > +entryBand, ขายเมื่อ flow < −entryBand */
+  entryBand: number;
+  /**
+   * ระดับที่สถานะปัจจุบันจะถูกปิด (มีเครื่องหมายแล้ว)
+   * ถือซื้อ: ออกเมื่อ flow < exitLevel · ถือขาย: ออกเมื่อ flow > exitLevel · ว่าง: null
+   */
+  exitLevel: number | null;
+  confidence: number | null;
+  /** ATR เป็น % ของราคาปิด — ขนาดการแกว่งปกติของหนึ่งแท่ง */
+  atrPct: number | null;
+  /** จำนวนแท่งที่ต้องมีเทียบกับที่มี ใช้บอกว่าทำไมยังไม่พร้อม */
+  barsNeeded: number;
+  barsHave: number;
+}
+
+export function v3BarInsight(
+  id: V3StrategyId, k: KlineData[], r: V3Result, i: number, params: Record<string, number> = {},
+): V3BarInsight {
+  const p = { ...V3_REGISTRY[id].defaults, ...params };
+  const band = p.flowBand ?? ORDER_FLOW_V3_DEFAULTS.flowBand;
+  const mult = p.flowExitMult ?? p.gateExitMult ?? ORDER_FLOW_V3_DEFAULTS.flowExitMult;
+  const dir = r.direction[i] ?? 0;
+  const flow = r.signalValue[i] ?? null;
+  const a = r.atr[i], c = Number(k[i]?.close);
+  return {
+    ready: flow !== null,
+    reason: r.reason[i] ?? "",
+    direction: dir,
+    flow,
+    entryBand: band,
+    exitLevel: dir === 0 ? null : dir * band * mult,
+    confidence: r.confidence[i] ?? null,
+    atrPct: a !== null && a !== undefined && c > 0 ? (a / c) * 100 : null,
+    barsNeeded: r.resolvedLookbackBars + r.resolvedDebiasBars - 1,
+    barsHave: k.length,
+  };
 }
 
 /** ชื่อและคำอธิบายที่แสดงใน Web UI */
@@ -920,6 +1376,18 @@ export const V3_PARAM_META: Record<string, V3ParamMeta> = {
   flowBand: pct("เกณฑ์แรงซื้อขายสุทธิที่ถือว่าแรงพอ", 0.001, 0.3, 0.001),
   flowExitMult: ratio("ออกที่กี่เท่าของเกณฑ์ (0 = ข้ามศูนย์, -1 = ถือจนกลับข้าง)", -1, 1, 0.05),
   flowSizePct: pct("ขนาดไม้ (% ของพอร์ต)", 1, 100, 1),
+  // ── ตระกูล FlowGate ──
+  trendLength: bars("Trendlines: ความกว้าง pivot", 2, 200),
+  trendMult: pct("Trendlines: ตัวคูณความชัน", 0.1, 10, 0.1),
+  emaFastLength: bars("EMA Cross: EMA เร็ว", 2, 200),
+  emaSlowLength: bars("EMA Cross: EMA ช้า", 3, 400),
+  utBotKeyValue: pct("UT Bot: ตัวคูณ ATR ของแนวลาก", 0.1, 10, 0.05),
+  utBotAtrLength: bars("UT Bot: ช่วง ATR", 2, 200),
+  gateConfluenceMin: bars("ต้องมีตัวเร็วเห็นพ้องกี่ตัว", 1, 3),
+  gateConfluenceBars: bars("นับว่าเพิ่งยิงภายในกี่แท่ง", 1, 200),
+  gateExitOnFlip: bars("ให้ตัวเร็วสั่งออกด้วย (0 = ไม่, 1 = ใช่)", 0, 1),
+  gateExitMult: ratio("ชั้นทิศทางเลิกหนุนที่กี่เท่าของเกณฑ์ (0 = ข้ามศูนย์)", -1, 1, 0.05),
+  gateSizePct: pct("ขนาดไม้ (% ของพอร์ต)", 1, 100, 1),
   atrPeriod: bars("ช่วง ATR", 2, 200),
   fastPeriod: bars("EMA เร็ว", 2, 200),
   trendPeriod: bars("EMA เทรนด์", 3, 400),

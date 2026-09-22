@@ -3,6 +3,7 @@ import { loadLocalData } from "./local-data";
 import {
   parseKline,
   INTERVALS,
+  intervalMinutes,
   type BinanceKlineRaw,
   type KlineData,
 } from "../../lib/types/kline";
@@ -204,10 +205,18 @@ export function validate(input: unknown): RequestConfig {
   return result;
 }
 
+/** เพดานแท่งอุ่นเครื่อง = 50 คำขอ เพราะ Binance ให้ 1,000 แท่งต่อคำขอ */
+export const MAX_WARMUP_BARS = 50_000;
+
 /**
  * กลยุทธ์ v1 คงพฤติกรรมเดิมทุกประการ (คาดเดาช่วงจากชื่อพารามิเตอร์ เพดาน 1,000 แท่ง)
  * กลยุทธ์ v2 ประกาศความต้องการของตัวเองผ่าน v2WarmupBars เพราะบางตัว เช่น Lorentzian
- * ไม่ให้สัญญาณเลยจนกว่าจะมีแท่งครบ maxBarsBack เพดานรวมจึงขยายเป็น 4,000 แท่ง
+ * ไม่ให้สัญญาณเลยจนกว่าจะมีแท่งครบ maxBarsBack
+ *
+ * กลยุทธ์ v3 กำหนดหน้าต่างเป็น **วัน** จำนวนแท่งจึงขึ้นกับ timeframe และมากกว่าที่เคยเผื่อไว้มาก
+ * (30m ต้องการ 6,002 แท่ง · 15m 12,002 · 1m 180,002) เพดานเดิม 4,000 แท่งจึงทำให้ v3
+ * ไม่เคยได้แท่งพอ และไม่มีสัญญาณออกมาเลยสักครั้ง เพดานใหม่คือ 50,000 แท่ง
+ * ซึ่งครอบคลุมตั้งแต่ 5m ขึ้นไป ส่วน 1m/3m ยังเกินและจะถูกเตือนไว้ในผลลัพธ์
  */
 export function warmupBars(cfg: RequestConfig) {
   // v2 และ v3 ประกาศความต้องการของตัวเอง ห้ามใช้กฎเดาจากชื่อพารามิเตอร์กับสองชุดนี้
@@ -221,11 +230,21 @@ export function warmupBars(cfg: RequestConfig) {
   let bars = periods.length
     ? Math.min(1000, Math.max(300, Math.max(...periods) * 5))
     : 300;
+  const tfMinutes = intervalMinutes(cfg.interval);
   for (const id of cfg.strategies) {
     if (isV2StrategyId(id)) bars = Math.max(bars, v2WarmupBars(id, cfg.params[id]));
-    if (isV3StrategyId(id)) bars = Math.max(bars, v3WarmupBars(id, cfg.params[id]));
+    if (isV3StrategyId(id)) bars = Math.max(bars, v3WarmupBars(id, cfg.params[id], tfMinutes));
   }
-  return Math.min(4000, bars);
+  return Math.min(MAX_WARMUP_BARS, bars);
+}
+
+/** แท่งที่ v3 ต้องการจริงก่อนถูกตัดด้วยเพดาน ใช้บอกผู้ใช้ว่าทำไมยังไม่มีสัญญาณ */
+export function warmupWanted(cfg: RequestConfig) {
+  const tfMinutes = intervalMinutes(cfg.interval);
+  let bars = 0;
+  for (const id of cfg.strategies)
+    if (isV3StrategyId(id)) bars = Math.max(bars, v3WarmupBars(id, cfg.params[id], tfMinutes));
+  return bars;
 }
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -303,17 +322,21 @@ export async function loadData(
     return local;
   }
   if (cfg.source === "latest") {
+    // v3 กำหนดหน้าต่างเป็นวัน จึงต้องดึงแท่งอุ่นเครื่อง **เพิ่มจาก** จำนวนที่ผู้ใช้ขอดู
+    // มิฉะนั้นชั้นทิศทางจะสะสมไม่ครบและไม่มีสัญญาณเลย (กลยุทธ์ v1/v2 ไม่ถูกกระทบ เพราะได้ 0)
+    const v3Warm = Math.min(MAX_WARMUP_BARS, warmupWanted(cfg));
+    const target = cfg.limit + v3Warm;
     k = (
-      await page({ ...base, limit: String(Math.min(cfg.limit + 1, 1000)) })
+      await page({ ...base, limit: String(Math.min(target + 1, 1000)) })
     ).filter((b) => b.closeTime < now);
     // Page backwards: each Binance request is capped at 1000 rows, and the
     // newest page may include an unfinished candle that was filtered out.
-    while (k.length && k.length < cfg.limit) {
+    while (k.length && k.length < target) {
       const firstOpen = k[0].openTime;
       await pause(80);
       const earlier = (await page({
         ...base,
-        limit: String(Math.min(cfg.limit - k.length, 1000)),
+        limit: String(Math.min(target - k.length, 1000)),
         endTime: String(firstOpen - 1),
       })).filter((b) => b.closeTime < now);
       if (!earlier.length) break;
@@ -321,9 +344,23 @@ export async function loadData(
         throw new Error("ข้อมูล Binance ไม่ถอยหลังตามช่วงที่ขอ");
       k = [...earlier, ...k];
     }
-    k = k.slice(-cfg.limit);
-    if (k.length < cfg.limit)
-      warnings.push(`พบแท่งที่ปิดแล้ว ${k.length.toLocaleString("en-US")} จากที่ขอ ${cfg.limit.toLocaleString("en-US")} แท่ง; ประวัติอาจมีไม่เพียงพอ`);
+    k = k.slice(-target);
+    start = Math.max(0, k.length - cfg.limit);
+    const got = k.length - start;
+    if (got < cfg.limit)
+      warnings.push(`พบแท่งที่ปิดแล้ว ${got.toLocaleString("en-US")} จากที่ขอ ${cfg.limit.toLocaleString("en-US")} แท่ง; ประวัติอาจมีไม่เพียงพอ`);
+    if (v3Warm > 0 && start < v3Warm)
+      warnings.push(
+        `กลยุทธ์ v3 ต้องการแท่งอุ่นเครื่อง ${v3Warm.toLocaleString("en-US")} แท่งก่อนช่วงที่เลือก ` +
+        `แต่ดึงได้ ${start.toLocaleString("en-US")} แท่ง จึงอาจยังไม่มีสัญญาณในช่วงต้น`,
+      );
+    const wanted = warmupWanted(cfg);
+    if (wanted > MAX_WARMUP_BARS)
+      warnings.push(
+        `กลยุทธ์ v3 ที่เลือกต้องการแท่งอุ่นเครื่อง ${wanted.toLocaleString("en-US")} แท่งที่ ${cfg.interval} ` +
+        `ซึ่งเกินเพดาน ${MAX_WARMUP_BARS.toLocaleString("en-US")} แท่ง จะยังไม่มีสัญญาณออกมา — ` +
+        `ใช้ 5m ขึ้นไป หรือลด flowDebiasDays ลง`,
+      );
     warnings.push(
       "โหมดแท่งล่าสุดคำนวณจากหน้าต่างข้อมูลนี้เท่านั้น เริ่มจำลองด้วยสถานะว่าง; ช่วงต้นอาจยังเตรียม indicator ไม่ครบ",
     );
@@ -353,18 +390,38 @@ export async function loadData(
     }
     const warmCount = warmupBars(cfg);
     const firstOpen = k[0]?.openTime ?? cfg.from!;
-    const warm = (
-      await page({
-        ...base,
-        limit: String(warmCount),
-        endTime: String(firstOpen - 1),
-      })
-    ).filter((b) => b.closeTime < firstOpen);
+    // Binance ให้ 1,000 แท่งต่อคำขอ กลยุทธ์ v3 ต้องการหลักหมื่น จึงต้องไล่ย้อนทีละหน้า
+    // ก่อนแก้จุดนี้ การขอ 6,000 แท่งได้กลับมาแค่ 1,000 แท่งเงียบ ๆ แล้ว v3 ก็ไม่เคยมีสัญญาณ
+    const warm: KlineData[] = [];
+    let warmEnd = firstOpen - 1;
+    while (warm.length < warmCount) {
+      const batch = (
+        await page({
+          ...base,
+          limit: String(Math.min(warmCount - warm.length, 1000)),
+          endTime: String(warmEnd),
+        })
+      ).filter((b) => b.closeTime < firstOpen);
+      if (!batch.length) break;
+      const nextEnd = batch[0].openTime - 1;
+      if (nextEnd >= warmEnd) break; // ไม่เดินหน้า — กันวนไม่รู้จบ
+      warm.unshift(...batch);
+      warmEnd = nextEnd;
+      if (batch.length < 1000) break;
+      await pause(80);
+    }
     start = warm.length;
     k = [...warm, ...k];
+    const wanted = warmupWanted(cfg);
     if (start < warmCount)
       warnings.push(
         `มีแท่งเตรียม indicator ${start}/${warmCount} แท่ง อาจเป็นช่วงเริ่มเปิดซื้อขาย`,
+      );
+    if (wanted > MAX_WARMUP_BARS)
+      warnings.push(
+        `กลยุทธ์ v3 ที่เลือกต้องการแท่งเตรียม ${wanted.toLocaleString()} แท่งที่ ${cfg.interval} ` +
+        `ซึ่งเกินเพดาน ${MAX_WARMUP_BARS.toLocaleString()} แท่ง จะยังไม่มีสัญญาณออกมา — ` +
+        `ใช้ 5m ขึ้นไป หรือลด flowDebiasDays ลง`,
       );
     warnings.push(
       "ใช้ประวัติสะสมพร้อมแท่งเตรียม indicator; อาจต่างจากบอทที่คำนวณใหม่ด้วยหน้าต่าง 500 แท่ง",

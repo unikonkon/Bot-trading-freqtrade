@@ -6,7 +6,7 @@ import {
   detectTimeframeMinutes, isV3StrategyId,
   v3Defaults, v3Direction, v3WarmupBars, validateV3Params,
   ORDER_FLOW_V3_DEFAULTS, ORDER_FLOW_RULE_TH, orderFlowV3,
-  orderFlowImbalance, removeOwnMean, tradePlanV3,
+  orderFlowImbalance, removeOwnMean, tradePlanV3, flowGateV3, FLOW_GATE_V3_DEFAULTS, type V3Result,
 } from '../../lib/indicators-v3';
 import { parseKline, type KlineData } from '../../lib/types/kline';
 import { STRATEGIES, STRATEGY_FNS, computeSignals, computeStrategyIndicators } from '../../lib/backtest';
@@ -158,7 +158,9 @@ test('V3 request validation covers funding, bounds and relationships', () => {
   assert.throws(() => validate({ ...base, params: { orderflow_v3: { flowBand: 5 } } }), /flowBand/);
   assert.throws(() => validate({ ...base, params: { orderflow_v3: { flowLookbackDays: 200 } } }), /flowLookbackDays/);
   const cfg = validate({ ...base, params: {} });
-  assert.equal(warmupBars(cfg), v3WarmupBars('orderflow_v3', v3Defaults('orderflow_v3')));
+  // cfg.interval คือ 5m — แท่งอุ่นเครื่องต้องคิดจาก timeframe จริง ไม่ใช่ค่าคงที่เดิม 2,000
+  assert.equal(warmupBars(cfg), v3WarmupBars('orderflow_v3', v3Defaults('orderflow_v3'), 5));
+  assert.equal(warmupBars(cfg), 36002, '125 วันที่ 5m = 36,000 แท่ง +2 กันปัดเศษ');
   assert.ok(warmupBars(cfg) >= 300);
 });
 
@@ -282,7 +284,7 @@ test('OrderFlow: เชื่อมเข้าทะเบียน v3 คร�
   // ทะเบียนต้องมีแต่รหัสที่ผ่านการวัดแล้ว — กลยุทธ์ที่วัดแล้วขาดทุนต้องไม่กลับเข้ามาเงียบ ๆ
   // รายชื่อนี้เป็นบัญชีขาว: การเพิ่มรหัสใหม่ต้องแก้ที่นี่ด้วย ซึ่งบังคับให้มีคนตัดสินใจจริง
   assert.deepEqual([...V3_STRATEGY_IDS].sort(),
-    ['orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
+    ['flowgate_utbot_v3', 'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
   assert.deepEqual(v3Direction('orderflow_v3'), { allowLong: 1, allowShort: 1 });
   assert.deepEqual(v3Direction('orderflow_v3_long'), { allowLong: 1, allowShort: 0 });
   assert.deepEqual(v3Direction('orderflow_v3_short'), { allowLong: 0, allowShort: 1 });
@@ -497,4 +499,159 @@ test('V3: computeV3 ที่ไม่ส่งพารามิเตอร์
   const a = computeV3('orderflow_v3', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05 }, 0);
   const b = computeV3('orderflow_v3_zero', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05 }, 0);
   assert.notDeepEqual(a.exposure, b.exposure, 'สองรหัสต้องให้ผลต่างกันเมื่อส่งพารามิเตอร์ร่วมชุดเดียวกัน');
+});
+
+// ══ ตระกูล FlowGate ═══════════════════════════════════════════
+
+/** แท่งที่คุมทั้งราคาและสัดส่วนปริมาณฝั่งซื้อ เพื่อคุมทั้งชั้นจังหวะและชั้นทิศทางพร้อมกัน */
+function gateBars(prices: number[], buyShare: number[] | number): KlineData[] {
+  const share = (i: number) => (typeof buyShare === 'number' ? buyShare : buyShare[i]);
+  return prices.map((p, i) =>
+    parseKline([i * HOUR, String(p), String(p * 1.002), String(p * 0.998), String(p), '100',
+      (i + 1) * HOUR - 1, '1000', 10, String(100 * share(i)), '500']));
+}
+/** ราคาลงยาวแล้วกลับขึ้นยาว เพื่อให้ EMA Cross ยิงซื้อจริงกลางทาง */
+const vShape = (n: number) => Array.from({ length: n },
+  (_, i) => (i < n / 2 ? 100 - i * 0.2 : 100 - (n / 2) * 0.2 + (i - n / 2) * 0.4));
+const gateOpts = { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05, emaFastLength: 10, emaSlowLength: 30 };
+
+test('FlowGate: เข้าเมื่อชั้นจังหวะยิงและชั้นทิศทางเห็นด้วย และข้ามเมื่อไม่เห็นด้วย', () => {
+  const n = 24 * 14;
+  const prices = vShape(n);
+  // ชั้นทิศทางหนุนฝั่งซื้อในครึ่งหลัง ซึ่งเป็นช่วงที่ EMA Cross ยิงซื้อพอดี
+  const bull = Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.5 : 0.95));
+  const agree = flowGateV3(gateBars(prices, bull), 'ema', gateOpts);
+  assert.ok(agree.exposure.some((e) => e > 0), 'เมื่อสองชั้นเห็นตรงกันต้องมีสถานะซื้อเกิดขึ้น');
+  assert.ok(agree.signal.some((s) => s === 'BUY'));
+
+  // ชั้นจังหวะเหมือนเดิมเป๊ะ แต่ชั้นทิศทางชี้ลง — ต้องไม่มีไม้ซื้อเลย และต้องบอกเหตุผลไว้
+  const bear = Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.5 : 0.05));
+  const blocked = flowGateV3(gateBars(prices, bear), 'ema', { ...gateOpts, allowShort: 0 });
+  assert.ok(blocked.exposure.every((e) => e <= 0), 'ชั้นทิศทางค้านแล้วต้องไม่เปิดสถานะซื้อ');
+  assert.ok(blocked.reason.some((t) => t.includes('ไม่เห็นด้วย')), 'ต้องบอกว่าถูกประตูทิศทางกันไว้');
+  // ชั้นจังหวะต้องยิงจริงในทั้งสองกรณี มิฉะนั้นเทสต์ผ่านแบบว่างเปล่า
+  assert.ok(blocked.triggerDir!.some((d) => d === 1), 'ตัวเร็วต้องยิงซื้อจริงในกรณีที่ถูกกัน');
+});
+
+test('FlowGate: ออกเมื่อชั้นทิศทางเลิกหนุน และตัวเร็วสั่งออกได้เฉพาะเมื่อเปิดสวิตช์', () => {
+  const n = 24 * 20;
+  const prices = vShape(n);
+  // หนุนซื้อช่วงกลาง แล้วกลับเป็นกลางช่วงท้าย — สถานะต้องถูกปิดเมื่อแรงหนุนหาย
+  const share = Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.5 : i < n * 0.8 ? 0.95 : 0.5));
+  const r = flowGateV3(gateBars(prices, share), 'ema', gateOpts);
+  const opened = r.signal.findIndex((s) => s === 'BUY');
+  assert.ok(opened > 0, 'ต้องมีไม้เปิดจริงก่อนจึงจะตรวจการออกได้');
+  assert.ok(r.signal.slice(opened).some((s) => s === 'SELL'), 'แรงหนุนหายแล้วต้องมีการปิดสถานะ');
+  assert.ok(r.reason.some((t) => t.includes('แรงซื้อขายสุทธิเลิกหนุน')));
+
+  // สวิตช์ออกตามตัวเร็ว: ค่าตั้งต้นคือปิด (เลือกจากช่วง train) เปิดแล้วต้องเทรดถี่ขึ้น
+  const bars = gateBars(prices, share);
+  const calm = flowGateV3(bars, 'utbot', { ...gateOpts, gateExitOnFlip: 0 });
+  const busy = flowGateV3(bars, 'utbot', { ...gateOpts, gateExitOnFlip: 1 });
+  const entries = (x: V3Result) => x.signal.filter((s) => s === 'BUY' || s === 'SHORT').length;
+  assert.ok(entries(busy) >= entries(calm), 'เปิดสวิตช์ออกตามตัวเร็วต้องไม่ทำให้เทรดน้อยลง');
+});
+
+test('FlowGate: ทุก prefix ให้ผลเหมือนเดิม จึงไม่มีการมองอนาคต', () => {
+  // ใช้แท่งจริงจาก fixture เพราะชั้นจังหวะแบบ emaFiltered มีตัวกรอง ADX/ความชัน/ความผันผวน
+  // ซึ่งปฏิเสธข้อมูลสังเคราะห์รูปคลื่นทั้งหมดอย่างถูกต้อง แล้วจะทำให้เทสต์ผ่านแบบว่างเปล่า
+  const k = fixture;
+  const n = k.length;
+  for (const trigger of ['trendlines', 'ema', 'emaFiltered', 'utbot', 'confluence'] as const) {
+    const full = flowGateV3(k, trigger, gateOpts);
+    assert.ok(full.triggerDir!.some((d) => d !== 0), `${trigger}: ต้องมีการยิงจริงจึงจะตรวจอะไรได้`);
+    for (let end = 0; end <= n; end += 41) {
+      const partial = flowGateV3(k.slice(0, end), trigger, gateOpts);
+      for (const key of ['exposure', 'signal', 'direction'] as const)
+        assert.deepEqual(partial[key], full[key].slice(0, end), `${trigger}: ${key} ที่ prefix ${end}`);
+    }
+  }
+});
+
+test('FlowGate: ทิศทางล็อกได้ และปฏิเสธค่าที่ขัดกันเอง', () => {
+  const n = 24 * 12;
+  const k = gateBars(vShape(n), Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.05 : 0.95)));
+  assert.ok(flowGateV3(k, 'ema', { ...gateOpts, allowShort: 0 }).exposure.every((e) => e >= 0));
+  assert.ok(flowGateV3(k, 'ema', { ...gateOpts, allowLong: 0 }).exposure.every((e) => e <= 0));
+  assert.throws(() => flowGateV3(k, 'ema', { allowLong: 0, allowShort: 0 }), /at least one direction/);
+  assert.throws(() => flowGateV3(k, 'ema', { emaFastLength: 50, emaSlowLength: 20 }), /emaFastLength < emaSlowLength/);
+  assert.throws(() => flowGateV3(k, 'ema', { flowLookbackDays: 10, flowDebiasDays: 10 }), /flowLookbackDays < flowDebiasDays/);
+  assert.throws(() => flowGateV3(k, 'ema', { flowBand: 0 }), /flowBand/);
+  assert.throws(() => flowGateV3(k, 'ema', { gateSizePct: 0 }), /gateSizePct/);
+  assert.throws(() => flowGateV3(k, 'ema', {}, -1), /startIndex/);
+  assert.equal(flowGateV3([], 'ema', {}).exposure.length, 0);
+});
+
+test('FlowGate: ระดับการออกเป็นครอบครัวต่อเนื่อง และค่า 1 ต้องเท่ากับพฤติกรรมเดิมทุกประการ', () => {
+  const n = 24 * 20;
+  const prices = vShape(n);
+  // แรงหนุนแกว่งกลับเข้ามาที่ระดับกลาง ๆ — ช่วงที่กฎออกแต่ละแบบให้ผลต่างกัน
+  const share = Array.from({ length: n }, (_, i) =>
+    (i < n / 2 ? 0.5 : i < n * 0.7 ? 0.95 : i < n * 0.85 ? 0.58 : 0.5));
+  const k = gateBars(prices, share);
+  const at = (gateExitMult: number) => flowGateV3(k, 'ema', { ...gateOpts, gateExitMult });
+  const held = (x: V3Result) => x.exposure.filter((e) => e !== 0).length;
+
+  // ค่า 1 คือค่าตั้งต้นของตระกูล จึงต้องเหมือนการไม่ส่งค่ามาเลย — กันการเปลี่ยนพฤติกรรมเงียบ ๆ
+  assert.deepEqual(at(1).exposure, flowGateV3(k, 'ema', gateOpts).exposure);
+  assert.ok(held(at(1)) > 0, 'ต้องมีสถานะเปิดจริงจึงจะเทียบกฎการออกได้');
+  // ยิ่งระดับออกต่ำ ยิ่งถือได้ยาว: 1 → 0 → −1 ต้องไม่ลดลง
+  assert.ok(held(at(0)) >= held(at(1)), 'ออกที่ศูนย์ต้องถือได้ไม่สั้นกว่าออกที่ขอบ band');
+  assert.ok(held(at(-1)) >= held(at(0)), 'ออกเมื่อกลับข้างเต็มเกณฑ์ต้องถือได้ไม่สั้นกว่าออกที่ศูนย์');
+  assert.ok(held(at(0)) > held(at(1)), 'ชุดข้อมูลนี้ต้องแยกสองกฎออกจากกันได้จริง');
+  assert.throws(() => flowGateV3(k, 'ema', { gateExitMult: 1.5 }), /gateExitMult/);
+  assert.throws(() => flowGateV3(k, 'ema', { gateExitMult: -2 }), /gateExitMult/);
+});
+
+test('FlowGate: ลงทะเบียนเฉพาะ utbot ตัวเดียว และค่าตั้งต้นของรหัสต้องเป็นกฎออกที่ศูนย์', () => {
+  // ผลวัดอยู่ใน trade-planning-1m-30m-th.md หัวข้อ 11 — อีกสี่ตัวยังตกด่านตรวจข้ามเหรียญ
+  assert.deepEqual(V3_STRATEGY_IDS.filter((id) => id.startsWith('flowgate')), ['flowgate_utbot_v3']);
+  const def = V3_REGISTRY.flowgate_utbot_v3;
+  assert.equal(def.defaults.gateExitMult, 0, 'ค่าที่เลือกจาก train คือ 0 ไม่ใช่ค่าตั้งต้นเดิมของตระกูล');
+  assert.equal(FLOW_GATE_V3_DEFAULTS.gateExitMult, 1, 'ค่าตั้งต้นของตระกูลต้องคงเดิม เพื่อให้ผลในหัวข้อ 11 รันซ้ำได้');
+  assert.ok(!('allowLong' in def.defaults) && !('allowShort' in def.defaults), 'ทิศทางต้องมาจากรหัส ไม่ใช่พารามิเตอร์');
+
+  // รหัสนี้ต้องใช้ UT Bot เป็นชั้นจังหวะจริง ไม่ใช่ตัวเร็วตัวอื่น
+  const n = 24 * 20;
+  const k = gateBars(vShape(n), Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.5 : 0.95)));
+  const viaRegistry = computeV3('flowgate_utbot_v3', k, gateOpts);
+  assert.deepEqual(viaRegistry.exposure,
+    flowGateV3(k, 'utbot', { ...gateOpts, gateExitMult: 0 }).exposure);
+  assert.notDeepEqual(viaRegistry.exposure, flowGateV3(k, 'ema', { ...gateOpts, gateExitMult: 0 }).exposure);
+  // เรียกแบบไม่ส่งพารามิเตอร์ต้องได้ค่าตั้งต้นของรหัส ไม่ใช่ของตระกูล
+  assert.deepEqual(computeV3('flowgate_utbot_v3', k).exposure, flowGateV3(k, 'utbot', { gateExitMult: 0 }).exposure);
+});
+
+test('V3 insight: บอกระดับที่จะออกเป็นตัวเลข และบอกเมื่อข้อมูลยังไม่พอ', async () => {
+  const { v3BarInsight } = await import('../../lib/indicators-v3');
+  const { insightLines } = await import('../format');
+  const id = 'orderflow_v3' as const;
+  const params = { ...v3Defaults(id), flowLookbackDays: 0.5, flowDebiasDays: 3 };
+  const r = computeV3(id, fixture, params, 0);
+
+  const early = v3BarInsight(id, fixture.slice(0, 1), r, 0, params);
+  assert.equal(early.ready, false, 'แท่งแรกยังสะสมไม่ครบ ต้องไม่ถือว่าพร้อม');
+  assert.match(insightLines({ insight: early } as never)[0], /ข้อมูลยังไม่พอ/);
+
+  let checked = 0;
+  for (let i = 0; i < fixture.length; i++) {
+    const x = v3BarInsight(id, fixture, r, i, params);
+    if (!x.ready) continue;
+    if (x.direction === 0) { assert.equal(x.exitLevel, null); continue; }
+    // ถือซื้อ: ออกเมื่อต่ำกว่า +band*mult · ถือขาย: ออกเมื่อสูงกว่า −band*mult
+    assert.equal(x.exitLevel, x.direction * params.flowBand * params.flowExitMult);
+    // ระหว่างที่ยังถืออยู่ ค่าสัญญาณต้องยังไม่ข้ามระดับออก มิฉะนั้นตัวเลขที่แจ้งผู้ใช้ผิด
+    assert.ok(x.direction * (x.flow! - x.exitLevel!) >= 0, `แท่ง ${i}: ถืออยู่ทั้งที่ข้ามระดับออกแล้ว`);
+    checked++;
+  }
+  assert.ok(checked > 50, 'ต้องมีแท่งที่ถือสถานะมากพอจึงจะตรวจอะไรได้');
+});
+
+test('signal-bot: BOTS รับหลายเหรียญในรายการเดียวด้วย + และไม่สร้างบอทซ้ำ', async () => {
+  const { parseBots } = await import('../env');
+  const bots = parseBots('BTCUSDT+ethusdt+SOLUSDT:30m:orderflow_v3,BTCUSDT:30m:orderflow_v3', {});
+  assert.deepEqual(bots.map((b) => b.id), [
+    'BTCUSDT:30m:orderflow_v3', 'ETHUSDT:30m:orderflow_v3', 'SOLUSDT:30m:orderflow_v3',
+  ]);
+  assert.deepEqual(bots[1].params, v3Defaults('orderflow_v3'));
 });

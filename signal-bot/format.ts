@@ -36,13 +36,47 @@ const SIGNAL_LABEL: Record<string, string> = {
   BUY: "🟢 BUY", SELL: "🔴 SELL", SHORT: "🟠 SHORT", COVER: "🔵 COVER",
 };
 
+/** ค่าสัดส่วนเป็น % พร้อมเครื่องหมาย เช่น 0.0123 → "+1.23%" */
+function fmtFlow(x: number): string {
+  return `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).toFixed(2)}%`;
+}
+
+/**
+ * บทวิเคราะห์ของกลยุทธ์ v3: ค่าสัญญาณเทียบเกณฑ์ และ **ระดับที่จะออก** เป็นตัวเลข
+ * กลยุทธ์ตระกูลนี้ไม่มี stop ตามราคา การออกมาจากค่าสัญญาณล้วน ผู้ถือจึงต้องเห็นเส้นนั้นเอง
+ */
+export function insightLines(a: BotAnalysis): string[] {
+  const x = a.insight;
+  if (!x) return [];
+  if (!x.ready) {
+    return [`⏳ ข้อมูลยังไม่พอ: มี ${x.barsHave.toLocaleString("en-US")} แท่ง ต้องมี ${x.barsNeeded.toLocaleString("en-US")} แท่ง`];
+  }
+  const lines = [`<b>วิเคราะห์</b>`];
+  const flow = x.flow!;
+  const band = x.entryBand;
+  lines.push(`แรงซื้อขายสุทธิ: <code>${fmtFlow(flow)}</code> (เกณฑ์เข้า ±${(band * 100).toFixed(2)}%)`);
+  if (x.direction !== 0 && x.exitLevel !== null) {
+    const side = x.direction === 1 ? "ต่ำกว่า" : "สูงกว่า";
+    const room = Math.abs(flow - x.exitLevel);
+    lines.push(`จะออกเมื่อ: แรงซื้อขายสุทธิ${side} <code>${fmtFlow(x.exitLevel)}</code> (ห่างอีก ${(room * 100).toFixed(2)}%)`);
+  } else {
+    lines.push(`จะเข้าซื้อเมื่อ &gt; ${fmtFlow(band)} · เข้าขายเมื่อ &lt; ${fmtFlow(-band)}`);
+  }
+  if (x.confidence !== null) lines.push(`ความแรงของสัญญาณ: ${Math.round(x.confidence * 100)}%`);
+  if (x.atrPct !== null) lines.push(`ความผันผวนต่อแท่ง (ATR): ${x.atrPct.toFixed(2)}% ของราคา`);
+  if (x.reason) lines.push(`เหตุผล: ${escapeHtml(x.reason)}`);
+  return lines;
+}
+
 export function signalMessage(a: BotAnalysis, cfg: BotConfig): string {
   const icon = SIGNAL_LABEL[a.lastSignal] ?? `⚪ ${a.lastSignal}`;
+  const analysis = insightLines(a);
   return [
     `<b>${icon}</b>  <b>${escapeHtml(a.bot.symbol)}</b> ${escapeHtml(a.bot.interval)}`,
     `กลยุทธ์: ${escapeHtml(strategyName(a.bot.strategyId))}`,
     `ราคาปิด: <code>${fmtPrice(a.price)}</code>`,
     `แท่งปิด: ${fmtTime(a.closeTime, cfg.timezone)}`,
+    ...(analysis.length ? ["", ...analysis, ""] : []),
     `<i>แจ้งเตือนเท่านั้น บอทนี้ไม่ส่งออเดอร์</i>`,
   ].join("\n");
 }
@@ -72,6 +106,15 @@ export function statusMessage(
       `   สถานะ ${r.state} · ราคา <code>${fmtPrice(r.price)}</code> · แท่งล่าสุด ${r.lastSignal}`,
       `   พลิกล่าสุด: ${escapeHtml(flip)}`,
     );
+    // v3: บรรทัดเดียวพอให้เห็นว่าสัญญาณอยู่ห่างจากเส้นเข้า/ออกแค่ไหน โดยไม่ต้องรอ alert
+    const x = r.insight;
+    if (x && !x.ready) lines.push(`   ⏳ ข้อมูลยังไม่พอ (${x.barsHave}/${x.barsNeeded} แท่ง)`);
+    else if (x && x.flow !== null) {
+      const next = x.exitLevel !== null
+        ? `ออกที่ ${fmtFlow(x.exitLevel)}`
+        : `เข้าที่ ±${(x.entryBand * 100).toFixed(2)}%`;
+      lines.push(`   แรงซื้อขายสุทธิ ${fmtFlow(x.flow)} · ${next}`);
+    }
   }
   if (state.lastScanAt) lines.push("", `สแกนล่าสุด: ${fmtTime(state.lastScanAt, cfg.timezone)}`);
   if (state.lastError) lines.push(`⚠️ error ล่าสุด: ${escapeHtml(state.lastError.slice(0, 200))}`);

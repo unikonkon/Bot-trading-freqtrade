@@ -34,6 +34,22 @@ export const INTERVALS = [
 
 export type Interval = (typeof INTERVALS)[number];
 
+const INTERVAL_UNIT_MINUTES: Record<string, number> = {
+  s: 1 / 60, m: 1, h: 60, d: 1440, w: 10080, M: 43200,
+};
+/**
+ * แปลงชื่อ interval ของ Binance เป็นจำนวนนาที คืน 0 เมื่อไม่รู้จัก
+ *
+ * จำเป็นเพราะกลยุทธ์ v3 กำหนดหน้าต่างเป็น "วัน" จำนวนแท่งที่ต้องเตรียมจึงคำนวณไม่ได้
+ * จนกว่าจะรู้ว่าแต่ละแท่งกว้างกี่นาที ก่อนมีฟังก์ชันนี้ระบบเดาไว้ที่ 2,000 แท่งเสมอ
+ * ซึ่งน้อยกว่าที่ต้องใช้จริงทุก timeframe และทำให้ไม่มีสัญญาณออกมาเลย
+ */
+export function intervalMinutes(interval: string): number {
+  const m = /^(\d+)([smhdwM])$/.exec(interval);
+  if (!m) return 0;
+  return Number(m[1]) * INTERVAL_UNIT_MINUTES[m[2]];
+}
+
 export const INDICATOR_REQUIREMENTS: Record<string, { minBars: number; fields: string[] }> = {
   "RSI(14)": { minBars: 15, fields: ["Close"] },
   "ATR(14)": { minBars: 15, fields: ["High", "Low", "Close"] },

@@ -53,7 +53,8 @@ test("validation rejects unknown strategies/params, invalid ranges and unusable 
 test("latest 10,000 candles paginate within the API cap and exclude the open candle", async () => {
   const rows = bars(10001), calls: Record<string, string>[] = [];
   const data = await loadData(
-    validate({ ...base, limit: 10000 }),
+    // กลยุทธ์ v1 ตัวเดียว ดูหมายเหตุในเทสต์ถัดไปว่าทำไม v3 ต้องดึงมากกว่านี้
+    validate({ ...base, strategy: "supertrend", limit: 10000 }),
     async (p) => {
       calls.push(p);
       assert.ok(+p.limit <= 1000);
@@ -77,7 +78,8 @@ test("latest 1000 candles backfill the missing closed candle without duplicates"
   const rows = bars(1001),
     calls: Record<string, string>[] = [];
   const data = await loadData(
-    validate({ ...base, limit: 1000 }),
+    // กลยุทธ์ v1 ตัวเดียว: สัญญาของการไล่หน้าเดิมต้องไม่เปลี่ยนเมื่อ v3 ขอแท่งอุ่นเครื่องเพิ่ม
+    validate({ ...base, strategy: "supertrend", limit: 1000 }),
     async (p) => {
       calls.push(p);
       return p.endTime ? [rows[0]] : rows.slice(1);
@@ -89,6 +91,42 @@ test("latest 1000 candles backfill the missing closed candle without duplicates"
   assert.equal(calls.length, 2);
   assert.equal(data.start, 0);
 });
+test("v3 ดึงแท่งอุ่นเครื่องเพิ่มจากช่วงที่ขอดู มิฉะนั้นชั้นทิศทางสะสมไม่ครบและไม่มีสัญญาณเลย", async () => {
+  // ชั้นทิศทางของ v3 ต้องการ flowLookbackDays + flowDebiasDays = 125 วัน
+  // ที่ 1h = 3,002 แท่ง ซึ่งมากกว่าที่ผู้ใช้ขอดู ระบบจึงต้องดึงเพิ่มแล้วตั้ง start ให้ถูก
+  const want = 300, warm = 3002;
+  const rows = bars(want + warm + 1);
+  const data = await loadData(
+    validate({ ...base, strategy: "orderflow_v3", selected: "orderflow_v3", limit: want, params: {} }),
+    async (p) => rows.filter((b) => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit)),
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.equal(data.start, warm, "แท่งก่อนหน้าต้องถูกนับเป็นช่วงอุ่นเครื่อง ไม่ใช่ช่วงประเมินผล");
+  assert.equal(data.klines.length - data.start, want, "ช่วงที่ประเมินผลต้องเท่าที่ผู้ใช้ขอพอดี");
+  assert.ok(!data.warnings.some((w) => w.includes("เกินเพดาน")));
+
+  // กลยุทธ์ v1 ต้องไม่ถูกกระทบ — ขอ 200 แท่งต้องได้ 200 แท่งและเริ่มประเมินที่ 0
+  const v1 = await loadData(
+    validate({ ...base, strategy: "supertrend", limit: want }),
+    async (p) => rows.filter((b) => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit)),
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.equal(v1.start, 0);
+  assert.equal(v1.klines.length, want);
+});
+
+test("v3 บน timeframe ที่ต้องการแท่งเกินเพดาน ต้องเตือนให้ชัด ไม่ใช่เงียบ", async () => {
+  // 1m ต้องการ 180,002 แท่ง = 180 คำขอ เกินเพดาน 50,000 แท่งที่ระบบยอมไล่ให้
+  const rows = bars(600);
+  const data = await loadData(
+    validate({ ...base, interval: "1m", strategy: "orderflow_v3", selected: "orderflow_v3", limit: 300, params: {} }),
+    async (p) => rows.filter((b) => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit)),
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.ok(data.warnings.some((w) => w.includes("เกินเพดาน") && w.includes("180,002")),
+    "ต้องบอกจำนวนแท่งที่ต้องการจริง เพื่อให้ผู้ใช้เลือก timeframe ที่ใช้ได้");
+});
+
 test("range paginates, prepends warmup, excludes unclosed/end-overlapping candle", async () => {
   const rows = bars(1350),
     from = rows[300].openTime,

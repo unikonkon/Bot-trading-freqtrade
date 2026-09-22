@@ -6,8 +6,10 @@
  * ต่างจากเดิม: เรียก computeSignals ตรง (ไม่จำลอง trade) และ pivot เป็นโหมด confirmed เสมอ
  */
 import type { KlineData } from "@/lib/types/kline";
-import { computeSignals, type SignalAction } from "@/lib/backtest";
-import { fetchClosedKlines } from "./binance";
+import { STRATEGY_FNS, computeStrategyIndicators, type SignalAction } from "@/lib/backtest";
+import { intervalMinutes } from "@/lib/types/kline";
+import { isV3StrategyId, v3BarInsight, v3WarmupBars, type V3BarInsight } from "@/lib/indicators-v3";
+import { fetchClosedKlines, MAX_KLINES } from "./binance";
 import type { BotSpec } from "./env";
 
 /** SHORT ใช้ได้กับกลยุทธ์สองทาง (v3) เท่านั้น กลยุทธ์ Spot จะมีแค่ LONG/FLAT/NONE */
@@ -22,6 +24,8 @@ export interface BotAnalysis {
   lastFlipSignal: SignalAction | null;
   lastFlipTime: number | null;     // closeTime ของแท่งที่พลิกล่าสุด
   bars: number;                    // จำนวนแท่งที่ใช้คำนวณ
+  /** บทวิเคราะห์ของแท่งล่าสุด มีเฉพาะกลยุทธ์ v3 (ค่าสัญญาณ เกณฑ์เข้า ระดับที่จะออก) */
+  insight?: V3BarInsight;
 }
 
 export function groupKey(bot: Pick<BotSpec, "symbol" | "interval">): string {
@@ -30,7 +34,9 @@ export function groupKey(bot: Pick<BotSpec, "symbol" | "interval">): string {
 
 export function analyzeBot(klines: KlineData[], bot: BotSpec): BotAnalysis | null {
   if (klines.length < 2) return null;
-  const signals = computeSignals(klines, bot.strategyId, bot.params, { confirmedPivots: true });
+  // คำนวณ indicator ครั้งเดียวแล้วใช้ทั้งทำสัญญาณและบทวิเคราะห์ (เท่ากับ computeSignals ทุกประการ)
+  const ind = computeStrategyIndicators(klines, bot.strategyId, bot.params, { confirmedPivots: true });
+  const signals = STRATEGY_FNS[bot.strategyId](klines, ind, bot.params);
   const idx = signals.length - 1;
   const last = klines[idx];
   if (!last) return null;
@@ -58,6 +64,9 @@ export function analyzeBot(klines: KlineData[], bot: BotSpec): BotAnalysis | nul
     lastFlipSignal,
     lastFlipTime,
     bars: klines.length,
+    insight: isV3StrategyId(bot.strategyId) && ind.v3
+      ? v3BarInsight(bot.strategyId, klines, ind.v3, idx, bot.params)
+      : undefined,
   };
 }
 
@@ -67,19 +76,39 @@ export interface EvaluateResult {
   groupsFetched: number;
 }
 
+/**
+ * จำนวนแท่งที่บอทตัวนี้ต้องใช้จริง
+ *
+ * กลยุทธ์ v3 กำหนดหน้าต่างเป็น "วัน" จำนวนแท่งจึงขึ้นกับ timeframe และมากกว่า
+ * `KLINE_LIMIT` (300–1,000) เสมอ เช่น 30m ต้องการ 6,002 แท่ง ก่อนแก้จุดนี้บอทดึงมา
+ * 500 แท่งแล้ว v3 ก็ไม่เคยสะสมครบ จึงไม่มีสัญญาณออกมาเลยแม้แต่ครั้งเดียว
+ */
+export function barsNeeded(bot: BotSpec, limit: number): number {
+  if (!isV3StrategyId(bot.strategyId)) return limit;
+  const tf = intervalMinutes(bot.interval);
+  // +limit เพื่อให้ยังมีแท่งเหลือให้ประเมินผลหลังสะสมครบ ไม่ใช่มีพอดีแท่งเดียว
+  return Math.min(MAX_KLINES, v3WarmupBars(bot.strategyId, bot.params, tf) + limit);
+}
+
 export async function evaluateBots(bots: BotSpec[], limit: number): Promise<EvaluateResult> {
   const results: BotAnalysis[] = [];
   const errors: string[] = [];
   if (!bots.length) return { results, errors, groupsFetched: 0 };
 
-  const groups = new Map<string, BotSpec>();
-  for (const b of bots) groups.set(groupKey(b), b);
+  // กลุ่มเดียวกันอาจมีหลายกลยุทธ์ ต้องดึงให้พอสำหรับตัวที่ต้องการมากที่สุด
+  const groups = new Map<string, { sample: BotSpec; bars: number }>();
+  for (const b of bots) {
+    const key = groupKey(b);
+    const prev = groups.get(key);
+    const bars = Math.max(prev?.bars ?? 0, barsNeeded(b, limit));
+    groups.set(key, { sample: prev?.sample ?? b, bars });
+  }
 
   const klinesByGroup = new Map<string, KlineData[]>();
   await Promise.all(
-    [...groups.entries()].map(async ([key, sample]) => {
+    [...groups.entries()].map(async ([key, { sample, bars }]) => {
       try {
-        klinesByGroup.set(key, await fetchClosedKlines(sample.symbol, sample.interval, limit));
+        klinesByGroup.set(key, await fetchClosedKlines(sample.symbol, sample.interval, bars));
       } catch (err) {
         errors.push(String(err instanceof Error ? err.message : err));
       }
