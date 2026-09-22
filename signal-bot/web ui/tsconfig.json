@@ -9,6 +9,7 @@
     "./research-v2/*.ts",
     "./research-mtf/*.ts",
     "./research-short/*.ts",
+    "./research-v3/*.ts",
     "../../scripts/*.ts"
   ],
   "exclude": [

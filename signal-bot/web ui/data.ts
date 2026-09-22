@@ -12,6 +12,11 @@ import {
   v2WarmupBars,
   validateV2Params,
 } from "../../lib/indicators-v2";
+import {
+  isV3StrategyId,
+  v3WarmupBars,
+  validateV3Params,
+} from "../../lib/indicators-v3-core";
 
 export interface RequestConfig {
   symbol: string;
@@ -29,6 +34,12 @@ export interface RequestConfig {
   params: Record<string, Record<string, number>>;
   fee: number;
   slippage: number;
+  /**
+   * ต้นทุน funding ของ perpetual futures เป็น % ต่อรอบ 8 ชั่วโมง
+   * ใช้เฉพาะกลยุทธ์สองทาง (v3) ที่เปิดสถานะขายได้ กลยุทธ์ Spot ไม่ถูกกระทบ
+   * คิดเป็นต้นทุนของผู้ถือทั้งสองฝั่ง ซึ่งเป็นสมมติฐานแบบระมัดระวัง
+   */
+  funding: number;
   mode: "next_open" | "legacy" | "both";
 }
 function number(
@@ -157,6 +168,10 @@ export function validate(input: unknown): RequestConfig {
       const problem = validateV2Params(s.id, p);
       if (problem) throw new Error(`${s.name}: ${problem}`);
     }
+    if (isV3StrategyId(s.id)) {
+      const problem = validateV3Params(s.id, p);
+      if (problem) throw new Error(`${s.name}: ${problem}`);
+    }
   }
   const result: RequestConfig = {
     symbol,
@@ -169,6 +184,7 @@ export function validate(input: unknown): RequestConfig {
     params,
     fee: number(v.fee, "ค่าธรรมเนียม", 0, 5),
     slippage: number(v.slippage, "Slippage", 0, 5),
+    funding: number(v.funding ?? 0.01, "Funding", 0, 1),
     mode: v.mode as RequestConfig["mode"],
   };
   if (result.source === "local") {
@@ -194,7 +210,9 @@ export function validate(input: unknown): RequestConfig {
  * ไม่ให้สัญญาณเลยจนกว่าจะมีแท่งครบ maxBarsBack เพดานรวมจึงขยายเป็น 4,000 แท่ง
  */
 export function warmupBars(cfg: RequestConfig) {
-  const legacy = cfg.strategies.filter((id) => !isV2StrategyId(id));
+  // v2 และ v3 ประกาศความต้องการของตัวเอง ห้ามใช้กฎเดาจากชื่อพารามิเตอร์กับสองชุดนี้
+  // (เช่น maxSizePct ของ v3 มีคำว่า "Size" แต่เป็นขนาดไม้ ไม่ใช่ช่วงคำนวณ)
+  const legacy = cfg.strategies.filter((id) => !isV2StrategyId(id) && !isV3StrategyId(id));
   const periods = legacy.flatMap((id) =>
     Object.entries(cfg.params[id])
       .filter(([key]) => /period|length|size|bars|len/i.test(key))
@@ -203,8 +221,10 @@ export function warmupBars(cfg: RequestConfig) {
   let bars = periods.length
     ? Math.min(1000, Math.max(300, Math.max(...periods) * 5))
     : 300;
-  for (const id of cfg.strategies)
+  for (const id of cfg.strategies) {
     if (isV2StrategyId(id)) bars = Math.max(bars, v2WarmupBars(id, cfg.params[id]));
+    if (isV3StrategyId(id)) bars = Math.max(bars, v3WarmupBars(id, cfg.params[id]));
+  }
   return Math.min(4000, bars);
 }
 

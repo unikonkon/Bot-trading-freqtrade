@@ -11,9 +11,28 @@ import {
   type V2ParamMeta,
   type V2StrategyId,
 } from "@/lib/indicators-v2";
+import {
+  V3_STRATEGY_IDS,
+  V3_PARAM_META,
+  V3_STRATEGY_INFO,
+  isV3StrategyId,
+  v3Defaults,
+  type V3StrategyId,
+} from "@/lib/indicators-v3-core";
 
 // ─── Types ─────────────────────────────────────────────────────
-export type SignalAction = "BUY" | "SELL" | "HOLD";
+/**
+ * BUY / SELL / HOLD คือชุดเดิมของกลยุทธ์ v1 และ v2 ซึ่งเป็น Spot ทางเดียว
+ *   BUY = เปิดสถานะซื้อ, SELL = ปิดสถานะซื้อ
+ *
+ * SHORT / COVER เพิ่มมาสำหรับกลยุทธ์ v3 ที่เทรดสองทาง
+ *   SHORT = เปิดสถานะขาย (ขายก่อนซื้อคืน), COVER = ปิดสถานะขาย
+ *
+ * ตัวจำลองแบบเดิม (simulateNextOpen, runBacktest) มองเห็นแค่ BUY/SELL
+ * จึงข้าม SHORT/COVER ไปเงียบ ๆ พฤติกรรมของ v1/v2 เลยไม่เปลี่ยน
+ * ส่วน v3 ใช้ simulateExposure ที่เข้าใจครบทั้งสี่ค่าและรองรับขนาดไม้
+ */
+export type SignalAction = "BUY" | "SELL" | "HOLD" | "SHORT" | "COVER";
 
 export interface Trade {
   entryIdx: number;
@@ -64,8 +83,8 @@ export type V1StrategyId =
   | "trendlines"
   | "ut_bot";
 
-/** กลยุทธ์ทั้งหมดที่ระบบรู้จัก: ชุดเดิม + ชุด v2 จาก lib/indicators-v2.ts */
-export type StrategyId = V1StrategyId | V2StrategyId;
+/** กลยุทธ์ทั้งหมดที่ระบบรู้จัก: ชุดเดิม + v2 (20 อินดิเคเตอร์) + v3 (ShortTrade สองทาง) */
+export type StrategyId = V1StrategyId | V2StrategyId | V3StrategyId;
 
 export interface StrategyConfig {
   id: StrategyId;
@@ -73,8 +92,10 @@ export interface StrategyConfig {
   descriptionEn: string;
   descriptionTh: string;
   params: Record<string, number>;
-  /** 1 = ชุดเดิม, 2 = ชุดใหม่ตามเอกสาร tradingview-popular-indicators-th.md */
-  version?: 1 | 2;
+  /** 1 = ชุดเดิม, 2 = 20 อินดิเคเตอร์ตามเอกสาร TradingView, 3 = ShortTrade สองทาง */
+  version?: 1 | 2 | 3;
+  /** true = กลยุทธ์เทรดสองทาง ต้องใช้ตัวจำลองที่รองรับสถานะขายและขนาดไม้ */
+  twoWay?: boolean;
   /** กลุ่มการใช้งาน เช่น แนวโน้ม / โมเมนตัม / ความผันผวน */
   group?: string;
   /** ป้ายและขอบเขตของแต่ละพารามิเตอร์ (มีเฉพาะกลยุทธ์ v2) */
@@ -209,9 +230,38 @@ const V2_STRATEGIES: StrategyConfig[] = V2_STRATEGY_IDS.map((id) => {
   };
 });
 
+// ─── กลยุทธ์เวอร์ชัน 3: ShortTrade สองทางสำหรับ 1m–15m ─────────
+/**
+ * ต่างจาก v1/v2 ตรงที่เป็นกลยุทธ์สองทาง (เปิดสถานะขายได้) และกำหนดขนาดไม้เอง
+ * จึงต้องใช้ตัวจำลอง simulateExposure ไม่ใช่ simulateNextOpen แบบ Spot ทางเดียว
+ * ทิศทางถูกล็อกด้วยรหัสกลยุทธ์ ผู้ใช้จึงเทียบ สองทาง / ซื้ออย่างเดียว / ขายอย่างเดียว ได้ในรอบเดียว
+ */
+const V3_STRATEGIES: StrategyConfig[] = V3_STRATEGY_IDS.map((id) => {
+  const params = v3Defaults(id);
+  const paramMeta: Record<string, V2ParamMeta> = {};
+  for (const key of Object.keys(params)) {
+    const meta = V3_PARAM_META[key];
+    if (meta) paramMeta[key] = meta;
+  }
+  const info = V3_STRATEGY_INFO[id];
+  return {
+    id,
+    name: info.name,
+    descriptionEn: info.en,
+    descriptionTh: info.th,
+    params,
+    version: 3 as const,
+    group: info.group,
+    paramMeta,
+    defaultOverlay: info.overlay,
+    twoWay: true,
+  };
+});
+
 export const STRATEGIES: StrategyConfig[] = [
   ...V1_STRATEGIES.map((s) => ({ ...s, version: 1 as const })),
   ...V2_STRATEGIES,
+  ...V3_STRATEGIES,
 ];
 
 // ─── Signal Generators ─────────────────────────────────────────
@@ -318,8 +368,24 @@ const V2_STRATEGY_FNS = Object.fromEntries(
   }),
 ) as Record<V2StrategyId, SignalFn>;
 
+/**
+ * กลยุทธ์ v3 คืน BUY/SELL/SHORT/COVER ตรงจากอินดิเคเตอร์
+ * ตัวจำลองแบบ Spot ทางเดียวจะเห็นเฉพาะ BUY/SELL ส่วน simulateExposure ใช้คอลัมน์ exposure
+ */
+const V3_STRATEGY_FNS = Object.fromEntries(
+  V3_STRATEGY_IDS.map((id) => {
+    const fn: SignalFn = (_k, ind) => {
+      const result = ind.v3;
+      if (!result) throw new Error(`ยังไม่ได้คำนวณผลของกลยุทธ์ v3 ${id}`);
+      return result.signal.map((s) => s ?? "HOLD");
+    };
+    return [id, fn];
+  }),
+) as Record<V3StrategyId, SignalFn>;
+
 export const STRATEGY_FNS: Record<StrategyId, SignalFn> = {
   ...V2_STRATEGY_FNS,
+  ...V3_STRATEGY_FNS,
   rsi: rsiStrategy,
   cdc_actionzone: cdcActionZoneStrategy,
   smc: smcStrategy,
@@ -355,11 +421,14 @@ export function computeStrategyIndicators(
   opts: SignalOptions = {},
 ): AllIndicators {
   const v2 = isV2StrategyId(strategyId);
+  const v3 = isV3StrategyId(strategyId);
   return computeAll(klines, {
     lazy: opts.lazyIndicators,
     confirmedPivots: opts.confirmedPivots,
     v2Strategy: v2 ? strategyId : undefined,
     v2Params: v2 ? params : undefined,
+    v3Strategy: v3 ? strategyId : undefined,
+    v3Params: v3 ? params : undefined,
     smcAdaptiveParams: strategyId === "smc_adaptive" ? params : undefined,
     smcAdaptiveV2Params: strategyId === "smc_adaptive_v2" ? params : undefined,
     smcAdaptiveShortParams: strategyId === "smc_adaptive_short" ? params : undefined,

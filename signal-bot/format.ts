@@ -31,10 +31,13 @@ function fmtDuration(ms: number): string {
   return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`;
 }
 
-const STATE_ICON: Record<BotAnalysis["state"], string> = { LONG: "🟢", FLAT: "🔴", NONE: "⚪" };
+const STATE_ICON: Record<BotAnalysis["state"], string> = { LONG: "🟢", SHORT: "🟠", FLAT: "🔴", NONE: "⚪" };
+const SIGNAL_LABEL: Record<string, string> = {
+  BUY: "🟢 BUY", SELL: "🔴 SELL", SHORT: "🟠 SHORT", COVER: "🔵 COVER",
+};
 
 export function signalMessage(a: BotAnalysis, cfg: BotConfig): string {
-  const icon = a.lastSignal === "BUY" ? "🟢 BUY" : "🔴 SELL";
+  const icon = SIGNAL_LABEL[a.lastSignal] ?? `⚪ ${a.lastSignal}`;
   return [
     `<b>${icon}</b>  <b>${escapeHtml(a.bot.symbol)}</b> ${escapeHtml(a.bot.interval)}`,
     `กลยุทธ์: ${escapeHtml(strategyName(a.bot.strategyId))}`,

@@ -9,6 +9,11 @@ import {
   resolveV2Strategy,
   type V2StrategyId,
 } from "../../lib/indicators-v2";
+import {
+  V3_STRATEGY_IDS,
+  v3RuleFor,
+  type V3StrategyId,
+} from "../../lib/indicators-v3-core";
 import { ema } from "../../lib/indicators";
 import type { KlineData } from "../../lib/types/kline";
 import { analyze } from "./engine";
@@ -24,8 +29,14 @@ const V2_RULES = Object.fromEntries(
   }),
 ) as Record<V2StrategyId, string>;
 
+/** กฎของกลยุทธ์ v3 — ตระกูล ShortTrade ใช้ข้อความเดียวกันต่างกันแค่ทิศทาง ส่วน OrderFlow มีกฎของตัวเอง */
+const V3_RULES = Object.fromEntries(
+  V3_STRATEGY_IDS.map((id) => [id, v3RuleFor(id)]),
+) as Record<V3StrategyId, string>;
+
 export const RULES: Record<StrategyId, string> = {
   ...V2_RULES,
+  ...V3_RULES,
   smc_adaptive_short: "Short-duration SPOT Long-only ไม่ใช่เปิด Short. ใช้ confirmed internal/swing pivots. BUY เมื่อ sweep ใต้ internal low แล้วกลับเหนือ support และ high ก่อนหน้า พร้อม RSI เพิ่ม หรือ retest bullish SMC break ภายใน setupBars และ uptrend. ต้องแท่งเขียว close เพิ่มและอยู่ 60% บนของ range, RSI < rsiThreshold, ไม่ไกล EMA เร็วเกิน maxExtensionAtr×ATR, relative volume ต่อค่าเฉลี่ยแท่งก่อน >= minVolumeRatio และไม่ใช่ strong downtrend/shock/cooldown. Risk=max(stopAtr×ATR, close−setupLow+0.15ATR, close×minRiskPct/100). Reward=min(targetAtr×ATR, ระยะถึง swing resistance ที่อยู่เหนือราคา−0.1ATR); ถ้าไม่มีแนวต้านเหนือราคาใช้ ATR projection. ต้อง net reward >= minNetProfitPct และ (reward−cost)/(risk+cost) >= minNetRewardRisk, cost=close×costPct/100. costPct เป็นค่าประมาณตั้งแยกจาก engine fee/slippage ไม่ได้ปรับอัตโนมัติ. SELL เมื่อ CLOSE แตะ stop/target, bearish SMC และ close<EMA เร็ว หรือ maxHoldBars. เริ่ม profit protection หลัง peak close เพิ่ม >= cost+entryATR; stop ไม่ลด. Shock ใช้ TR เทียบ ATR แท่งก่อนและ ATR ratio พร้อมพัก shockBars. ทุก stop/target เป็นราคาปิด ส่งไป fill เปิดแท่งถัดไปพร้อมต้นทุนจริงของ engine. startIndex เริ่มสถานะว่าง; ดูเหตุผลการงดเข้าและ netRewardRisk รายแท่ง",
   smc_adaptive_v2: "SMC internal pivots + Trendlines pivots ใช้ confirmed เท่านั้น รอ pivot จริงก่อนใช้เส้น. BUY มี 3 จังหวะ: bullish SMC break ใหม่, ราคาปิดตัดกลับเหนือ EMA เร็วหลังย่อ, หรือ Trendlines breakUp อายุ <= confluenceBars. ทุกจังหวะต้อง SMC bullish, close > upper และ EMA เทรนด์, EMA เร็ว > EMA เทรนด์และไม่ลดจาก 2 แท่งก่อน, EMA เทรนด์เพิ่มจาก trendSlopeBars แท่งก่อน, +DI > -DI, ADX >= adxThreshold, แท่งเขียวและระยะจาก EMA เร็ว <= maxExtensionAtr×ATR. งดเข้าเมื่อ ATR ratio > maxVolatilityRatio หรือ range > 4 ATR หรือ cooldown. Risk เริ่ม max(stopAtr×ATR×clamp(ratio,1,1.5), close×minStopPct/100). Trailing ใช้ peak CLOSE − max(trailAtr×ATR, peak×minStopPct/100), stop ไม่ลด. เลื่อนถึง signal-entry close + breakEvenBufferPct เมื่อ peak เพิ่ม >= max(breakEvenAtr×entryATR, entry×bufferPct/100 + entryATR) จึงไม่ตั้ง buffer เหนือกำไรที่ยังไม่เคยเกิด. Buffer/ระยะขั้นต่ำเป็นค่าตั้ง ไม่รับประกันคุ้มต้นทุน/gap. ไม่มี fixed target. SELL เมื่อ CLOSE <= stop (รวม stop ที่เพิ่งเลื่อน), bearish SMC/Trendlines breakdown พร้อม close < fast EMA หรือ maxHoldBars. Fill ตาม engine ไม่สมมติ fill ที่ stop ระหว่างแท่ง. Reset position ที่ startIndex; ดู reason/regime/stop/ADX/DI รายแท่ง",
   smc_adaptive: "Confirmed pivots เท่านั้น: BUY เมื่อ sweep ใต้ support แล้ว reclaim ใน discount พร้อม RSI ฟื้นและไม่ใช่ downtrend หรือเมื่อ bullish BOS/CHoCH ปิดเหนือ level + 0.1 ATR เป็นแท่งเขียว RSI < 75 และราคาเหนือ EMA ที่ไม่ลดลง; งดเข้าเมื่อ volatility shock/cooldown. SELL เมื่อ close <= stop, close >= target, bearish structure, RSI >= 70 สำหรับ reclaim หรือครบ maxHoldBars. ATR stop/target อ้างอิงราคาปิดแท่ง BUY; trailing stop เลื่อนขึ้นเท่านั้นเมื่อกำไร >= initial risk. ทุกทางออกเป็นสัญญาณ ณ ปิดแท่ง ไม่ใช่ stop order ระหว่างแท่ง; next_open fill ที่เปิดแท่งถัดไปจริงพร้อม fee/slippage. Reset สถานะว่างที่ startIndex. ดู reason/regime/stop/target รายแท่ง",
@@ -52,8 +63,13 @@ const V2_INDICATOR_KEY = Object.fromEntries(
   V2_STRATEGY_IDS.map((id) => [id, resolveV2Strategy(id).def.key]),
 ) as Record<V2StrategyId, string>;
 
+const V3_INDICATOR_KEY = Object.fromEntries(
+  V3_STRATEGY_IDS.map((id) => [id, "v3"]),
+) as Record<V3StrategyId, string>;
+
 export const INDICATOR_KEY: Record<StrategyId, string> = {
   ...V2_INDICATOR_KEY,
+  ...V3_INDICATOR_KEY,
   smc_adaptive_short: "smcAdaptiveShort",
   smc_adaptive_v2: "smcAdaptiveV2",
   smc_adaptive: "smcAdaptive",

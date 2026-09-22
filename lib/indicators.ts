@@ -9,6 +9,12 @@ import {
   type VolumeV2Result, type ObvV2Result, type VolumeProfileV2Result, type SmcV2Result,
   type SqueezeV2Result, type WaveTrendV2Result, type UtBotV2Result, type LorentzianV2Result,
 } from "@/lib/indicators-v2";
+import {
+  computeV3,
+  isV3StrategyId,
+  type V3Result,
+  type V3StrategyId,
+} from "@/lib/indicators-v3-core";
 
 // ─── Helper ────────────────────────────────────────────────────
 function closes(k: KlineData[]): number[] { return k.map(x => +x.close); }
@@ -1991,6 +1997,12 @@ export interface AllIndicators {
   waveTrendV2?: WaveTrendV2Result;
   utBotV2?: UtBotV2Result;
   lorentzianV2?: LorentzianV2Result;
+  /**
+   * ผลลัพธ์ของกลยุทธ์ v3 ตัวที่ผู้ใช้เลือก ไม่ว่าจะเป็นตระกูลใด
+   * (รูปแบบผลลัพธ์ร่วมกันนิยามไว้ที่ lib/indicators-v3-core.ts)
+   * คำนวณเฉพาะเมื่อผู้ใช้เลือกกลยุทธ์ v3 เท่านั้น เช่นเดียวกับ v2
+   */
+  v3?: V3Result;
 }
 
 export function computeAll(klines: KlineData[], overrides?: {
@@ -2032,6 +2044,10 @@ export function computeAll(klines: KlineData[], overrides?: {
   v2Strategy?: V2StrategyId;
   /** พารามิเตอร์ของกลยุทธ์ v2 ตัวนั้น */
   v2Params?: Record<string, number>;
+  /** กลยุทธ์ v3 ที่เลือก (ShortTrade สองทาง) */
+  v3Strategy?: V3StrategyId;
+  /** พารามิเตอร์ของกลยุทธ์ v3 ตัวนั้น */
+  v3Params?: Record<string, number>;
 }): AllIndicators {
   const c = closes(klines);
   const confirmed = overrides?.confirmedPivots ?? true;
@@ -2059,6 +2075,12 @@ export function computeAll(klines: KlineData[], overrides?: {
     const v2Params = overrides.v2Params ?? {};
     const v2Start = overrides.smcAdaptiveStartIndex ?? 0;
     calculations[def.key] = () => def.compute(klines, v2Params, v2Start);
+  }
+  if (overrides?.v3Strategy && isV3StrategyId(overrides.v3Strategy)) {
+    const id = overrides.v3Strategy;
+    const v3Params = overrides.v3Params ?? {};
+    const v3Start = overrides.smcAdaptiveStartIndex ?? 0;
+    calculations.v3 = () => computeV3(id, klines, v3Params, v3Start);
   }
   const result = {} as AllIndicators;
   for (const key of Object.keys(calculations)) {

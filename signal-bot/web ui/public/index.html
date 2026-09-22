@@ -146,6 +146,9 @@
               <button id="strategy-v2" class="link-button" type="button">
                 V2
               </button>
+              <button id="strategy-v3" class="link-button" type="button">
+                V3
+              </button>
               <button id="strategy-none" class="link-button" type="button">
                 ล้าง
               </button>
@@ -200,6 +203,22 @@
                   required
               /></label>
             </div>
+            <label
+              >Funding/8 ชม. (%)<input
+                id="funding"
+                class="mono"
+                type="number"
+                min="0"
+                max="1"
+                step="0.001"
+                value="0.010"
+                required
+            /></label>
+            <p class="field-help">
+              Funding ใช้กับกลยุทธ์สองทาง (V3) เท่านั้น คิดเป็นต้นทุนของผู้ถือทั้งสองฝั่ง
+              ทุกครั้งที่ข้าม 00:00 / 08:00 / 16:00 UTC ตั้ง 0 เพื่อปิด ·
+              กลยุทธ์ Spot (V1/V2) ไม่ถูกกระทบ
+            </p>
             <p class="field-help">
               Slippage ใช้กับราคาเปิดแท่งถัดไปเท่านั้น · ถือ Long
               และปิดสถานะค้างเมื่อจบข้อมูล

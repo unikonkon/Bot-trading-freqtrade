@@ -232,9 +232,10 @@ function syncIntervals() {
 const GROUP_TITLES = {
   1: "เวอร์ชัน 1 — กลยุทธ์เดิม",
   2: "เวอร์ชัน 2 — 20 อินดิเคเตอร์จากเอกสาร TradingView",
+  3: "เวอร์ชัน 3 — OrderFlow แรงซื้อขายสุทธิ (สองทาง)",
 };
 function strategyVersion(s) {
-  return s.version === 2 ? 2 : 1;
+  return s.version === 3 ? 3 : s.version === 2 ? 2 : 1;
 }
 // รายการยาวขึ้นมากหลังเพิ่มชุด v2 จึงแบ่งตามเวอร์ชันและมีช่องค้นหา
 function buildStrategyPicker() {
@@ -456,6 +457,7 @@ function requestConfig() {
     params: structuredClone(params),
     fee: Number($("fee").value),
     slippage: Number($("slippage").value),
+    funding: Number($("funding").value),
     mode: $("mode").value,
   };
 }
@@ -658,7 +660,10 @@ function render() {
   $("method").textContent =
     s.mode === "legacy"
       ? `โหมดเดิม: ซื้อขายที่ราคาปิดแท่งสัญญาณ · ค่าธรรมเนียม ${result.config.fee}% ต่อขา · ไม่มี slippage · ผลตอบแทนเป็นผลรวมรายเทรด และ drawdown เป็นจุดเปอร์เซ็นต์ (pp) · เวลาเทรดแสดงตามเวลาเปิดแท่งจาก engine เดิม`
-      : `เปิดแท่งถัดไป: ลงทุนเต็มพอร์ต 1 สถานะ · ค่าธรรมเนียม ${result.config.fee}% และ slippage ${result.config.slippage}% ต่อขา · ทบต้น · drawdown รวมสถานะที่ยังถือ ณ ราคาปิดแต่ละแท่ง`;
+      : `เปิดแท่งถัดไป: ลงทุนเต็มพอร์ต 1 สถานะ · ค่าธรรมเนียม ${result.config.fee}% และ slippage ${result.config.slippage}% ต่อขา · ทบต้น · drawdown รวมสถานะที่ยังถือ ณ ราคาปิดแต่ละแท่ง` +
+        (strategy(detail.id)?.twoWay
+          ? ` · กลยุทธ์สองทาง: เปิดสถานะขายได้ ขนาดไม้มาจากกลยุทธ์ (ไม่ได้ลงเต็มพอร์ตทุกครั้ง) และคิด funding ${result.config.funding ?? 0}% ทุก 8 ชั่วโมง`
+          : "");
   renderComparison();
   renderTrades();
   renderBar();
@@ -900,9 +905,15 @@ function renderTrades() {
     const tr = node("tr");
     const dates = node("td", time(t.entryTime));
     dates.append(node("small", `→ ${time(t.exitTime)}`));
+    const entry = node("td", fmt(t.entryPrice, 4));
+    // กลยุทธ์สองทางบอกทิศและขนาดไม้มาด้วย ถ้าไม่แสดงจะแยกดีลซื้อกับดีลขายไม่ออก
+    if (t.direction)
+      entry.append(
+        node("small", `${t.direction === "short" ? "ขาย" : "ซื้อ"} · ไม้ ${((t.size ?? 1) * 100).toFixed(0)}%`),
+      );
     tr.append(
       dates,
-      node("td", fmt(t.entryPrice, 4)),
+      entry,
       node("td", fmt(t.exitPrice, 4)),
       node("td", pct(t.pnlPct), color(t.pnlPct)),
       node("td", String(t.bars)),
@@ -1453,6 +1464,7 @@ async function init() {
     });
     $("strategy-v1").addEventListener("click", () => selectVersion(1));
     $("strategy-v2").addEventListener("click", () => selectVersion(2));
+    $("strategy-v3").addEventListener("click", () => selectVersion(3));
     $("strategy-filter").addEventListener("input", () => {
       buildStrategyPicker();
       syncPicker();

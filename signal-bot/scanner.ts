@@ -10,7 +10,8 @@ import { computeSignals, type SignalAction } from "@/lib/backtest";
 import { fetchClosedKlines } from "./binance";
 import type { BotSpec } from "./env";
 
-export type PositionState = "LONG" | "FLAT" | "NONE";
+/** SHORT ใช้ได้กับกลยุทธ์สองทาง (v3) เท่านั้น กลยุทธ์ Spot จะมีแค่ LONG/FLAT/NONE */
+export type PositionState = "LONG" | "SHORT" | "FLAT" | "NONE";
 
 export interface BotAnalysis {
   bot: BotSpec;
@@ -37,14 +38,16 @@ export function analyzeBot(klines: KlineData[], bot: BotSpec): BotAnalysis | nul
   let lastFlipSignal: SignalAction | null = null;
   let lastFlipTime: number | null = null;
   for (let i = idx; i >= 0; i--) {
-    if (signals[i] === "BUY" || signals[i] === "SELL") {
+    if (signals[i] !== "HOLD") {
       lastFlipSignal = signals[i];
       lastFlipTime = klines[i].closeTime;
       break;
     }
   }
   const state: PositionState =
-    lastFlipSignal === "BUY" ? "LONG" : lastFlipSignal === "SELL" ? "FLAT" : "NONE";
+    lastFlipSignal === "BUY" ? "LONG"
+      : lastFlipSignal === "SHORT" ? "SHORT"
+        : lastFlipSignal ? "FLAT" : "NONE";
 
   return {
     bot,

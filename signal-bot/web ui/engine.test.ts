@@ -113,8 +113,13 @@ for (const file of ["BTCUSDT-1h", "ETHUSDT-4h"]) {
     for (const s of STRATEGIES) {
       const original = runBacktest(k, s.id, s.params);
       const a = analyze(k, 0, s.id, s.params, 0.1, 0.05, "both", true);
-      assert.equal(a.simulations[1].returnPct, original.totalPnlPct, s.id);
-      assert.deepEqual(a.simulations[1].trades, original.trades, s.id);
+      // runBacktest เป็นเอนจิน Spot ทางเดียวลงเต็มพอร์ต จึงแทนกลยุทธ์สองทาง
+      // ที่เปิดสถานะขายและกำหนดขนาดไม้เองไม่ได้ การเทียบผลตรง ๆ จึงไม่มีความหมาย
+      // ความถูกต้องของ simulateExposure ตรวจแยกใน indicators-v3-core.test.ts
+      if (!s.twoWay) {
+        assert.equal(a.simulations[1].returnPct, original.totalPnlPct, s.id);
+        assert.deepEqual(a.simulations[1].trades, original.trades, s.id);
+      }
       assert.deepEqual(a.signals, original.signals, s.id);
       assert.equal(a.simulations[0].equity.length, k.length);
       for (const cut of [200, 500, 999])

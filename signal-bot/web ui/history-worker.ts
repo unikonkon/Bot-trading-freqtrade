@@ -37,7 +37,7 @@ function getDetail(id: StrategyId) {
   if (detail?.id !== id) {
     send({ progress: `คำนวณรายละเอียด ${id} · ${current!.interval}` });
     const data = current!.data;
-    detail = analyze(data.klines, data.start, id, cfg.params[id], cfg.fee, cfg.slippage, cfg.mode, true, true);
+    detail = analyze(data.klines, data.start, id, cfg.params[id], cfg.fee, cfg.slippage, cfg.mode, true, true, cfg.funding);
   }
   return detail;
 }
@@ -90,7 +90,7 @@ process.on("message", async (message: { requestId: number; command: string; inpu
         for (let i = 0; i < cfg.strategies.length; i++) {
           const id = cfg.strategies[i];
           send({ progress: `${interval} · คำนวณ ${id} (${i + 1}/${cfg.strategies.length}) · ${bars.toLocaleString()} แท่ง` });
-          summaries.push(strip(analyze(data.klines, data.start, id, cfg.params[id], cfg.fee, cfg.slippage, cfg.mode, false, true), interval));
+          summaries.push(strip(analyze(data.klines, data.start, id, cfg.params[id], cfg.fee, cfg.slippage, cfg.mode, false, true, cfg.funding), interval));
         }
         // Keep the chart interval resident; every other interval is released here.
         if (interval === cfg.interval) current = { interval, data };
