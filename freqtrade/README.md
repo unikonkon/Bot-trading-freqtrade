@@ -13,14 +13,14 @@
 
 ```
 freqtrade/
-├─ docker-compose.yml            ft-1h, ft-4h (trade) + freqtrade (คำสั่งครั้งเดียว) + ft-web (FreqUI backtest)
+├─ docker-compose.yml            ft-1h (trade) + freqtrade (คำสั่งครั้งเดียว) + ft-web (FreqUI backtest)
 ├─ fixtures/                     klines 1000 แท่ง สำหรับ harness (json) + ผล dump ฝั่ง TS (csv, gitignore)
 ├─ scripts/
 │  ├─ dump-indicators.ts         harness ฝั่ง TS: dump indicator ทุกคอลัมน์ (--mode ts|live)
 │  └─ backtest-count.ts          เทียบจำนวน trade ของ backtest.ts กับ freqtrade
 └─ user_data/
    ├─ config.json                ค่ากลาง (dry_run, stake, exchange, telegram = bot A, api_server, strategy_params)
-   ├─ config.1h.json / 4h.json   override ต่อ instance (timeframe, whitelist, db, pair_strategy_map)
+   ├─ config.1h.json             override ของ instance (timeframe, whitelist, db, pair_strategy_map)
    ├─ config.web.json            FreqUI โหมด webserver
    ├─ strategies/
    │  ├─ ta_port/indicators.py   พอร์ต 1:1 จาก lib/indicators.ts (ผ่าน harness แล้ว)
@@ -69,7 +69,7 @@ docker compose run --rm freqtrade download-data --config user_data/config.json \
   --exchange binance --pairs BTC/USDT ETH/USDT SOL/USDT -t 1h 4h --days 730
 
 docker compose run --rm freqtrade backtesting --config user_data/config.json -i 1h --timerange 20250101- \
-  --strategy-list SupertrendStrategy CdcActionZoneStrategy UtBotStrategy CmMacdStrategy RsiStrategy SqueezeMomentumStrategy MsbObStrategy
+  --strategy-list SupertrendStrategy CdcActionZoneStrategy RsiStrategy MsbObStrategy
 
 docker compose run --rm freqtrade lookahead-analysis --config user_data/config.json -i 1h --timerange 20250101- --strategy SmcStrategy
 docker compose run --rm freqtrade recursive-analysis --config user_data/config.json -i 1h --timerange 20250101- \

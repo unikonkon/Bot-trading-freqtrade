@@ -44,20 +44,14 @@ export const RULES: Record<StrategyId, string> = {
   cdc_actionzone:
     "EMA(close, fastPeriod/slowPeriod), smooth=1: BUY เมื่อเข้า green จากโซนอื่นและ trend แท่งก่อนเป็น bearish; SELL เมื่อเข้า red จากโซนอื่นและ trend ก่อนเป็น bullish. green = fastMA > slowMA และ close > fastMA; red = fastMA < slowMA และ close < fastMA. ตรวจ trend ก่อนอัปเดตสถานะ ไม่ใช้ null แทน bearish/bullish",
   smc: "ใช้ internalStructures: bullish CHoCH → BUY, bearish CHoCH → SELL โดยไม่บังคับ zone; bullish BOS ใน discount/equilibrium → BUY; bearish BOS ใน premium/equilibrium → SELL. ถ้ามีหลายเหตุการณ์ในแท่งเดียว การเขียนสัญญาณครั้งหลังใน loop เป็นผลสุดท้าย; confirmed pivots",
-  cm_macd:
-    "EMA(fastLength) − EMA(slowLength) เป็น MACD; signalLine ใช้ SMA(signalLength) ตาม implementation นี้. BUY เมื่อ MACD ก่อน < signalLine ก่อน และ MACD ปัจจุบัน >= signalLine ปัจจุบัน; SELL เมื่อก่อน >= และปัจจุบัน <. ต้องมีค่าทั้งสองแท่ง",
   supertrend:
     "คำนวณ ATR ตาม atrPeriod และแถบด้วย multiplier; เส้นอ้างอิงและการเลื่อนแถบดู supertrend() ใน lib/indicators.ts. BUY เมื่อ trend จาก -1 เป็น 1; SELL เมื่อ 1 เป็น -1; ทิศเดิมเป็น HOLD",
-  squeeze_momentum:
-    "คำนวณ BB/KC และ momentum ด้วย linear regression ตาม squeezeMomentum(). BUY เมื่อ momentum ก่อน <= 0 และปัจจุบัน > 0; SELL เมื่อก่อน >= 0 และปัจจุบัน < 0. โค้ดปัจจุบันไม่ได้บังคับ sqzOff ในเงื่อนไขส่งสัญญาณ",
   msb_ob:
     "Zigzag ใช้ zigzagLen: เมื่อเปลี่ยน trend ตรวจ swing h0,h1,l0,l1. Bullish MSB ต้อง market=-1 และ h0 > h1 + abs(h1-l0)*fibFactor; bearish MSB ต้อง market=1 และ l0 < l1 - abs(h0-l1)*fibFactor. ส่ง BUY/SELL เมื่อ market เปลี่ยนจริง. การพบ Order Block ไม่ใช่เงื่อนไขเพิ่มเติมในการส่ง signal",
   support_resistance:
     "Pivot confirmed → carry forward support/resistance. Volume oscillator = 100*(EMA(volume,5)-EMA(volume,10))/EMA(volume,10). BUY: close ก่อน <= resistance ปัจจุบัน, close > resistance, osc > volumeThresh และไม่ใช่ bullWick ((open-low) > (close-open)). SELL: close ก่อน >= support ปัจจุบัน, close < support, osc > volumeThresh และไม่ใช่ bearWick ((open-close) < (high-open)). BUY ตรวจหลัง SELL ใน loop",
   trendlines:
     "Confirmed pivots สร้าง upper/lower และ slope จาก ATR ตาม trendLength/trendMult. BUY เมื่อสถานะ upos เปลี่ยน 0→1 (ไม่มี pivotHigh ใหม่และ close > upper); SELL เมื่อ dnos เปลี่ยน 0→1 (ไม่มี pivotLow ใหม่และ close < lower). สถานะ reset เมื่อมี pivot ใหม่. ถ้าทั้งสองเกิดพร้อมกัน SELL เขียนทับ BUY",
-  ut_bot:
-    "ATR trailing stop ใช้ keyValue * ATR(utAtrPeriod) และ close เป็น src. BUY เมื่อ close > stop ปัจจุบัน และ close ก่อน <= stop ก่อน; SELL เมื่อ close < stop ปัจจุบัน และ close ก่อน >= stop ก่อน. ไม่มีสัญญาณเมื่อยังไม่มีค่าเพียงพอ",
 };
 const V2_INDICATOR_KEY = Object.fromEntries(
   V2_STRATEGY_IDS.map((id) => [id, resolveV2Strategy(id).def.key]),
@@ -76,13 +70,10 @@ export const INDICATOR_KEY: Record<StrategyId, string> = {
   rsi: "rsi",
   cdc_actionzone: "cdcActionZone",
   smc: "smc",
-  cm_macd: "cmMacd",
   supertrend: "supertrend",
-  squeeze_momentum: "squeezeMomentum",
   msb_ob: "msbOb",
   support_resistance: "supportResistance",
   trendlines: "trendlines",
-  ut_bot: "utBot",
 };
 export type Cell = number | string | boolean | null;
 export function columns(

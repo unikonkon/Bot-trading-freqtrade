@@ -53,11 +53,6 @@ const parameterLabels = {
   maxExtensionAtr: "ระยะห่าง EMA เร็วสูงสุด × ATR",
   bbLength: "ช่วง BB",
   bbMult: "ตัวคูณ BB",
-  kcLength: "ช่วง KC",
-  kcMult: "ตัวคูณ KC",
-  fastLength: "ช่วง MACD เร็ว",
-  slowLength: "ช่วง MACD ช้า",
-  signalLength: "ช่วง Signal",
   atrPeriod: "ช่วง ATR",
   multiplier: "ตัวคูณ ATR",
   zigzagLen: "ช่วง Zigzag",
@@ -67,8 +62,6 @@ const parameterLabels = {
   volumeThresh: "เกณฑ์ Volume",
   trendLength: "ช่วงเส้นแนวโน้ม",
   trendMult: "ตัวคูณเส้นแนวโน้ม",
-  keyValue: "ความไว (Key value)",
-  utAtrPeriod: "ช่วง ATR",
 };
 const modeName = { next_open: "เปิดแท่งถัดไป", legacy: "ปิดแท่งสัญญาณ (เดิม)" };
 const fmt = (v, d = 2) =>
@@ -583,11 +576,8 @@ function selectDetail(mode) {
     supertrend: "supertrend.supertrend",
     cdc_actionzone: "cdcActionZone.fastMA",
     rsi: "rsi",
-    cm_macd: "cmMacd.macdLine",
-    ut_bot: "utBot.trailingStop",
     support_resistance: "supportResistance.resistance",
     trendlines: "trendlines.upper",
-    squeeze_momentum: "squeezeMomentum.value",
   };
   // กลยุทธ์ v2 ส่งคอลัมน์ที่ควรวาดมาเองผ่าน defaultOverlay
   const preferred = strategy(detail.id)?.defaultOverlay ?? defaults[detail.id];
@@ -1131,7 +1121,7 @@ function drawPrice() {
   const key = $("overlay").value,
     overlay = detail.indicators[key];
   const priceLine =
-    /^(supertrend\.(supertrend|upperBand|lowerBand)|cdcActionZone\.(fastMA|slowMA)|supportResistance\.(support|resistance)|trendlines\.(upper|lower)|utBot\.trailingStop|vwap)$/.test(
+    /^(supertrend\.(supertrend|upperBand|lowerBand)|cdcActionZone\.(fastMA|slowMA)|supportResistance\.(support|resistance)|trendlines\.(upper|lower)|vwap)$/.test(
       key,
     );
   const extra = priceLine

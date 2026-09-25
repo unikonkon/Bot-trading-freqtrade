@@ -353,7 +353,12 @@ function validateHorizonFlow(p: Record<string, number>): string | null {
 }
 
 // ══ 5) ทะเบียนกลยุทธ์ ══════════════════════════════════════════
-export type V4StrategyId = "horizon_flow_v4" | "horizon_flow_v4_strict" | "horizon_flow_v4_trail";
+/**
+ * เหลือรหัสเดียว — `horizon_flow_v4` (ตามคลิป) และ `horizon_flow_v4_trail` ถูกถอดออกตามคำขอของผู้ใช้
+ * (ผลย้อนหลังบน 1h: −67% และ −72%) ส่วนฟังก์ชัน `horizonFlowV4` กับค่าตั้งต้นของมันยังอยู่
+ * เพราะรหัส strict สร้างจากค่าตั้งต้นชุดเดียวกัน และเทสต์ใช้ตรวจกลไก SL/TP/trailing ตรง ๆ
+ */
+export type V4StrategyId = "horizon_flow_v4_strict";
 
 export const HORIZON_FLOW_RULE_TH =
   "Horizon Flow (จากคลิป YouTube ช่อง Ball Goldricher). " +
@@ -369,17 +374,11 @@ export const HORIZON_FLOW_RULE_TH =
   "และผล 12 ไม้ในคลิป (win 58%) เป็นตัวอย่างบนทองคำที่เล็กเกินกว่าจะใช้ยืนยันอะไรได้";
 
 const SCOPE_V4 = {
-  classic:
-    "รหัสนี้คือกฎตามคลิปตรงตัว (baseline) เปิดทั้งสองฝั่ง SL 1.5 ATR TP 2R ออกด้วย SL/TP เท่านั้น",
   strict:
-    "รหัสนี้ต่างจาก horizon_flow_v4 ที่จุดเข้าเท่านั้น: ต้องเห็น %K ตัด %D กลับทิศขณะอยู่ในโซน (hfRequireCross = 1), " +
+    "รหัสนี้ต่างจากกฎตามคลิปตรงตัว (SL 1.5 ATR TP 2R ออกด้วย SL/TP เท่านั้น) ที่จุดเข้าเท่านั้น: ต้องเห็น %K ตัด %D กลับทิศขณะอยู่ในโซน (hfRequireCross = 1), " +
     "EMA ต้องชันไปฝั่งเดียวกันเทียบ 10 แท่งก่อน (hfSlopeBars = 10) และ SL ต้องกว้างอย่างน้อย 5 เท่าของต้นทุน " +
     "(hfMinStopCostMult = 5 ตามบทเรียนของ TradePlan V3 ที่ stop แคบกว่าต้นทุนมากทำให้ win rate ที่ต้องได้เกิน 100%) " +
     "ใช้เทียบว่าการกรองจุดเข้าชดเชยค่าธรรมเนียมได้หรือไม่",
-  trail:
-    "รหัสนี้ต่างจาก horizon_flow_v4 ที่จุดออกเท่านั้น: ไม่มี TP ตายตัว (hfTargetR = 0) " +
-    "เลื่อน SL มาที่ทุนเมื่อกำไรถึง 1R (hfBreakevenR = 1) จากนั้น trail ห่างจุดสุดขั้ว 2 ATR (hfTrailAtr = 2) " +
-    "และออกเมื่อชั้นทิศทางยืนยันฝั่งตรงข้าม (hfExitOnFlip = 1) ใช้เทียบว่า TP 2R ตัดกำไรทิ้งหรือไม่",
 } as const;
 
 const HF_GROUP = "Horizon Flow (YouTube)";
@@ -397,19 +396,6 @@ const hfWarmup = (p: Record<string, number>) =>
 const hfCompute: V3Definition["compute"] = (k, params, startIndex) => horizonFlowV4(k, params, startIndex);
 
 export const V4_REGISTRY: Record<V4StrategyId, V3Definition> = {
-  horizon_flow_v4: {
-    name: "Horizon Flow V4 (ตามคลิป)",
-    th: "ท่าเทรดจากคลิป YouTube: EMA100 กรองฝั่ง + ต้องไล่ high/low ใหม่ 3 แท่งจึงเปลี่ยนฝั่ง + Stochastic อยู่ในโซน + แท่ง PA ยืนยัน · SL 1.5 ATR TP 2R ปิดที่ราคา SL/TP จริง · สองทาง ใช้ 15m ขึ้นไปเพราะบน 1m ค่าธรรมเนียมใหญ่กว่า SL",
-    en: "Horizon Flow from a YouTube clip: EMA100 side filter, 3-bar higher-high/lower-low confirmation to switch side, Stochastic zone, price-action trigger; SL 1.5 ATR, TP 2R filled at the level. Two-way; use 15m+ since fees exceed the stop on 1m",
-    group: HF_GROUP,
-    overlay: HF_OVERLAY,
-    direction: HF_DIRECTION,
-    defaults: hfDefaults(),
-    compute: hfCompute,
-    warmupBars: hfWarmup,
-    validate: validateHorizonFlow,
-    rule: `${HORIZON_FLOW_RULE_TH}. ${SCOPE_V4.classic}`,
-  },
   horizon_flow_v4_strict: {
     name: "Horizon Flow V4 (กรองจุดเข้า)",
     th: "เหมือนตัวตามคลิปทุกข้อ ต่างที่จุดเข้า: ต้องเห็น %K ตัด %D กลับทิศในโซน, EMA100 ต้องชันไปฝั่งเดียวกัน และ SL ต้องกว้างอย่างน้อย 5 เท่าของต้นทุน เพื่อตัดไม้ที่ค่าธรรมเนียมกินหมด",
@@ -422,19 +408,6 @@ export const V4_REGISTRY: Record<V4StrategyId, V3Definition> = {
     warmupBars: hfWarmup,
     validate: validateHorizonFlow,
     rule: `${HORIZON_FLOW_RULE_TH}. ${SCOPE_V4.strict}`,
-  },
-  horizon_flow_v4_trail: {
-    name: "Horizon Flow V4 (trailing exit)",
-    th: "เข้าเหมือนตัวตามคลิปทุกข้อ ต่างที่จุดออก: ไม่มี TP ตายตัว เลื่อน SL มาที่ทุนเมื่อกำไร 1R แล้ว trail 2 ATR และออกเมื่อชั้นทิศทางยืนยันฝั่งตรงข้าม",
-    en: "Same entries as the clip version; exits differ: no fixed TP, stop to breakeven at +1R, then a 2-ATR trailing stop, and exit when the side filter confirms the opposite side",
-    group: HF_GROUP,
-    overlay: HF_OVERLAY,
-    direction: HF_DIRECTION,
-    defaults: hfDefaults({ hfTargetR: 0, hfBreakevenR: 1, hfTrailAtr: 2, hfExitOnFlip: 1 }),
-    compute: hfCompute,
-    warmupBars: hfWarmup,
-    validate: validateHorizonFlow,
-    rule: `${HORIZON_FLOW_RULE_TH}. ${SCOPE_V4.trail}`,
   },
 };
 

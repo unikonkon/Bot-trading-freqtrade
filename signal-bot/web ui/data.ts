@@ -153,8 +153,6 @@ export function validate(input: unknown): RequestConfig {
       throw new Error("RSI buyThreshold ต้องน้อยกว่า sellThreshold");
     if (s.id === "cdc_actionzone" && p.fastPeriod >= p.slowPeriod)
       throw new Error("CDC fastPeriod ต้องน้อยกว่า slowPeriod");
-    if (s.id === "cm_macd" && p.fastLength >= p.slowLength)
-      throw new Error("MACD fastLength ต้องน้อยกว่า slowLength");
     if (s.id === "msb_ob" && p.fibFactor > 1)
       throw new Error("fibFactor ต้องไม่เกิน 1");
     if (s.id === "smc_adaptive" &&

@@ -1,9 +1,9 @@
 /**
  * ตรวจว่า config ของบอท TS (.env → BOTS, STRATEGY_PARAMS) เล่าเรื่องเดียวกับ freqtrade
- * (freqtrade/user_data/config.json + config.1h.json + config.4h.json → pair_whitelist, pair_strategy_map, strategy_params)
+ * (freqtrade/user_data/config.json + config.<tf>.json ที่มีอยู่ → pair_whitelist, pair_strategy_map, strategy_params)
  *
  * ใช้:  npm run check:sync            (อ่าน signal-bot/.env)
- *       npx tsx signal-bot/scripts/check-config-sync.ts freqtrade/user_data/config.1h.json freqtrade/user_data/config.4h.json
+ *       npx tsx signal-bot/scripts/check-config-sync.ts freqtrade/user_data/config.1h.json
  * exit 0 = ตรงกัน, 1 = มีความต่าง (พิมพ์รายการ + ค่า BOTS ที่ควรเป็น)
  */
 import fs from "node:fs";

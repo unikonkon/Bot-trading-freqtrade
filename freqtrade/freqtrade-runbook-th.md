@@ -30,7 +30,8 @@
 
 - **dry_run: true** → ทุกอย่างทำงานเหมือนจริงแต่ไม่ส่งออเดอร์ไป Binance ใช้กระเป๋าจำลอง `dry_run_wallet`
 - **dry_run: false** → ส่งออเดอร์จริงด้วย `exchange.key` / `exchange.secret`
-- หนึ่ง container = หนึ่ง timeframe (`ft-1h`, `ft-4h`) แต่ละตัวมี config, ฐานข้อมูล และพอร์ต API ของตัวเอง
+- หนึ่ง container = หนึ่ง timeframe (ตอนนี้มี `ft-1h` ตัวเดียว) แต่ละตัวมี config, ฐานข้อมูล และพอร์ต API ของตัวเอง
+- `ft-4h` ถูกถอดออกพร้อม `ut_bot` / `cm_macd` / `squeeze_momentum` ตามคำขอของผู้ใช้ (ผลย้อนหลังบน 1h ขาดทุนหนัก) — SOL/USDT จึงถูกถอดจาก instance 1h ด้วย
 
 ### 1.2 ไฟล์ที่กำหนดพฤติกรรม
 
@@ -38,11 +39,10 @@
 |---|---|---|
 | `freqtrade/user_data/config.json` | ค่ากลาง: dry_run, stake, exchange key, Telegram, Discord, api_server, `strategy_params` | ตั้งค่าครั้งแรก, เปลี่ยน dry→live, เปลี่ยนพารามิเตอร์ indicator |
 | `freqtrade/user_data/config.1h.json` | override ของ instance 1h: `pair_whitelist`, `pair_strategy_map`, `db_url`, พอร์ต | เพิ่ม/ลดคู่, เปลี่ยนว่าคู่ไหนใช้กฎอะไร |
-| `freqtrade/user_data/config.4h.json` | เหมือนด้านบนสำหรับ 4h | |
 | `freqtrade/user_data/strategies/BaseSignalStrategy.py` | strategy แม่: อ่าน map, เรียก ta_port, ตั้ง stoploss/ROI/protections | เปิด stoploss/ROI หลัง hyperopt |
-| `freqtrade/user_data/strategies/ta_port/indicators.py` | สูตร indicator 10 ตัว (พอร์ตจาก `lib/indicators.ts`) | ไม่ควรแก้ ถ้าแก้ต้องรัน harness ใหม่ |
+| `freqtrade/user_data/strategies/ta_port/indicators.py` | สูตร indicator 7 ตัว (พอร์ตจาก `lib/indicators.ts`) | ไม่ควรแก้ ถ้าแก้ต้องรัน harness ใหม่ |
 | `freqtrade/user_data/strategies/ta_port/signals.py` | กฎแปลง indicator → BUY/SELL (พอร์ตจาก `lib/backtest.ts`) | เพิ่มกลยุทธ์ใหม่ |
-| `freqtrade/user_data/strategies/*Strategy.py` | subclass 10 ตัว ใช้ backtest/hyperopt ทีละกลยุทธ์ | ไม่ต้องแก้ |
+| `freqtrade/user_data/strategies/*Strategy.py` | subclass 7 ตัว ใช้ backtest/hyperopt ทีละกลยุทธ์ | ไม่ต้องแก้ |
 | `freqtrade/docker-compose.yml` | รายการ container และพอร์ต | เพิ่ม instance timeframe ใหม่ |
 
 ### 1.3 กลยุทธ์ที่มีให้เลือก (`strategy_id`)
@@ -51,10 +51,7 @@
 |---|---|---|
 | `supertrend` | ATR band พลิกเทรนด์ → BUY/SELL | causal, ผ่าน harness 1:1 |
 | `cdc_actionzone` | EMA12/26 แท่งเขียวแรก/แดงแรก | causal |
-| `ut_bot` | ATR trailing stop ราคาตัดขึ้น/ลง | causal, เทรดถี่บน 1h |
-| `cm_macd` | MACD ตัด signal line (SMA) | causal, เทรดถี่บน 1h |
 | `rsi` | RSI < 30 ซื้อ, > 70 ขาย | causal |
-| `squeeze_momentum` | โมเมนตัมข้ามศูนย์ | causal |
 | `msb_ob` | ZigZag market structure break | causal |
 | `support_resistance` | ทะลุแนวรับ/ต้าน + volume | pivot ยืนยันช้า 15 แท่ง (แก้ lookahead แล้ว) |
 | `trendlines` | ทะลุเส้นเทรนด์ | pivot ยืนยันช้า 14 แท่ง |
@@ -169,7 +166,7 @@ docker compose run --rm freqtrade recursive-analysis --userdir /freqtrade/user_d
 ### 3.4 รัน dry-run
 
 ```bash
-docker compose up -d                 # รัน ft-1h และ ft-4h
+docker compose up -d                 # รัน ft-1h
 docker compose up -d ft-1h           # หรือรันแค่ตัวเดียว
 docker compose logs -f ft-1h         # ดู log สด (Ctrl+C ออก)
 docker compose ps                    # สถานะ container
@@ -210,7 +207,7 @@ docker compose run --rm --entrypoint python freqtrade \
 
 | | |
 |---|---|
-| URL บนเครื่องที่รัน | http://127.0.0.1:8080 (ft-1h) · http://127.0.0.1:8081 (ft-4h) |
+| URL บนเครื่องที่รัน | http://127.0.0.1:8080 (ft-1h) |
 | จาก VPS | พอร์ตผูกกับ 127.0.0.1 เท่านั้น เปิดผ่าน SSH tunnel: `ssh -L 8080:127.0.0.1:8080 user@VPS_IP` แล้วเข้า http://127.0.0.1:8080 บนเครื่องตัวเอง |
 | ล็อกอิน | `api_server.username` / `password` จาก config.json |
 | ดูอะไรได้ | trade ที่เปิดอยู่, ประวัติ, กำไรรวม, กราฟพร้อมจุดเข้าออก, ปุ่ม stop/start, force exit, ดู log |

@@ -30,7 +30,7 @@ const COSTS = {
 /** หน้าต่างของค่าตั้งต้นที่ 30m คิดเป็นแท่ง: 5 วัน = 240 แท่ง · 120 วัน = 5,760 แท่ง */
 const ANCHOR = { lookbackBars: 240, debiasBars: 5760 };
 const FLOW_IDS: V3StrategyId[] = ["orderflow_v3", "orderflow_v3_zero", "flowgate_utbot_v3"];
-const V4_IDS: V3StrategyId[] = ["horizon_flow_v4", "horizon_flow_v4_strict", "horizon_flow_v4_trail"];
+const V4_IDS: V3StrategyId[] = ["horizon_flow_v4_strict"];
 
 /** หน้าต่างแบบนับแท่ง — ส่งตรงทุกครั้ง ไม่พึ่งค่าตั้งต้นของทะเบียน เพื่อให้ผลของไฟล์นี้ไม่เปลี่ยนตามค่าตั้งต้น */
 const barParams = (id: V3StrategyId, _tf: string): Record<string, number> =>

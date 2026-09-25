@@ -2474,10 +2474,19 @@ export const V2_PARAM_META: Record<string, V2ParamMeta> = {
 
 // ══ รหัสกลยุทธ์ v2 ═════════════════════════════════════════════
 /** ต่อท้าย _filtered = กฎเดิมบวกชุดตัวกรองร่วมและการบริหารการออก */
-export type V2StrategyId = V2BaseId | `${V2BaseId}_filtered`;
+export type V2StrategyId = Exclude<V2BaseId, RemovedV2PlainId> | `${V2BaseId}_filtered`;
+
+/**
+ * โหมดพื้นฐานที่ถูกถอดออกจากรายการกลยุทธ์ตามคำขอของผู้ใช้ (ผลย้อนหลังบน 1h ขาดทุนหนักทุกตัว)
+ * ถอดเฉพาะโหมดพื้นฐาน — โหมด `_filtered` ของอินดิเคเตอร์เดียวกันยังอยู่ จึงยังเก็บโค้ดอินดิเคเตอร์ไว้
+ * (`utBotV2` ยังเป็นชั้นจังหวะของ `flowgate_utbot_v3` ด้วย)
+ */
+const REMOVED_V2_PLAIN = ["obv_v2", "vwap_v2", "ut_bot_v2", "macd_v2", "bollinger_v2", "stoch_rsi_v2"] as const;
+type RemovedV2PlainId = (typeof REMOVED_V2_PLAIN)[number];
+const REMOVED_V2_PLAIN_SET = new Set<string>(REMOVED_V2_PLAIN);
 
 export const V2_STRATEGY_IDS: V2StrategyId[] = V2_INDICATORS.flatMap(
-  d => [d.id, `${d.id}_filtered` as V2StrategyId],
+  d => [...(REMOVED_V2_PLAIN_SET.has(d.id) ? [] : [d.id as V2StrategyId]), `${d.id}_filtered` as V2StrategyId],
 );
 
 const V2_ID_SET = new Set<string>(V2_STRATEGY_IDS);

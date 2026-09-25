@@ -216,74 +216,6 @@ def cdc_action_zone(
     return {"fastMA": fast, "slowMA": slow, "zone": zone, "bull": bull, "signal": signal, "trend": trend}
 
 
-# ─── CM MacD Ultimate MTF (signal line = SMA ของ MACD) ─────────
-def cm_macd_ult_mtf(
-    close: Any, fast_length: int = 12, slow_length: int = 26, signal_length: int = 9
-) -> dict[str, np.ndarray]:
-    d = np.asarray(close, dtype=float)
-    n = len(d)
-    fast = ema(d, fast_length)
-    slow = ema(d, slow_length)
-    macd = np.where(np.isnan(fast) | np.isnan(slow), NAN, fast - slow)
-
-    non_null = macd[~np.isnan(macd)]
-    sig_sma = sma(non_null, signal_length)
-
-    signal_line = np.full(n, NAN)
-    hist = np.full(n, NAN)
-    idx = 0
-    for i in range(n):
-        if _isnan(macd[i]):
-            continue
-        s = sig_sma[idx] if idx < len(sig_sma) else NAN
-        signal_line[i] = s
-        hist[i] = macd[i] - s if not _isnan(s) else NAN
-        idx += 1
-
-    hist_color = _obj(n)
-    above = _obj(n)
-    cross_up = np.zeros(n, dtype=bool)
-    cross_down = np.zeros(n, dtype=bool)
-    signal = _obj(n)
-
-    for i in range(n):
-        h = hist[i]
-        hp = hist[i - 1] if i > 0 else NAN
-        if _isnan(h) or _isnan(hp):
-            continue
-        if h > hp and h > 0:
-            hist_color[i] = "aqua"
-        elif h < hp and h > 0:
-            hist_color[i] = "blue"
-        elif h < hp and h <= 0:
-            hist_color[i] = "red"
-        elif h > hp and h <= 0:
-            hist_color[i] = "maroon"
-        else:
-            hist_color[i] = "blue"
-
-        m, s = macd[i], signal_line[i]
-        curr_above = None if (_isnan(m) or _isnan(s)) else bool(m >= s)
-        above[i] = curr_above
-        pm = macd[i - 1] if i > 0 else NAN
-        ps = signal_line[i - 1] if i > 0 else NAN
-        prev_above = None if (_isnan(pm) or _isnan(ps)) else bool(pm >= ps)
-
-        is_up = prev_above is False and curr_above is True
-        is_down = prev_above is True and curr_above is False
-        cross_up[i] = is_up
-        cross_down[i] = is_down
-        if is_up:
-            signal[i] = "BUY"
-        elif is_down:
-            signal[i] = "SELL"
-
-    return {
-        "macdLine": macd, "signalLine": signal_line, "histogram": hist, "histColor": hist_color,
-        "macdAboveSignal": above, "crossUp": cross_up, "crossDown": cross_down, "signal": signal,
-    }
-
-
 # ─── Supertrend ─────────────────────────────────────────────────
 def supertrend(df: pd.DataFrame, atr_period: int = 10, multiplier: float = 3.0) -> dict[str, np.ndarray]:
     h, l, c = _f(df, "high"), _f(df, "low"), _f(df, "close")
@@ -331,7 +263,7 @@ def supertrend(df: pd.DataFrame, atr_period: int = 10, multiplier: float = 3.0) 
     return {"supertrend": st, "trend": trend, "upperBand": upper, "lowerBand": lower, "signal": signal}
 
 
-# ─── Squeeze Momentum [LazyBear] ────────────────────────────────
+# ─── ตัวช่วยหน้าต่างเลื่อน ─────────────────────────────────────
 def stdev(data: Any, period: int) -> np.ndarray:
     d = np.asarray(data, dtype=float)
     return pd.Series(d).rolling(period).std(ddof=0).to_numpy(dtype=float)
@@ -345,97 +277,6 @@ def highest(data: Any, period: int) -> np.ndarray:
 def lowest(data: Any, period: int) -> np.ndarray:
     d = np.asarray(data, dtype=float)
     return pd.Series(d).rolling(period).min().to_numpy(dtype=float)
-
-
-def linreg(data: Any, period: int, offset: int) -> np.ndarray:
-    d = np.asarray(data, dtype=float)
-    n = len(d)
-    out = np.full(n, NAN)
-    xs = np.arange(period, dtype=float)
-    sum_x = xs.sum()
-    sum_x2 = (xs * xs).sum()
-    denom = period * sum_x2 - sum_x * sum_x
-    for i in range(n):
-        end = i - offset
-        start = end - period + 1
-        if start < 0 or end < 0 or end >= n:
-            continue
-        y = d[start : end + 1]
-        sum_y = y.sum()
-        sum_xy = (xs * y).sum()
-        if denom == 0:
-            continue
-        b = (period * sum_xy - sum_x * sum_y) / denom
-        a = (sum_y - b * sum_x) / period
-        out[i] = a + b * (period - 1 - offset)
-    return out
-
-
-def squeeze_momentum(
-    df: pd.DataFrame, bb_length: int = 20, bb_mult: float = 2.0, kc_length: int = 20, kc_mult: float = 1.5
-) -> dict[str, np.ndarray]:
-    h, l, c = _f(df, "high"), _f(df, "low"), _f(df, "close")
-    n = len(df)
-    tr = true_range(df)
-
-    basis = sma(c, bb_length)
-    dev = stdev(c, bb_length)
-    kc_ma = sma(c, kc_length)
-    rangema = sma(tr, kc_length)
-    hh = highest(h, kc_length)
-    ll = lowest(l, kc_length)
-
-    mom_source = np.empty(n)
-    for i in range(n):
-        if _isnan(hh[i]) or _isnan(ll[i]) or _isnan(kc_ma[i]):
-            mom_source[i] = c[i]
-        else:
-            mom_source[i] = c[i] - ((hh[i] + ll[i]) / 2 + kc_ma[i]) / 2
-    val_arr = linreg(mom_source, kc_length, 0)
-
-    value = np.full(n, NAN)
-    hist_color = _obj(n)
-    sqz_on = np.zeros(n, dtype=bool)
-    sqz_off = np.zeros(n, dtype=bool)
-    no_sqz = np.zeros(n, dtype=bool)
-    signal = _obj(n)
-
-    for i in range(n):
-        b, d, km, rm = basis[i], dev[i], kc_ma[i], rangema[i]
-        if _isnan(b) or _isnan(d) or _isnan(km) or _isnan(rm):
-            no_sqz[i] = True
-            continue
-        upper_bb = b + bb_mult * d
-        lower_bb = b - bb_mult * d
-        upper_kc = km + kc_mult * rm
-        lower_kc = km - kc_mult * rm
-        is_on = lower_bb > lower_kc and upper_bb < upper_kc
-        is_off = lower_bb < lower_kc and upper_bb > upper_kc
-        sqz_on[i] = is_on
-        sqz_off[i] = is_off
-        no_sqz[i] = not is_on and not is_off
-
-        val = val_arr[i]
-        value[i] = val
-        if not _isnan(val):
-            prev_val = val_arr[i - 1] if i > 0 else NAN
-            if not _isnan(prev_val):
-                if val > 0:
-                    hist_color[i] = "lime" if val > prev_val else "green"
-                else:
-                    hist_color[i] = "red" if val < prev_val else "maroon"
-            else:
-                hist_color[i] = "lime" if val > 0 else "red"
-
-        if not _isnan(val) and i > 0:
-            pv = val_arr[i - 1]
-            if not _isnan(pv):
-                if pv <= 0 and val > 0:
-                    signal[i] = "BUY"
-                elif pv >= 0 and val < 0:
-                    signal[i] = "SELL"
-
-    return {"value": value, "histColor": hist_color, "sqzOn": sqz_on, "sqzOff": sqz_off, "noSqz": no_sqz, "signal": signal}
 
 
 # ─── Market Structure Break & Order Block (ZigZag) ──────────────
@@ -806,57 +647,6 @@ def smart_money_concepts(
             "signal": signal}
 
 
-# ─── UT Bot Alerts ──────────────────────────────────────────────
-def ut_bot(df: pd.DataFrame, key_value: float = 1, atr_period: int = 10) -> dict[str, np.ndarray]:
-    c = _f(df, "close")
-    n = len(df)
-    a = atr(df, atr_period)
-
-    trailing = np.full(n, NAN)
-    pos = np.zeros(n)
-    signal = _obj(n)
-
-    prev_stop = 0.0
-    prev_pos = 0
-    for i in range(n):
-        x_atr = a[i]
-        if _isnan(x_atr):
-            continue
-        n_loss = key_value * x_atr
-        src = c[i]
-        prev_src = c[i - 1] if i > 0 else src
-
-        if src > prev_stop and prev_src > prev_stop:
-            stop = max(prev_stop, src - n_loss)
-        elif src < prev_stop and prev_src < prev_stop:
-            stop = min(prev_stop, src + n_loss)
-        elif src > prev_stop:
-            stop = src - n_loss
-        else:
-            stop = src + n_loss
-        trailing[i] = stop
-
-        if prev_src < prev_stop and src > prev_stop:
-            cur_pos = 1
-        elif prev_src > prev_stop and src < prev_stop:
-            cur_pos = -1
-        else:
-            cur_pos = prev_pos
-        pos[i] = cur_pos
-
-        above = src > stop and prev_src <= prev_stop
-        below = src < stop and prev_src >= prev_stop
-        if src > stop and above:
-            signal[i] = "BUY"
-        elif src < stop and below:
-            signal[i] = "SELL"
-
-        prev_stop = stop
-        prev_pos = cur_pos
-
-    return {"trailingStop": trailing, "pos": pos, "signal": signal}
-
-
 # ─── computeAll: คอลัมน์ชื่อเดียวกับ freqtrade/scripts/dump-indicators.ts ─
 def compute_all(df: pd.DataFrame, confirmed: bool = True) -> pd.DataFrame:
     """
@@ -865,10 +655,7 @@ def compute_all(df: pd.DataFrame, confirmed: bool = True) -> pd.DataFrame:
     """
     c = _f(df, "close")
     cdc = cdc_action_zone(c, 12, 26, 1)
-    macd = cm_macd_ult_mtf(c, 12, 26, 9)
     st = supertrend(df, 10, 3.0)
-    sqz = squeeze_momentum(df, 20, 2.0, 20, 1.5)
-    ut = ut_bot(df, 1, 10)
     msb = msb_order_block(df, 9, 0.33)
     sr = support_resistance(df, 15, 15, 20, confirmed=confirmed)
     tl = trendlines_with_breaks(df, 14, 1.0, "Atr", confirmed=confirmed)
@@ -878,10 +665,7 @@ def compute_all(df: pd.DataFrame, confirmed: bool = True) -> pd.DataFrame:
         "rsi": rsi(c, 14),
         "atr": atr(df, 14),
         "cdc_fast": cdc["fastMA"], "cdc_slow": cdc["slowMA"], "cdc_zone": cdc["zone"],
-        "macd": macd["macdLine"], "macd_signal": macd["signalLine"], "macd_hist": macd["histogram"],
         "st_line": st["supertrend"], "st_trend": st["trend"],
-        "sqz_val": sqz["value"], "sqz_on": sqz["sqzOn"],
-        "ut_stop": ut["trailingStop"], "ut_pos": ut["pos"],
         "msb_market": msb["market"],
         "sr_res": sr["resistance"], "sr_sup": sr["support"],
         "tl_upper": tl["upper"], "tl_lower": tl["lower"],

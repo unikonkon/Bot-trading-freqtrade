@@ -1,5 +1,6 @@
 # freqtrade — หนึ่ง service ต่อ timeframe (แผนเฟส 3)
-#   docker compose up -d                 → รัน ft-1h และ ft-4h
+#   docker compose up -d                 → รัน ft-1h
+#   (ft-4h ถูกถอดออก: สองกลยุทธ์ที่มันเทรด cm_macd / squeeze_momentum ถูกลบตามคำขอของผู้ใช้)
 #   docker compose run --rm freqtrade …  → คำสั่งครั้งเดียว (backtesting, download-data, list-strategies)
 #
 # พอร์ต REST API ผูกกับ 127.0.0.1 เท่านั้น เข้าจากภายนอกผ่าน SSH tunnel หรือ reverse proxy ที่มี TLS
@@ -19,20 +20,6 @@ services:
       --config /freqtrade/user_data/config.1h.json
       --strategy BaseSignalStrategy
 
-  ft-4h:
-    image: freqtradeorg/freqtrade:stable
-    container_name: ft-4h
-    restart: unless-stopped
-    volumes:
-      - ./user_data:/freqtrade/user_data
-    ports:
-      - "127.0.0.1:8081:8080"
-    command: >
-      trade
-      --logfile /freqtrade/user_data/logs/ft-4h.log
-      --config /freqtrade/user_data/config.json
-      --config /freqtrade/user_data/config.4h.json
-      --strategy BaseSignalStrategy
 
   # service สำหรับคำสั่งครั้งเดียว ไม่ถูกสตาร์ทโดย `up`
   freqtrade:

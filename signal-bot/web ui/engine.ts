@@ -294,9 +294,9 @@ export const INDICATOR_KEYS: Record<StrategyId, keyof AllIndicators> = {
   ...V2_INDICATOR_KEYS,
   ...V3_INDICATOR_KEYS,
   rsi: "rsi", cdc_actionzone: "cdcActionZone", smc: "smc", smc_adaptive: "smcAdaptive",
-  smc_adaptive_v2: "smcAdaptiveV2", smc_adaptive_short: "smcAdaptiveShort", cm_macd: "cmMacd",
-  supertrend: "supertrend", squeeze_momentum: "squeezeMomentum", msb_ob: "msbOb",
-  support_resistance: "supportResistance", trendlines: "trendlines", ut_bot: "utBot",
+  smc_adaptive_v2: "smcAdaptiveV2", smc_adaptive_short: "smcAdaptiveShort",
+  supertrend: "supertrend", msb_ob: "msbOb",
+  support_resistance: "supportResistance", trendlines: "trendlines",
 };
 export function analyze(
   k: KlineData[],

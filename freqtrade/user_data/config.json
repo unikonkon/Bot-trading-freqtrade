@@ -92,17 +92,6 @@
       "swingSize": 50,
       "internalSize": 5
     },
-    "squeeze_momentum": {
-      "bbLength": 20,
-      "bbMult": 2.0,
-      "kcLength": 20,
-      "kcMult": 1.5
-    },
-    "cm_macd": {
-      "fastLength": 12,
-      "slowLength": 26,
-      "signalLength": 9
-    },
     "supertrend": {
       "atrPeriod": 10,
       "multiplier": 3.0
@@ -119,10 +108,6 @@
     "trendlines": {
       "trendLength": 14,
       "trendMult": 1.0
-    },
-    "ut_bot": {
-      "keyValue": 1,
-      "utAtrPeriod": 10
     }
   },
   "initial_state": "running",

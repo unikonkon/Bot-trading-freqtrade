@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {
-  V4_REGISTRY, V4_STRATEGY_IDS, isV4StrategyId, horizonFlowV4, HORIZON_FLOW_RULE_TH,
+  V4_REGISTRY, V4_STRATEGY_IDS, isV4StrategyId, horizonFlowV4, HORIZON_FLOW_RULE_TH, HORIZON_FLOW_V4_DEFAULTS,
   type HorizonFlowV4Result, type V4StrategyId,
 } from '../../lib/indicators-v4-inYutube';
 import { computeV3, v3Defaults, v3WarmupBars, validateV3Params, isV3StrategyId } from '../../lib/indicators-v3';
@@ -16,6 +16,18 @@ const fixture: KlineData[] = JSON.parse(
 const run = (id: V4StrategyId, k = fixture, params: Record<string, number> = {}) =>
   computeV3(id, k, params, 0) as HorizonFlowV4Result;
 
+/**
+ * ชุดกฎทั้งสามแบบของ `horizonFlowV4` — ในทะเบียนเหลือแค่ strict (อีกสองรหัสถูกถอดออกตามคำขอของผู้ใช้)
+ * แต่กลไกเข้า/ออกของทั้งสามแบบยังอยู่ในฟังก์ชัน จึงยังตรวจทั้งสามแบบผ่านฟังก์ชันตรง ๆ
+ */
+const CLASSIC: Record<string, number> = {};
+const TRAIL: Record<string, number> = { hfTargetR: 0, hfBreakevenR: 1, hfTrailAtr: 2, hfExitOnFlip: 1 };
+const VARIANTS: [string, (k: KlineData[]) => HorizonFlowV4Result][] = [
+  ['classic', (k) => horizonFlowV4(k, CLASSIC)],
+  ['trail', (k) => horizonFlowV4(k, TRAIL)],
+  ['horizon_flow_v4_strict', (k) => run('horizon_flow_v4_strict', k)],
+];
+
 /** แท่งที่คุม OHLC เองได้ทุกค่า เพื่อทดสอบการปิดที่ระดับราคาแบบตรวจมือได้ */
 function ohlc(rows: [number, number, number, number][], stepMs = 3600000): KlineData[] {
   return rows.map(([o, h, l, c], i) =>
@@ -23,8 +35,13 @@ function ohlc(rows: [number, number, number, number][], stepMs = 3600000): Kline
       (i + 1) * stepMs - 1, '1000', 10, '50', '500']));
 }
 
-test('V4: ลงทะเบียน 3 รหัสผ่านทะเบียน v3 และแสดงเป็นกลุ่มเวอร์ชัน 4', () => {
-  assert.deepEqual([...V4_STRATEGY_IDS].sort(), ['horizon_flow_v4', 'horizon_flow_v4_strict', 'horizon_flow_v4_trail']);
+test('V4: เหลือรหัสเดียวในทะเบียน (strict) ผ่านทะเบียน v3 และแสดงเป็นกลุ่มเวอร์ชัน 4', () => {
+  // horizon_flow_v4 และ horizon_flow_v4_trail ถูกถอดออกตามคำขอของผู้ใช้ — ต้องไม่กลับเข้ามาเงียบ ๆ
+  assert.deepEqual([...V4_STRATEGY_IDS], ['horizon_flow_v4_strict']);
+  for (const gone of ['horizon_flow_v4', 'horizon_flow_v4_trail']) {
+    assert.ok(!isV4StrategyId(gone) && !isV3StrategyId(gone), `${gone} ต้องไม่อยู่ในทะเบียน`);
+    assert.ok(!STRATEGIES.some((s) => s.id === gone), `${gone} ต้องไม่อยู่ในรายการกลยุทธ์ของเว็บ`);
+  }
   for (const id of V4_STRATEGY_IDS) {
     assert.ok(isV4StrategyId(id) && isV3StrategyId(id), `${id} ต้องวิ่งผ่าน pipeline ของ v3`);
     const config = STRATEGIES.find((s) => s.id === id)!;
@@ -39,28 +56,26 @@ test('V4: ลงทะเบียน 3 รหัสผ่านทะเบี�
   assert.ok(!isV4StrategyId('orderflow_v3'));
 });
 
-test('V4: แต่ละรูปแบบต่างจากตัวตามคลิปเฉพาะพารามิเตอร์ที่ประกาศไว้', () => {
-  const base = V4_REGISTRY.horizon_flow_v4.defaults;
-  const diff = (id: V4StrategyId) =>
-    Object.keys(base).filter((key) => V4_REGISTRY[id].defaults[key] !== base[key]).sort();
-  // strict แตะเฉพาะจุดเข้า · trail แตะเฉพาะจุดออก — จึงเทียบผลกันได้ว่าต่างเพราะอะไร
-  assert.deepEqual(diff('horizon_flow_v4_strict'), ['hfMinStopCostMult', 'hfRequireCross', 'hfSlopeBars']);
-  assert.deepEqual(diff('horizon_flow_v4_trail'), ['hfBreakevenR', 'hfExitOnFlip', 'hfTargetR', 'hfTrailAtr']);
+test('V4: strict ต่างจากกฎตามคลิป (ค่าตั้งต้นของฟังก์ชัน) เฉพาะพารามิเตอร์จุดเข้าที่ประกาศไว้', () => {
+  const { allowLong: _l, allowShort: _s, ...base } = HORIZON_FLOW_V4_DEFAULTS;
+  const strict = V4_REGISTRY.horizon_flow_v4_strict.defaults;
+  const diff = Object.keys(base).filter((key) => strict[key] !== base[key as keyof typeof base]).sort();
+  assert.deepEqual(diff, ['hfMinStopCostMult', 'hfRequireCross', 'hfSlopeBars']);
 });
 
 test('V4: ปฏิเสธพารามิเตอร์ที่ทำให้ไม่มีทางออกหรือโซนกลับด้าน', () => {
-  const d = v3Defaults('horizon_flow_v4');
-  assert.match(validateV3Params('horizon_flow_v4', { ...d, hfTargetR: 0 })!, /ไม่มีทางออกฝั่งกำไร/);
-  assert.match(validateV3Params('horizon_flow_v4', { ...d, hfStochOversold: 60 })!, /oversold < เส้นกลาง/);
-  assert.match(validateV3Params('horizon_flow_v4', { ...d, hfStopAtr: 0 })!, /ต้องมี SL/);
+  const d = v3Defaults('horizon_flow_v4_strict');
+  assert.match(validateV3Params('horizon_flow_v4_strict', { ...d, hfTargetR: 0 })!, /ไม่มีทางออกฝั่งกำไร/);
+  assert.match(validateV3Params('horizon_flow_v4_strict', { ...d, hfStochOversold: 60 })!, /oversold < เส้นกลาง/);
+  assert.match(validateV3Params('horizon_flow_v4_strict', { ...d, hfStopAtr: 0, hfMinStopCostMult: 0 })!, /ต้องมี SL/);
   assert.throws(() => horizonFlowV4(fixture, { hfTargetR: 0 }), /ไม่มีทางออกฝั่งกำไร/);
 });
 
 test('V4: ไม่ใช้ข้อมูลในอนาคต — คำนวณจากข้อมูลบางส่วนต้องได้ผลเหมือนข้อมูลเต็มทุกแท่งที่มีร่วมกัน', () => {
-  for (const id of V4_STRATEGY_IDS) {
-    const full = run(id);
+  for (const [id, calc] of VARIANTS) {
+    const full = calc(fixture);
     for (const cut of [500, 731, 900]) {
-      const part = run(id, fixture.slice(0, cut));
+      const part = calc(fixture.slice(0, cut));
       for (let i = 0; i < cut; i++) {
         assert.equal(part.exposure[i], full.exposure[i], `${id} แท่ง ${i} (ตัดที่ ${cut}): exposure`);
         assert.equal(part.signal[i], full.signal[i], `${id} แท่ง ${i} (ตัดที่ ${cut}): signal`);
@@ -71,8 +86,8 @@ test('V4: ไม่ใช้ข้อมูลในอนาคต — คำ�
 });
 
 test('V4: สัญญาณสลับเปิด–ปิดเสมอ และเข้าเฉพาะฝั่งที่ชั้นทิศทางยืนยันแล้ว', () => {
-  for (const id of V4_STRATEGY_IDS) {
-    const r = run(id);
+  for (const [id, calc] of VARIANTS) {
+    const r = calc(fixture);
     let open: 'BUY' | 'SHORT' | null = null, entries = 0;
     r.signal.forEach((s, i) => {
       if (s === 'BUY' || s === 'SHORT') {
@@ -89,7 +104,7 @@ test('V4: สัญญาณสลับเปิด–ปิดเสมอ แ
 });
 
 test('V4: ไม่หักต้นทุน ไม้ตามคลิปต้องได้ +2R หรือ −1R พอดี (ปิดที่ราคา SL/TP จริง)', () => {
-  const r = run('horizon_flow_v4');
+  const r = horizonFlowV4(fixture, CLASSIC);
   const s = simulateExposure(fixture, r.exposure, 0, 0, 0, 0, 'next_open', { price: r.exitFill, reason: r.reason });
   assert.ok(s.trades.length >= 5);
   for (const t of s.trades) {
@@ -147,7 +162,7 @@ test('V4: เปิดแท่งกระโดดข้าม SL ปิดท
 });
 
 test('V4 engine: levelExit เป็น opt-in — ไม่ส่งมาต้องได้ผลเหมือนเดิมทุกตัวเลข และหัก slippage เหมือนการปิดทั่วไป', () => {
-  const r = run('horizon_flow_v4');
+  const r = horizonFlowV4(fixture, CLASSIC);
   for (const mode of ['next_open', 'legacy'] as const) {
     const before = simulateExposure(fixture, r.exposure, 0, 0.1, 0.05, 0.01, mode);
     const undef = simulateExposure(fixture, r.exposure, 0, 0.1, 0.05, 0.01, mode, undefined);
@@ -165,7 +180,7 @@ test('V4 engine: levelExit เป็น opt-in — ไม่ส่งมาต�
 });
 
 test('V4 trail: ไม่มี TP ตายตัว และ SL ขยับได้ทางเดียวคือทางที่ล็อกกำไร', () => {
-  const r = run('horizon_flow_v4_trail');
+  const r = horizonFlowV4(fixture, TRAIL);
   let prev: number | null = null, dir = 0, checked = 0;
   for (let i = 0; i < fixture.length; i++) {
     const st = r.stop![i];

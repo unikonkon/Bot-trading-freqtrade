@@ -229,118 +229,6 @@ export function cdcActionZone(
   return { fastMA, slowMA, zone, bull: bullArr, signal: signalArr, trend: trendArr };
 }
 
-// ─── CM MacD Ultimate MTF ────────────────────────────────────────
-// Based on ChrisMoody's PineScript — Enhanced MACD with 4-color histogram
-// showing momentum direction above/below zero line.
-
-export type CMHistColor = "aqua" | "blue" | "red" | "maroon";
-
-export interface CMMAcDResult {
-  macdLine: (number | null)[];
-  signalLine: (number | null)[];
-  histogram: (number | null)[];
-  histColor: (CMHistColor | null)[];     // 4-color histogram
-  macdAboveSignal: (boolean | null)[];   // MACD >= Signal
-  crossUp: boolean[];                    // MACD crosses above Signal
-  crossDown: boolean[];                  // MACD crosses below Signal
-  signal: ("BUY" | "SELL" | null)[];     // trading signals
-}
-
-export function cmMacdUltMTF(
-  data: number[],
-  fastLength = 12,
-  slowLength = 26,
-  signalLength = 9,
-): CMMAcDResult {
-  const len = data.length;
-  const fastMA = ema(data, fastLength);
-  const slowMA = ema(data, slowLength);
-
-  const macdLine: (number | null)[] = [];
-  for (let i = 0; i < len; i++) {
-    if (fastMA[i] !== null && slowMA[i] !== null) {
-      macdLine.push(fastMA[i]! - slowMA[i]!);
-    } else {
-      macdLine.push(null);
-    }
-  }
-
-  // Signal line = SMA of MACD (like in the PineScript: sma(macd, signalLength))
-  const nonNullMacd = macdLine.filter(v => v !== null) as number[];
-  const sigSMA = sma(nonNullMacd, signalLength);
-
-  const signalLine: (number | null)[] = [];
-  const histogram: (number | null)[] = [];
-  let idx = 0;
-  for (let i = 0; i < len; i++) {
-    if (macdLine[i] === null) {
-      signalLine.push(null);
-      histogram.push(null);
-    } else {
-      const s = sigSMA[idx] ?? null;
-      signalLine.push(s);
-      histogram.push(s !== null ? macdLine[i]! - s : null);
-      idx++;
-    }
-  }
-
-  // 4-color histogram logic
-  // histA_IsUp   = hist > hist[1] and hist > 0   → aqua  (เพิ่มขึ้น เหนือศูนย์)
-  // histA_IsDown = hist < hist[1] and hist > 0   → blue  (ลดลง แต่ยังเหนือศูนย์)
-  // histB_IsDown = hist < hist[1] and hist <= 0  → red   (ลดลง ใต้ศูนย์)
-  // histB_IsUp   = hist > hist[1] and hist <= 0  → maroon (เพิ่มขึ้น แต่ยังใต้ศูนย์)
-  const histColor: (CMHistColor | null)[] = [];
-  const macdAboveSignal: (boolean | null)[] = [];
-  const crossUp: boolean[] = [];
-  const crossDown: boolean[] = [];
-  const signal: ("BUY" | "SELL" | null)[] = [];
-
-  for (let i = 0; i < len; i++) {
-    const h = histogram[i];
-    const hPrev = i > 0 ? histogram[i - 1] : null;
-    const m = macdLine[i];
-    const s = signalLine[i];
-
-    if (h === null || hPrev === null) {
-      histColor.push(null);
-      macdAboveSignal.push(null);
-      crossUp.push(false);
-      crossDown.push(false);
-      signal.push(null);
-      continue;
-    }
-
-    // 4-color
-    if (h > hPrev && h > 0) histColor.push("aqua");
-    else if (h < hPrev && h > 0) histColor.push("blue");
-    else if (h < hPrev && h <= 0) histColor.push("red");
-    else if (h > hPrev && h <= 0) histColor.push("maroon");
-    else histColor.push("blue"); // equal case
-
-    // MACD vs Signal
-    const isAbove = m !== null && s !== null ? m >= s : null;
-    macdAboveSignal.push(isAbove);
-
-    // Cross detection
-    const prevM = i > 0 ? macdLine[i - 1] : null;
-    const prevS = i > 0 ? signalLine[i - 1] : null;
-    const prevAbove = prevM !== null && prevS !== null ? prevM >= prevS : null;
-    const currAbove = m !== null && s !== null ? m >= s : null;
-
-    const isCrossUp = prevAbove === false && currAbove === true;
-    const isCrossDown = prevAbove === true && currAbove === false;
-    crossUp.push(isCrossUp);
-    crossDown.push(isCrossDown);
-
-    // Trading signals
-    if (isCrossUp) signal.push("BUY");
-    else if (isCrossDown) signal.push("SELL");
-    else signal.push(null);
-  }
-
-  return { macdLine, signalLine, histogram, histColor, macdAboveSignal, crossUp, crossDown, signal };
-}
-
 // ─── Smart Money Concepts (SMC) ─────────────────────────────────
 // Converted from LuxAlgo PineScript — detects market structure,
 // order blocks, fair value gaps, and premium/discount zones.
@@ -1328,20 +1216,7 @@ export function supertrend(
   };
 }
 
-// ─── Squeeze Momentum Indicator [LazyBear] ─────────────────────
-// Bollinger Bands squeeze on Keltner Channels — momentum histogram
-// with 4-color logic + squeeze on/off detection.
-
-export type SqzMomColor = "lime" | "green" | "red" | "maroon";
-
-export interface SqueezeMomentumResult {
-  value: (number | null)[];               // momentum histogram value
-  histColor: (SqzMomColor | null)[];      // lime/green/red/maroon
-  sqzOn: boolean[];                       // squeeze is active (BB inside KC)
-  sqzOff: boolean[];                      // squeeze released (BB outside KC)
-  noSqz: boolean[];                       // no squeeze
-  signal: ("BUY" | "SELL" | null)[];      // trading signals
-}
+// ─── ตัวช่วยหน้าต่างเลื่อน (ใช้ร่วมหลายอินดิเคเตอร์) ─────────────
 
 /**
  * Standard deviation helper (population stdev matching PineScript stdev())
@@ -1386,156 +1261,6 @@ function lowest(data: number[], period: number): (number | null)[] {
     result.push(min);
   }
   return result;
-}
-
-/**
- * Linear regression value (like PineScript linreg(source, length, offset))
- */
-function linreg(data: number[], period: number, offset: number): (number | null)[] {
-  const result: (number | null)[] = [];
-  for (let i = 0; i < data.length; i++) {
-    const end = i - offset;
-    const start = end - period + 1;
-    if (start < 0 || end < 0 || end >= data.length) { result.push(null); continue; }
-    // Linear regression: y = a + b*x, return value at x = period-1
-    let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
-    for (let j = 0; j < period; j++) {
-      const x = j;
-      const y = data[start + j];
-      sumX += x;
-      sumY += y;
-      sumXY += x * y;
-      sumX2 += x * x;
-    }
-    const n = period;
-    const denom = n * sumX2 - sumX * sumX;
-    if (denom === 0) { result.push(null); continue; }
-    const b = (n * sumXY - sumX * sumY) / denom;
-    const a = (sumY - b * sumX) / n;
-    result.push(a + b * (period - 1 - offset));
-  }
-  return result;
-}
-
-export function squeezeMomentum(
-  klines: KlineData[],
-  bbLength = 20,
-  bbMult = 2.0,
-  kcLength = 20,
-  kcMult = 1.5,
-): SqueezeMomentumResult {
-  const c = closes(klines);
-  const h = highs(klines);
-  const l = lows(klines);
-  const len = klines.length;
-
-  // True Range for KC
-  const tr: number[] = [];
-  for (let i = 0; i < len; i++) {
-    if (i === 0) { tr.push(h[i] - l[i]); continue; }
-    tr.push(Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
-  }
-
-  // BB: basis = SMA(close, length), dev = mult * stdev(close, length)
-  const basis = sma(c, bbLength);
-  const dev = stdev(c, bbLength);
-
-  // KC: ma = SMA(close, kcLength), rangema = SMA(TR, kcLength)
-  const kcMa = sma(c, kcLength);
-  const rangema = sma(tr, kcLength);
-
-  // Squeeze detection + momentum value
-  const value: (number | null)[] = [];
-  const histColor: (SqzMomColor | null)[] = [];
-  const sqzOn: boolean[] = [];
-  const sqzOff: boolean[] = [];
-  const noSqz: boolean[] = [];
-  const signal: ("BUY" | "SELL" | null)[] = [];
-
-  // Precompute highest/lowest/SMA for momentum calculation
-  const highestHigh = highest(h, kcLength);
-  const lowestLow = lowest(l, kcLength);
-
-  // Momentum source: close - avg(avg(highest(high,KC), lowest(low,KC)), sma(close,KC))
-  const momSource: number[] = [];
-  for (let i = 0; i < len; i++) {
-    const hh = highestHigh[i];
-    const ll = lowestLow[i];
-    const ma = kcMa[i];
-    if (hh === null || ll === null || ma === null) {
-      momSource.push(c[i]); // fallback
-    } else {
-      momSource.push(c[i] - ((hh + ll) / 2 + ma) / 2);
-    }
-  }
-
-  // linreg(momSource, kcLength, 0)
-  const valArr = linreg(momSource, kcLength, 0);
-
-  for (let i = 0; i < len; i++) {
-    const b = basis[i];
-    const d = dev[i];
-    const km = kcMa[i];
-    const rm = rangema[i];
-
-    if (b === null || d === null || km === null || rm === null) {
-      value.push(null);
-      histColor.push(null);
-      sqzOn.push(false);
-      sqzOff.push(false);
-      noSqz.push(true);
-      signal.push(null);
-      continue;
-    }
-
-    const upperBB = b + bbMult * d;
-    const lowerBB = b - bbMult * d;
-    const upperKC = km + kcMult * rm;
-    const lowerKC = km - kcMult * rm;
-
-    const isOn = lowerBB > lowerKC && upperBB < upperKC;
-    const isOff = lowerBB < lowerKC && upperBB > upperKC;
-    sqzOn.push(isOn);
-    sqzOff.push(isOff);
-    noSqz.push(!isOn && !isOff);
-
-    const val = valArr[i];
-    value.push(val);
-
-    // 4-color: lime = up & positive, green = down & positive, red = down & negative, maroon = up & negative
-    if (val !== null) {
-      const prevVal = i > 0 ? valArr[i - 1] : null;
-      if (prevVal !== null) {
-        if (val > 0) {
-          histColor.push(val > prevVal ? "lime" : "green");
-        } else {
-          histColor.push(val < prevVal ? "red" : "maroon");
-        }
-      } else {
-        histColor.push(val > 0 ? "lime" : "red");
-      }
-    } else {
-      histColor.push(null);
-    }
-
-    // Signal: momentum crosses zero + squeeze release
-    // BUY: val crosses above 0 (or squeeze off + positive momentum increasing)
-    // SELL: val crosses below 0 (or squeeze off + negative momentum increasing)
-    if (val !== null && i > 0) {
-      const prevVal2 = valArr[i - 1];
-      if (prevVal2 !== null) {
-        if (prevVal2 <= 0 && val > 0) signal.push("BUY");
-        else if (prevVal2 >= 0 && val < 0) signal.push("SELL");
-        else signal.push(null);
-      } else {
-        signal.push(null);
-      }
-    } else {
-      signal.push(null);
-    }
-  }
-
-  return { value, histColor, sqzOn, sqzOff, noSqz, signal };
 }
 
 // ─── Market Structure Break & Order Block (MSB-OB) ─────────────
@@ -1881,79 +1606,6 @@ export function trendlinesWithBreaks(
   return { upper, lower, breakUp: breakUpArr, breakDown: breakDownArr, signal };
 }
 
-// ─── UT Bot Alerts ─────────────────────────────────────────────
-// ATR trailing stop based trend detection.
-// Buy when price crosses above trailing stop, Sell when below.
-
-export interface UTBotResult {
-  trailingStop: (number | null)[];
-  pos: (1 | -1 | 0)[];             // 1=long, -1=short, 0=neutral
-  signal: ("BUY" | "SELL" | null)[];
-}
-
-export function utBot(
-  klines: KlineData[],
-  keyValue = 1,
-  atrPeriod = 10,
-): UTBotResult {
-  const c = closes(klines);
-  const len = klines.length;
-
-  const atrArr = atr(klines, atrPeriod);
-
-  const trailingStop: (number | null)[] = new Array(len).fill(null);
-  const pos: (1 | -1 | 0)[] = new Array(len).fill(0);
-  const signal: ("BUY" | "SELL" | null)[] = new Array(len).fill(null);
-
-  let prevStop = 0;
-  let prevPos = 0;
-
-  for (let i = 0; i < len; i++) {
-    const xATR = atrArr[i];
-    if (xATR === null) continue;
-
-    const nLoss = keyValue * xATR;
-    const src = c[i];
-    const prevSrc = i > 0 ? c[i - 1] : src;
-
-    // ATR Trailing Stop
-    let stop: number;
-    if (src > prevStop && prevSrc > prevStop) {
-      stop = Math.max(prevStop, src - nLoss);
-    } else if (src < prevStop && prevSrc < prevStop) {
-      stop = Math.min(prevStop, src + nLoss);
-    } else if (src > prevStop) {
-      stop = src - nLoss;
-    } else {
-      stop = src + nLoss;
-    }
-
-    trailingStop[i] = stop;
-
-    // Position
-    let curPos: 1 | -1 | 0 = 0;
-    if (prevSrc < prevStop && src > prevStop) curPos = 1;
-    else if (prevSrc > prevStop && src < prevStop) curPos = -1;
-    else curPos = prevPos as (1 | -1 | 0);
-
-    pos[i] = curPos;
-
-    // Signal: crossover/crossunder with EMA(src,1) ≈ src
-    const above = src > stop && prevSrc <= prevStop;
-    const below = src < stop && prevSrc >= prevStop;
-    const buy = src > stop && above;
-    const sell = src < stop && below;
-
-    if (buy) signal[i] = "BUY";
-    else if (sell) signal[i] = "SELL";
-
-    prevStop = stop;
-    prevPos = curPos;
-  }
-
-  return { trailingStop, pos, signal };
-}
-
 // ─── Compute all indicators for klines ─────────────────────────
 export interface AllIndicators {
   rsi: (number | null)[];
@@ -1965,13 +1617,10 @@ export interface AllIndicators {
   smcAdaptive: SMCAdaptiveResult;
   smcAdaptiveV2: SMCAdaptiveV2Result;
   smcAdaptiveShort: SMCAdaptiveShortResult;
-  cmMacd: CMMAcDResult;
   supertrend: SupertrendResult;
-  squeezeMomentum: SqueezeMomentumResult;
   msbOb: MSBResult;
   supportResistance: SupportResistanceResult;
   trendlines: TrendlinesResult;
-  utBot: UTBotResult;
   /**
    * อินดิเคเตอร์เวอร์ชัน 2 (lib/indicators-v2.ts)
    * คำนวณเฉพาะตัวที่กลยุทธ์ v2 ที่เลือกใช้เท่านั้น ตัวอื่นเป็น undefined
@@ -2016,15 +1665,8 @@ export function computeAll(klines: KlineData[], overrides?: {
   smcAdaptiveStartIndex?: number;
   smcAdaptiveV2Params?: Partial<SMCAdaptiveV2Params>;
   smcAdaptiveShortParams?: Partial<SMCAdaptiveShortParams>;
-  cmMacdFast?: number;
-  cmMacdSlow?: number;
-  cmMacdSignal?: number;
   supertrendPeriod?: number;
   supertrendMultiplier?: number;
-  sqzMomBBLength?: number;
-  sqzMomBBMult?: number;
-  sqzMomKCLength?: number;
-  sqzMomKCMult?: number;
   msbZigzagLen?: number;
   msbFibFactor?: number;
   srLeftBars?: number;
@@ -2033,8 +1675,6 @@ export function computeAll(klines: KlineData[], overrides?: {
   trendLength?: number;
   trendMult?: number;
   trendCalcMethod?: "Atr" | "Stdev";
-  utBotKey?: number;
-  utBotAtrPeriod?: number;
   /**
    * ยืนยัน pivot ที่แท่ง i + rightBars สำหรับ S/R, Trendlines, SMC (default true = ไม่มี lookahead)
    * false = พฤติกรรม TS เดิม ใช้เฉพาะ harness `--mode ts` ห้ามใช้เทรดหรือ backtest จริง
@@ -2061,13 +1701,10 @@ export function computeAll(klines: KlineData[], overrides?: {
     smcAdaptive: () => smcAdaptive(klines, overrides?.smcAdaptiveParams, overrides?.smcAdaptiveStartIndex),
     smcAdaptiveV2: () => smcAdaptiveV2(klines, overrides?.smcAdaptiveV2Params, overrides?.smcAdaptiveStartIndex),
     smcAdaptiveShort: () => smcAdaptiveShort(klines, overrides?.smcAdaptiveShortParams, overrides?.smcAdaptiveStartIndex),
-    cmMacd: () => cmMacdUltMTF(c, overrides?.cmMacdFast ?? 12, overrides?.cmMacdSlow ?? 26, overrides?.cmMacdSignal ?? 9),
     supertrend: () => supertrend(klines, overrides?.supertrendPeriod ?? 10, overrides?.supertrendMultiplier ?? 3.0),
-    squeezeMomentum: () => squeezeMomentum(klines, overrides?.sqzMomBBLength ?? 20, overrides?.sqzMomBBMult ?? 2.0, overrides?.sqzMomKCLength ?? 20, overrides?.sqzMomKCMult ?? 1.5),
     msbOb: () => msbOrderBlock(klines, overrides?.msbZigzagLen ?? 9, overrides?.msbFibFactor ?? 0.33),
     supportResistance: () => supportResistance(klines, overrides?.srLeftBars ?? 15, overrides?.srRightBars ?? 15, overrides?.srVolumeThresh ?? 20, confirmed),
     trendlines: () => trendlinesWithBreaks(klines, overrides?.trendLength ?? 14, overrides?.trendMult ?? 1.0, overrides?.trendCalcMethod ?? "Atr", confirmed),
-    utBot: () => utBot(klines, overrides?.utBotKey ?? 1, overrides?.utBotAtrPeriod ?? 10),
   };
   // อินดิเคเตอร์ v2 เพิ่มเข้ามาเฉพาะตัวที่กลยุทธ์ที่เลือกต้องใช้
   if (overrides?.v2Strategy) {

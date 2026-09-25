@@ -61,9 +61,14 @@ test('V2 pivots are only usable after right-hand confirmation', () => {
   assert.equal(pivotHighs[0].confirmedAt, 5, 'รู้ว่าเป็น pivot ได้ที่แท่ง index + right เท่านั้น');
 });
 
-test('V2 registry covers all 20 documented indicators and 40 strategies', () => {
+test('V2 registry covers all 20 documented indicators and 34 strategies', () => {
   assert.equal(V2_INDICATORS.length, 20);
-  assert.equal(V2_STRATEGY_IDS.length, 40);
+  // 20 อินดิเคเตอร์ × 2 โหมด = 40 ลบโหมดพื้นฐาน 6 ตัวที่ถูกถอดออกตามคำขอของผู้ใช้
+  assert.equal(V2_STRATEGY_IDS.length, 34);
+  for (const base of ['obv_v2', 'vwap_v2', 'ut_bot_v2', 'macd_v2', 'bollinger_v2', 'stoch_rsi_v2']) {
+    assert.equal(isV2StrategyId(base), false, `${base} ถูกถอดออกแล้ว ต้องไม่กลับเข้ามาเงียบ ๆ`);
+    assert.equal(isV2StrategyId(`${base}_filtered`), true, `${base}_filtered ต้องยังอยู่`);
+  }
   assert.deepEqual(
     V2_INDICATORS.map(d => d.docIndex),
     Array.from({ length: 20 }, (_, i) => i + 1),
@@ -239,8 +244,11 @@ test('V2 Lorentzian is causal and both neighbour pools work', () => {
 });
 
 test('V2 is wired into every registry the web UI depends on', () => {
-  assert.equal(STRATEGIES.filter(s => (s.version ?? 1) === 1).length, 13, 'กลยุทธ์เดิมต้องคงเหลือ 13 ตัว');
-  assert.equal(STRATEGIES.filter(s => s.version === 2).length, 40, 'v2 ต้องมี 40 ตัว');
+  // ut_bot / cm_macd / squeeze_momentum ถูกถอดออกตามคำขอของผู้ใช้ (รวมฝั่ง freqtrade)
+  assert.equal(STRATEGIES.filter(s => (s.version ?? 1) === 1).length, 10, 'กลยุทธ์เดิมต้องคงเหลือ 10 ตัว');
+  for (const gone of ['ut_bot', 'cm_macd', 'squeeze_momentum'])
+    assert.ok(!STRATEGIES.some(s => s.id === gone), `${gone} ต้องไม่อยู่ในรายการกลยุทธ์`);
+  assert.equal(STRATEGIES.filter(s => s.version === 2).length, 34, 'v2 ต้องมี 34 ตัว');
   for (const id of V2_STRATEGY_IDS) {
     const config = STRATEGIES.find(s => s.id === id);
     assert.ok(config, `${id} ต้องอยู่ใน STRATEGIES`);
@@ -252,7 +260,7 @@ test('V2 is wired into every registry the web UI depends on', () => {
     assert.equal(INDICATOR_KEYS[id], resolveV2Strategy(id).def.key);
   }
   // กลยุทธ์เดิมต้องไม่ถูกแตะต้อง
-  for (const id of ['rsi', 'supertrend', 'ut_bot'] as const) {
+  for (const id of ['rsi', 'supertrend', 'trendlines'] as const) {
     const config = STRATEGIES.find(s => s.id === id)!;
     assert.equal(config.version, 1);
     assert.equal(config.paramMeta, undefined);

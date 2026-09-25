@@ -296,9 +296,9 @@ test('OrderFlow: ปฏิเสธค่าพารามิเตอร์ท
 test('OrderFlow: เชื่อมเข้าทะเบียน v3 ครบและไม่มีตระกูลอื่นค้างอยู่', () => {
   // ทะเบียนต้องมีแต่รหัสที่ผ่านการวัดแล้ว — กลยุทธ์ที่วัดแล้วขาดทุนต้องไม่กลับเข้ามาเงียบ ๆ
   // รายชื่อนี้เป็นบัญชีขาว: การเพิ่มรหัสใหม่ต้องแก้ที่นี่ด้วย ซึ่งบังคับให้มีคนตัดสินใจจริง
-  // horizon_flow_v4* เพิ่มตามคำขอของผู้ใช้ (ท่าจากคลิป YouTube) ผลวัดอยู่ใน indicators-v4.test.ts และ README
+  // horizon_flow_v4* เพิ่มตามคำขอของผู้ใช้ (ท่าจากคลิป YouTube) — ภายหลังถอดตัวตามคลิปและ trail ออกตามคำขอ เหลือ strict
   assert.deepEqual([...V3_STRATEGY_IDS].sort(),
-    ['flowgate_utbot_v3', 'horizon_flow_v4', 'horizon_flow_v4_strict', 'horizon_flow_v4_trail',
+    ['flowgate_utbot_v3', 'horizon_flow_v4_strict',
       'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
   assert.deepEqual(v3Direction('orderflow_v3'), { allowLong: 1, allowShort: 1 });
   assert.deepEqual(v3Direction('orderflow_v3_long'), { allowLong: 1, allowShort: 0 });
