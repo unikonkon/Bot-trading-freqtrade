@@ -1,0 +1,221 @@
+// This work is licensed under a Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © LuxAlgo — ต้นฉบับ "Trendlines with Breaks [LuxAlgo]"
+// ดัดแปลงให้ BUY/SELL ตรงกับบอท: lib/indicators.ts `trendlinesWithBreaks()` + backtest โหมด "ราคาปิดแท่งสัญญาณ (เดิม)"
+//
+// ═══ สัญญาณมีแบบเดียว: BUY/SELL = จุดเข้า/ออกของ backtest บนเว็บพอดี ════════════════════════
+//    ไม่มีป้าย "B" (จุดทะลุดิบ) และไม่ใช่ strategy() จึงไม่มีลูกศรคำสั่งของ Strategy Tester ซ้อน
+//    ผล backtest ดูที่ตาราง "Web legacy" มุมขวาบน ซึ่งคำนวณแบบเดียวกับเว็บ (lib/backtest.ts `runBacktest`)
+//
+// ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
+// 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
+//    รู้ผลที่แท่ง p + length และเกิดได้ตั้งแต่ bar_index ≥ 2 × length — เขียนเองแทน ta.pivothigh ให้กฎราคาเท่ากันตรงกับบอท
+// 2) Slope = ATR(length) / length × mult หรือ Stdev(close, length) / length × mult
+//    ATR ของบอท = Wilder RMA เริ่มด้วย SMA = ta.atr · Stdev แบบ population = ta.stdev ค่าตั้งต้น
+// 3) เส้น: แท่งที่ยืนยัน pivot high → upper = ราคา pivot, slope_ph = slope ของแท่งนั้น · แท่งอื่น upper −= slope_ph
+// 4) ทะลุ: close > upper (ไม่ใช่ upper − slope × length แบบ LuxAlgo ต้นฉบับ) · ทะลุได้ครั้งเดียวต่อเส้น
+// 5) แท่งแรกของข้อมูล: upper เริ่มที่ 0 บอทจึงนับ close > 0 เป็นการทะลุขึ้น → BUY ที่แท่งแรกของกราฟ (ทำตามบอท)
+// 6) แท่งเดียวทะลุทั้งสองเส้น: SELL ทับ BUY
+// 7) กฎสลับเปิด–ปิด (`alternateSignals`, Spot ทางเดียว): ว่างรับเฉพาะ BUY · ถือรับเฉพาะ SELL
+// 8) Backtest legacy: เริ่มว่างที่ "Backtest From" · เข้า/ออกที่ราคาปิดของแท่งสัญญาณ · ไม่มี slippage
+//    กำไรต่อไม้ = (ออก − เข้า) / เข้า × 100 − 2 × fee · ผลรวม = บวกเปอร์เซ็นต์ (ไม่ทบต้น)
+//    ไม้ที่ยังถือตอนจบช่วงนับปิดที่ราคาปิดแท่งสุดท้าย (เฉพาะในตาราง ไม่วาดป้าย เพราะบอทไม่ส่งสัญญาณนี้)
+//
+// ═══ ข้อควรรู้ก่อนเทียบกับเว็บ ═══════════════════════════════════════════════════════════
+//    • ใช้ BINANCE:<คู่เหรียญ> (Spot) ไม่ใช่ perpetual (.P) และตั้ง timezone กราฟเป็นกรุงเทพ
+//    • ตั้ง "Backtest From" = แท่งแรกหลังช่วงอุ่นเครื่องของเว็บ (ช่วงที่ผลทดสอบเริ่ม)
+//    • ATR ขึ้นกับแท่งแรกของข้อมูล — ถ้ากราฟเริ่มคนละแท่งกับเว็บ สัญญาณต่างได้เฉพาะช่วงต้นกราฟ (วัดแล้วไม่เกิน ~30 แท่ง)
+//    • สัญญาณตัดสินเมื่อปิดแท่งเท่านั้น แท่งที่ยังไม่ปิดจะไม่มีป้าย (ตรงกับบอทที่ใช้แท่งปิดแล้ว)
+
+//@version=6
+indicator('Trendlines with Breaks [LuxAlgo] — Bot BUY/SELL (Legacy close)', 'TL Breaks Bot Legacy', overlay = true, max_bars_back = 500)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+length     = input.int(14, 'Swing Detection Lookback', minval = 2, maxval = 200, tooltip = 'trendLength ของบอท (ค่าตั้งต้น 14 · เว็บรับ 2–200)')
+mult       = input.float(1.0, 'Slope', minval = 0.01, maxval = 20, step = 0.1, tooltip = 'trendMult ของบอท (ค่าตั้งต้น 1.0)')
+calcMethod = input.string('Atr', 'Slope Calculation Method', options = ['Atr', 'Stdev'], tooltip = 'บอทใช้ Atr เป็นค่าตั้งต้น และไม่มีโหมด Linreg')
+
+startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest (legacy)', tooltip = 'แท่งแรกของช่วงทดสอบบนเว็บ — เริ่มสถานะว่างที่นี่ ป้าย BUY/SELL มีเฉพาะในช่วงนี้')
+endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
+feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
+showTable  = input.bool(true, 'Show Web legacy table', group = 'Backtest (legacy)')
+
+upCss      = input.color(color.teal, 'Up Trendline Color', group = 'Style')
+dnCss      = input.color(color.red, 'Down Trendline Color', group = 'Style')
+showLines  = input.bool(true, 'Show trendlines', group = 'Style')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'sig')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'sig')
+
+//-----------------------------------------------------------------------------}
+//Pivots — กฎเดียวกับ pivotEvents(): สูง/ต่ำกว่าเพื่อนบ้านทั้งสองข้างแบบเข้มงวด
+//-----------------------------------------------------------------------------{
+pivotHighAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = high[len]
+        bool ok = true
+        for j = 1 to len
+            if cand <= high[len + j] or cand <= high[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+pivotLowAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = low[len]
+        bool ok = true
+        for j = 1 to len
+            if cand >= low[len + j] or cand >= low[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+//-----------------------------------------------------------------------------}
+//Trendlines & breaks — trendlinesWithBreaks()
+//-----------------------------------------------------------------------------{
+var float upper   = 0.
+var float lower   = 0.
+var float slopePh = 0.
+var float slopePl = 0.
+var int   upos    = 0
+var int   dnos    = 0
+var bool  hasPh   = false
+var bool  hasPl   = false
+
+atrV  = ta.atr(length)
+stdV  = ta.stdev(close, length)
+slope = (calcMethod == 'Stdev' ? nz(stdV) : nz(atrV)) / length * mult
+
+ph   = pivotHighAt(length)
+pl   = pivotLowAt(length)
+isPh = not na(ph)
+isPl = not na(pl)
+
+if isPh
+    upper   := ph
+    slopePh := slope
+    hasPh   := true
+else
+    upper := upper - slopePh
+
+if isPl
+    lower   := pl
+    slopePl := slope
+    hasPl   := true
+else
+    lower := lower + slopePl
+
+prevUpos = upos
+prevDnos = dnos
+upos := isPh ? 0 : close > upper ? 1 : upos
+dnos := isPl ? 0 : close < lower ? 1 : dnos
+
+// SELL ทับ BUY ถ้าแท่งเดียวทะลุทั้งสองเส้น · ตัดสินเมื่อปิดแท่งเท่านั้น
+rawSig = not barstate.isconfirmed ? 0 : dnos > prevDnos ? -1 : upos > prevUpos ? 1 : 0
+
+//-----------------------------------------------------------------------------}
+//Signals — alternateSignals() แล้วเข้า/ออกแบบ runBacktest() legacy
+//-----------------------------------------------------------------------------{
+var int altState = 0
+int streamSig = 0
+if altState == 0 and rawSig == 1
+    streamSig := 1
+    altState  := 1
+else if altState == 1 and rawSig == -1
+    streamSig := -1
+    altState  := 0
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+
+var bool  inPos     = false
+var float entryPx   = na
+var int   nTrades   = 0
+var int   nWins     = 0
+var float sumPnl    = 0.
+var float grossWin  = 0.
+var float grossLoss = 0.
+var float peakEq    = 0.
+var float maxDD     = 0.
+
+// sig = สัญญาณเดียวที่วาดและแจ้งเตือน: 1 BUY (เข้า) · −1 SELL (ออก)
+int   sig    = 0
+float exitPx = na
+if inWindow and streamSig == 1 and not inPos
+    sig     := 1
+    inPos   := true
+    entryPx := close
+else if inWindow and streamSig == -1 and inPos
+    sig    := -1
+    exitPx := close
+
+// จบช่วงที่ตั้ง "Backtest To": ปิดไม้ค้างที่ราคาปิด (ไม่วาดป้าย)
+if inPos and na(exitPx) and lastWindowBar and barstate.isconfirmed
+    exitPx := close
+
+if not na(exitPx)
+    pnl = (exitPx - entryPx) / entryPx * 100 - 2 * feeInput
+    nTrades += 1
+    sumPnl  += pnl
+    if pnl > 0
+        nWins    += 1
+        grossWin += pnl
+    else
+        grossLoss += -pnl
+    peakEq := math.max(peakEq, sumPnl)
+    maxDD  := math.max(maxDD, peakEq - sumPnl)
+    inPos  := false
+
+//-----------------------------------------------------------------------------}
+//Plots
+//-----------------------------------------------------------------------------{
+plot(showLines and hasPh ? upper : na, 'Upper (down-trendline)', color = isPh ? na : upCss)
+plot(showLines and hasPl ? lower : na, 'Lower (up-trendline)', color = isPl ? na : dnCss)
+
+plotshape(sig == 1, 'BUY', shape.labelup, location.belowbar, buyCss, text = 'BUY', textcolor = color.white, size = size.small)
+plotshape(sig == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text = 'SELL', textcolor = color.white, size = size.small)
+
+plot(sig, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
+
+// ไม้ที่ยังถือตอนจบกราฟนับปิดที่ราคาปิดล่าสุดเหมือนเว็บ (คำนวณเพื่อแสดงเท่านั้น ไม่เปลี่ยนสถานะ)
+if showTable and barstate.islast
+    var table t = table.new(position.top_right, 2, 7, bgcolor = color.new(color.black, 20), border_width = 1)
+    float openPnl = inPos ? (close - entryPx) / entryPx * 100 - 2 * feeInput : na
+    float sumAll  = sumPnl + nz(openPnl)
+    int   nAll    = nTrades + (inPos ? 1 : 0)
+    int   winAll  = nWins + (inPos and openPnl > 0 ? 1 : 0)
+    float gWin    = grossWin + (inPos and openPnl > 0 ? openPnl : 0)
+    float gLoss   = grossLoss + (inPos and openPnl <= 0 ? -openPnl : 0)
+    float ddAll   = math.max(maxDD, math.max(peakEq, sumAll) - sumAll)
+    float pf      = gLoss > 0 ? gWin / gLoss : na
+    table.cell(t, 0, 0, 'Web legacy', text_color = color.white)
+    table.cell(t, 1, 0, 'fee ' + str.tostring(feeInput) + '%/ขา', text_color = color.white)
+    table.cell(t, 0, 1, 'ผลรวม %', text_color = color.white)
+    table.cell(t, 1, 1, str.tostring(sumAll, '#.##') + '%', text_color = sumAll >= 0 ? buyCss : sellCss)
+    table.cell(t, 0, 2, 'เทรด', text_color = color.white)
+    table.cell(t, 1, 2, str.tostring(nAll), text_color = color.white)
+    table.cell(t, 0, 3, 'Win rate', text_color = color.white)
+    table.cell(t, 1, 3, nAll > 0 ? str.tostring(winAll * 100.0 / nAll, '#.#') + '%' : '—', text_color = color.white)
+    table.cell(t, 0, 4, 'Profit factor', text_color = color.white)
+    table.cell(t, 1, 4, na(pf) ? '—' : str.tostring(pf, '#.##'), text_color = color.white)
+    table.cell(t, 0, 5, 'Drawdown', text_color = color.white)
+    table.cell(t, 1, 5, str.tostring(ddAll, '#.##') + '%', text_color = color.white)
+    table.cell(t, 0, 6, 'สถานะ', text_color = color.white)
+    table.cell(t, 1, 6, inPos ? 'ถือ (เข้า ' + str.tostring(entryPx, format.mintick) + ')' : 'ว่าง', text_color = color.white)
+
+//-----------------------------------------------------------------------------}
+//Alerts
+//-----------------------------------------------------------------------------{
+alertcondition(sig == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Trendlines break @ {{close}}')
+alertcondition(sig == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Trendlines break @ {{close}}')
+
+if sig == 1
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Trendlines break @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+if sig == -1
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Trendlines break @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+
+//-----------------------------------------------------------------------------}

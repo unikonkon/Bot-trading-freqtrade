@@ -1,0 +1,346 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//@version=6
+// ═══════════════════════════════════════════════════════════════════════════════
+// EMA Cross V2 + ตัวกรอง (ema_v2_filtered) — โหมด "เปิดแท่งถัดไป" (next_open) เท่านั้น
+// ต้นฉบับ: lib/indicators-v2.ts → emaV2() + applyTradeFilter()   ตัวจำลอง: signal-bot/web ui/engine.ts → simulateNextOpen()
+// ───────────────────────────────────────────────────────────────────────────────
+// ลำดับการทำงาน (ตรงกับ TS ทุกขั้น)
+//   ชั้น 1  เจตนาดิบ (emaV2.signal)
+//           BUY  = EMA(fast) ตัดขึ้นเหนือ EMA(slow)  และ  close > EMA(fast)
+//           SELL = EMA(fast) ตัดลงใต้ EMA(slow)          (ไม่บังคับเงื่อนไขราคา)
+//   ชั้น 2  state machine ของตัวกรอง (applyTradeFilter, entryStyle = "trend") ทำที่ "ปิดแท่ง"
+//           ถ้าถือสถานะอยู่ → ตรวจการออกก่อน ตามลำดับ
+//               (ก) close <= stop          (stop = trailing ATR เลื่อนขึ้นอย่างเดียว)
+//               (ข) เจอ SELL ดิบ (EMA ตัดลง)
+//               (ค) ถือครบ maxHoldBars แท่ง
+//           ถ้าว่าง และเจอ BUY ดิบ → ต้องผ่านครบทุกข้อ
+//               0. พ้นช่วงพัก cooldown หลังออก
+//               1. close > EMA เทรนด์ (100)
+//               2. EMA เทรนด์ > EMA เทรนด์ เมื่อ slopeBars แท่งก่อน (ชันขึ้น)
+//               3. ADX >= threshold  และ  +DI > −DI
+//               4. ATR(14) / ATR(56) <= maxVolRatio (ความผันผวนไม่พุ่งผิดปกติ)
+//           stop เริ่มต้น = close − max(stopAtr × ATR, close × minStopPct%)
+//           trailing    = peakClose − max(trailAtr × ATR, peakClose × minStopPct%)  (ไม่ลดลง)
+//   ชั้น 3  การลงมือ: สัญญาณ ณ ปิดแท่ง i → ส่งคำสั่งตลาด → fill ที่ราคา OPEN ของแท่ง i+1
+//           (Pine strategy ค่าเริ่มต้น process_orders_on_close=false ทำแบบนี้พอดี)
+//           Long-only Spot: BUY = เข้าซื้อเต็มพอร์ต, SELL = ปิดสถานะ (ไม่เปิด Short)
+//
+// ข้อสำคัญ
+//   • stop ทุกตัวเทียบ "ราคาปิด" ไม่ใช่ stop order ระหว่างแท่ง — ไส้เทียนแทงลงแล้วปิดเหนือ stop ไม่ออก
+//     และเมื่อออกจะ fill ที่ open แท่งถัดไป ซึ่งอาจต่ำกว่า stop ได้ถ้ามี gap
+//   • EMA/RMA/ATR/DMI เขียนเองให้ตั้งต้นด้วย SMA และข้ามค่า na เหมือน lib/indicators-v2.ts ทุกบรรทัด
+//     (ไม่พึ่ง ta.ema/ta.dmi เพื่อตัดความต่างเรื่อง seed/fixnan ออกทั้งหมด)
+//   • ตาราง "จำลองแบบเว็บ" คำนวณแบบเดียวกับ simulateNextOpen: เริ่ม 100 หน่วย ทบต้น
+//     entry = open × (1+slip), qty = cash / (entry × (1+fee)), exit = open × (1−slip) หักค่าธรรมเนียมอีกขา
+//     และบังคับปิดที่ราคาปิดแท่งสุดท้าย — ใช้ตัวเลขนี้เทียบกับเว็บ ไม่ใช่ Strategy Tester
+//   • Strategy Tester ของ TradingView ไม่มี slippage แบบ % จึงรวม fee 0.10% + slippage 0.05% เป็น
+//     commission 0.15% ต่อขา (ค่าใกล้เคียง ต่างกันระดับ 0.001% ต่อเทรด)
+// ═══════════════════════════════════════════════════════════════════════════════
+strategy("EMA Cross V2 + Filter [next open]", shorttitle = "EMA V2 F", overlay = true,
+     initial_capital = 10000, default_qty_type = strategy.percent_of_equity, default_qty_value = 100,
+     pyramiding = 0, commission_type = strategy.commission.percent, commission_value = 0.15,
+     margin_long = 0, margin_short = 0, process_orders_on_close = false, calc_on_every_tick = false,
+     max_labels_count = 500)
+
+// ─── Inputs ───────────────────────────────────────────────────────────────────
+const string G_CORE  = "EMA Cross (สัญญาณดิบ)"
+const string G_FILT  = "ตัวกรองเข้า"
+const string G_EXIT  = "การออก"
+const string G_RANGE = "ช่วงทดสอบ"
+const string G_SIM   = "ตารางจำลองแบบเว็บ (next_open)"
+const string G_VIS   = "การแสดงผล"
+
+emaFastLength      = input.int(20,  "EMA เร็ว",                 minval = 2, group = G_CORE)
+emaSlowLength      = input.int(50,  "EMA ช้า",                  minval = 2, group = G_CORE)
+
+filterTrendLength  = input.int(100, "EMA เทรนด์",               minval = 2, group = G_FILT)
+filterSlopeBars    = input.int(5,   "ความชัน EMA เทรนด์ (แท่ง)", minval = 1, group = G_FILT)
+filterAdxLength    = input.int(14,  "ADX / DI length",          minval = 2, group = G_FILT)
+filterAdxThreshold = input.float(18, "ADX ขั้นต่ำ",              minval = 0, step = 0.5, group = G_FILT)
+filterAtrLength    = input.int(14,  "ATR length (ATR ช้า = ×4)", minval = 2, group = G_FILT)
+filterMaxVolRatio  = input.float(2.5, "ATR เร็ว/ATR ช้า สูงสุด", minval = 0.1, step = 0.1, group = G_FILT)
+filterCooldownBars = input.int(3,   "พักหลังออก (แท่ง)",         minval = 0, group = G_FILT)
+
+filterStopAtr      = input.float(2.5, "Stop เริ่มต้น (× ATR)",   minval = 0.1, step = 0.1, group = G_EXIT)
+filterTrailAtr     = input.float(3.0, "Trailing (× ATR)",        minval = 0.1, step = 0.1, group = G_EXIT)
+filterMinStopPct   = input.float(0.5, "ระยะ Stop ขั้นต่ำ (%)",    minval = 0.01, step = 0.05, group = G_EXIT)
+filterMaxHoldBars  = input.int(150, "จำนวนแท่งถือสูงสุด",         minval = 2, group = G_EXIT)
+
+useStart   = input.bool(false, "เริ่มนับสัญญาณตั้งแต่วันที่", inline = "start", group = G_RANGE,
+     tooltip = "เทียบ startIndex ของเว็บ: อินดิเคเตอร์ยังคำนวณจากทุกแท่ง แต่สถานะเริ่มว่างที่วันนี้ ใส่วัน/เวลาเปิดของแท่งแรกในช่วงทดสอบของเว็บ")
+startTime  = input.time(timestamp("2026-01-01T00:00:00+00:00"), "", inline = "start", group = G_RANGE)
+
+feePct     = input.float(0.10, "ค่าธรรมเนียม/ขา (%)", minval = 0, step = 0.01, group = G_SIM)
+slipPct    = input.float(0.05, "Slippage/ขา (%)",     minval = 0, step = 0.01, group = G_SIM)
+
+showEmas     = input.bool(true,  "แสดง EMA เร็ว/ช้า/เทรนด์", group = G_VIS)
+showStop     = input.bool(true,  "แสดงเส้น stop",             group = G_VIS)
+showRejected = input.bool(false, "แสดง BUY ดิบที่ถูกตัวกรองปฏิเสธ (ชี้เมาส์ดูเหตุผล)", group = G_VIS)
+showTable    = input.bool(true,  "แสดงตาราง",                 group = G_VIS)
+
+if emaFastLength >= emaSlowLength
+    runtime.error("EMA เร็วต้องสั้นกว่า EMA ช้า")
+
+// ─── ค่าเฉลี่ยแบบเดียวกับ lib/indicators-v2.ts ────────────────────────────────
+// EMA: ตั้งต้นด้วย SMA ของ n ค่าแรกที่ไม่ใช่ na แล้วใช้ alpha = 2/(n+1); input na → output na
+emaSeeded(float src, int len) =>
+    var float prev = na
+    var float seed = 0.0
+    var int   seen = 0
+    float out = na
+    if not na(src)
+        if na(prev)
+            seed += src
+            seen += 1
+            if seen == len
+                prev := seed / len
+                out := prev
+        else
+            float alpha = 2.0 / (len + 1)
+            prev := src * alpha + prev * (1 - alpha)
+            out := prev
+    out
+
+// RMA (Wilder): ตั้งต้นด้วย SMA แล้ว prev = (prev × (n−1) + v) / n
+rmaSeeded(float src, int len) =>
+    var float prev = na
+    var float seed = 0.0
+    var int   seen = 0
+    float out = na
+    if not na(src)
+        if na(prev)
+            seed += src
+            seen += 1
+            if seen == len
+                prev := seed / len
+                out := prev
+        else
+            prev := (prev * (len - 1) + src) / len
+            out := prev
+    out
+
+// ─── อินดิเคเตอร์ ─────────────────────────────────────────────────────────────
+float fastEma  = emaSeeded(close, emaFastLength)
+float slowEma  = emaSeeded(close, emaSlowLength)
+float trendEma = emaSeeded(close, filterTrendLength)
+
+// True Range: แท่งแรกใช้ High−Low (trueRange ใน TS)
+float trAll = bar_index == 0 ? high - low : math.max(high - low, math.abs(high - close[1]), math.abs(low - close[1]))
+float atrFast = rmaSeeded(trAll, filterAtrLength)
+float atrSlow = rmaSeeded(trAll, filterAtrLength * 4)
+
+// DMI แบบ Wilder: แท่งแรกไม่มี TR/DM เทียบแท่งก่อน จึงเป็น na (dmi ใน TS)
+float upMove   = high - high[1]
+float downMove = low[1] - low
+float plusDM   = bar_index == 0 ? na : (upMove > downMove and upMove > 0 ? upMove : 0.0)
+float minusDM  = bar_index == 0 ? na : (downMove > upMove and downMove > 0 ? downMove : 0.0)
+float trDmi    = bar_index == 0 ? na : trAll
+float trR      = rmaSeeded(trDmi, filterAdxLength)
+float plusR    = rmaSeeded(plusDM, filterAdxLength)
+float minusR   = rmaSeeded(minusDM, filterAdxLength)
+bool  dmiOk    = not na(trR) and not na(plusR) and not na(minusR) and trR != 0
+float plusDI   = dmiOk ? 100 * plusR / trR : na
+float minusDI  = dmiOk ? 100 * minusR / trR : na
+float diSum    = plusDI + minusDI
+float dx       = dmiOk ? (diSum == 0 ? 0.0 : 100 * math.abs(plusDI - minusDI) / diSum) : na
+float adx      = rmaSeeded(dx, filterAdxLength)
+
+// ─── ชั้น 1: เจตนาดิบของ EMA Cross V2 ────────────────────────────────────────
+bool emaReady  = not na(fastEma) and not na(slowEma) and not na(fastEma[1]) and not na(slowEma[1])
+bool crossUp   = emaReady and fastEma[1] <= slowEma[1] and fastEma > slowEma
+bool crossDown = emaReady and fastEma[1] >= slowEma[1] and fastEma < slowEma
+int  intent    = crossUp and close > fastEma ? 1 : crossDown ? -1 : 0
+
+// ─── ชั้น 2: state machine ของตัวกรอง (ทำเฉพาะแท่งที่ปิดแล้ว) ────────────────
+var bool  active        = false
+var bool  inPos         = false
+var int   entryBar      = 0
+var float peakClose     = 0.0
+var float curStop       = 0.0
+var int   cooldownUntil = -1
+
+// เริ่มสถานะว่างที่ startIndex ครั้งเดียว แล้วเดินต่อไปตลอด (เหมือน loop i = startIndex..len−1)
+if not active and (not useStart or time >= startTime)
+    active := true
+
+int    sig        = 0      // 1 = BUY, -1 = SELL
+int    exitKind   = 0      // 1 = stop, 2 = EMA ตัดลง, 3 = ถือครบ
+string reasonText = ""
+bool   rejected   = false
+float  stopPlot   = na
+int    slopeBars  = filterSlopeBars
+
+if active and barstate.isconfirmed
+    if inPos
+        peakClose := math.max(peakClose, close)
+        if not na(atrFast)
+            float trail = math.max(filterTrailAtr * atrFast, peakClose * filterMinStopPct / 100)
+            curStop := math.max(curStop, peakClose - trail)
+        stopPlot := curStop
+        int held = bar_index - entryBar
+        if close <= curStop
+            sig := -1
+            exitKind := 1
+            reasonText := "ออก: ราคาปิด " + str.tostring(close, format.mintick) + " ≤ stop " + str.tostring(curStop, format.mintick)
+        else if intent == -1
+            sig := -1
+            exitKind := 2
+            reasonText := "ออก: EMA เร็วตัดลงใต้ EMA ช้า"
+        else if held >= filterMaxHoldBars
+            sig := -1
+            exitKind := 3
+            reasonText := "ออก: ถือครบ " + str.tostring(held) + " แท่ง"
+        if sig == -1
+            inPos := false
+            cooldownUntil := bar_index + filterCooldownBars
+    else if intent == 1
+        float tePrev = trendEma[slopeBars]
+        rejected := true
+        if bar_index < cooldownUntil
+            reasonText := "งดเข้า: อยู่ในช่วงพักหลังออก"
+        else if na(trendEma) or na(tePrev) or na(adx) or na(plusDI) or na(minusDI) or na(atrFast) or na(atrSlow)
+            reasonText := "งดเข้า: ข้อมูลยังไม่พอสำหรับตัวกรอง"
+        else if close <= trendEma
+            reasonText := "งดเข้า: ราคาปิดต่ำกว่า EMA เทรนด์"
+        else if trendEma <= tePrev
+            reasonText := "งดเข้า: EMA เทรนด์ไม่ได้สูงขึ้นเทียบ " + str.tostring(slopeBars) + " แท่งก่อน"
+        else if adx < filterAdxThreshold
+            reasonText := "งดเข้า: ADX " + str.tostring(adx, "#.0") + " ต่ำกว่าเกณฑ์"
+        else if plusDI <= minusDI
+            reasonText := "งดเข้า: +DI ไม่เหนือ −DI"
+        else if atrSlow > 0 and atrFast / atrSlow > filterMaxVolRatio
+            reasonText := "งดเข้า: ความผันผวนพุ่งผิดปกติ"
+        else
+            rejected := false
+            inPos := true
+            entryBar := bar_index
+            peakClose := close
+            curStop := close - math.max(filterStopAtr * atrFast, close * filterMinStopPct / 100)
+            stopPlot := curStop
+            sig := 1
+            reasonText := "เข้า: สัญญาณดิบผ่านตัวกรองครบ (ADX " + str.tostring(adx, "#.0") + ")"
+
+// ─── ชั้น 3: ส่งคำสั่ง — fill ที่ open แท่งถัดไป ─────────────────────────────
+if sig == 1
+    strategy.entry("Long", strategy.long, comment = "BUY")
+    alert('{"signal":"BUY","symbol":"' + syminfo.tickerid + '","tf":"' + timeframe.period +
+         '","close":' + str.tostring(close) + ',"stop":' + str.tostring(curStop) + '}', alert.freq_once_per_bar_close)
+if sig == -1
+    string exitTag = exitKind == 1 ? "SELL stop" : exitKind == 2 ? "SELL cross" : "SELL time"
+    strategy.close("Long", comment = exitTag)
+    alert('{"signal":"SELL","symbol":"' + syminfo.tickerid + '","tf":"' + timeframe.period +
+         '","close":' + str.tostring(close) + ',"reason":"' + exitTag + '"}', alert.freq_once_per_bar_close)
+
+// ─── การแสดงผล ────────────────────────────────────────────────────────────────
+plot(showEmas ? fastEma : na,  "EMA เร็ว",   color.new(color.aqua, 0),   1)
+plot(showEmas ? slowEma : na,  "EMA ช้า",    color.new(color.orange, 0), 2)
+plot(showEmas ? trendEma : na, "EMA เทรนด์", color.new(color.gray, 30),  2)
+plot(showStop ? stopPlot : na, "Stop (เทียบราคาปิด)", color.new(color.red, 0), 1, plot.style_linebr)
+
+plotshape(sig == 1,                      "BUY",        shape.labelup,   location.belowbar, color.new(color.green, 0), text = "BUY",        textcolor = color.white, size = size.small)
+plotshape(sig == -1 and exitKind == 2,   "SELL cross", shape.labeldown, location.abovebar, color.new(color.red, 0),   text = "SELL",       textcolor = color.white, size = size.small)
+plotshape(sig == -1 and exitKind == 1,   "SELL stop",  shape.labeldown, location.abovebar, color.new(color.maroon, 0), text = "SELL\nstop", textcolor = color.white, size = size.small)
+plotshape(sig == -1 and exitKind == 3,   "SELL time",  shape.labeldown, location.abovebar, color.new(color.purple, 0), text = "SELL\ntime", textcolor = color.white, size = size.small)
+
+if showRejected and rejected
+    label.new(bar_index, low, "×", style = label.style_label_up, color = color.new(color.gray, 60),
+         textcolor = color.white, size = size.tiny, tooltip = reasonText)
+
+bgcolor(inPos ? color.new(color.green, 94) : na, title = "กำลังถือสถานะ")
+
+// ─── ตารางจำลองแบบเว็บ (simulateNextOpen) ────────────────────────────────────
+// action ของแท่ง i = สัญญาณของแท่ง i−1 → ลงมือที่ open แท่ง i
+float fee = feePct / 100
+float slip = slipPct / 100
+int prevSig = nz(sig[1])
+
+var bool  simStarted    = false
+var float simStartClose = na
+var float simCash       = 100.0
+var float simQty        = 0.0
+var float simInvested   = 0.0
+var float simPeak       = 100.0
+var float simMaxDD      = 0.0
+var int   simTrades     = 0
+var int   simWins       = 0
+var float simGain       = 0.0
+var float simLoss       = 0.0
+
+if active
+    if not simStarted
+        // แท่งแรกของช่วงทดสอบ action = HOLD เสมอ (ไม่พาคำสั่งค้างจาก warm-up)
+        simStarted := true
+        simStartClose := close
+    else if simQty == 0 and prevSig == 1
+        simInvested := simCash
+        float entryPx = open * (1 + slip)
+        simQty := simCash / (entryPx * (1 + fee))
+        simCash := 0.0
+    else if simQty > 0 and prevSig == -1
+        simCash := simQty * open * (1 - slip) * (1 - fee)
+        float tradePnl = (simCash / simInvested - 1) * 100
+        simTrades += 1
+        if tradePnl > 0
+            simWins += 1
+            simGain += tradePnl
+        else
+            simLoss -= tradePnl
+        simQty := 0.0
+
+    float peakPrev = simPeak
+    float ddPrev   = simMaxDD
+    float value    = simCash + simQty * close
+    simPeak  := math.max(simPeak, value)
+    simMaxDD := math.max(simMaxDD, (simPeak - value) / simPeak * 100)
+
+    if showTable and barstate.islast
+        // เว็บบังคับปิดที่ราคาปิดแท่งสุดท้าย — คิดเฉพาะตอนแสดงผล ไม่แก้สถานะที่สะสมไว้
+        float endCash  = simQty > 0 ? simQty * close * (1 - slip) * (1 - fee) : simCash
+        int   nTrades  = simTrades
+        int   nWins    = simWins
+        float gains    = simGain
+        float losses   = simLoss
+        if simQty > 0
+            float pnl = (endCash / simInvested - 1) * 100
+            nTrades += 1
+            if pnl > 0
+                nWins += 1
+                gains += pnl
+            else
+                losses -= pnl
+        float endPeak = math.max(peakPrev, endCash)
+        float endDD   = math.max(ddPrev, (endPeak - endCash) / endPeak * 100)
+        float bh      = (close / simStartClose - 1) * 100
+        string pfText = losses > 0 ? str.tostring(gains / losses, "#.00") : gains > 0 ? "∞" : "0"
+
+        var table t = table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 20), border_width = 1)
+        color hdr = color.new(color.blue, 40)
+        table.cell(t, 0, 0, "EMA Cross V2 + ตัวกรอง", text_color = color.white, bgcolor = hdr)
+        table.cell(t, 1, 0, "next_open", text_color = color.white, bgcolor = hdr)
+        table.cell(t, 0, 1, "สถานะ", text_color = color.silver)
+        table.cell(t, 1, 1, inPos ? "ถือ Long · stop " + str.tostring(curStop, format.mintick) : "ว่าง", text_color = inPos ? color.lime : color.white)
+        table.cell(t, 0, 2, "close > EMA เทรนด์", text_color = color.silver)
+        table.cell(t, 1, 2, close > trendEma ? "✓" : "✗", text_color = close > trendEma ? color.lime : color.red)
+        bool slopeOk = trendEma > trendEma[slopeBars]
+        table.cell(t, 0, 3, "EMA เทรนด์ชันขึ้น", text_color = color.silver)
+        table.cell(t, 1, 3, slopeOk ? "✓" : "✗", text_color = slopeOk ? color.lime : color.red)
+        bool adxOk = adx >= filterAdxThreshold and plusDI > minusDI
+        table.cell(t, 0, 4, "ADX " + str.tostring(adx, "#.0") + " / +DI > −DI", text_color = color.silver)
+        table.cell(t, 1, 4, adxOk ? "✓" : "✗", text_color = adxOk ? color.lime : color.red)
+        float volRatio = atrSlow > 0 ? atrFast / atrSlow : 0.0
+        table.cell(t, 0, 5, "ATR ratio " + str.tostring(volRatio, "#.00"), text_color = color.silver)
+        table.cell(t, 1, 5, volRatio <= filterMaxVolRatio ? "✓" : "✗", text_color = volRatio <= filterMaxVolRatio ? color.lime : color.red)
+        table.cell(t, 0, 6, "── จำลองแบบเว็บ ──", text_color = color.yellow)
+        table.cell(t, 1, 6, "fee " + str.tostring(feePct) + "% slip " + str.tostring(slipPct) + "%", text_color = color.yellow)
+        table.cell(t, 0, 7, "ผลตอบแทน", text_color = color.silver)
+        table.cell(t, 1, 7, str.tostring(endCash - 100, "#.##") + "%", text_color = endCash >= 100 ? color.lime : color.red)
+        table.cell(t, 0, 8, "Buy & Hold", text_color = color.silver)
+        table.cell(t, 1, 8, str.tostring(bh, "#.##") + "%", text_color = color.white)
+        table.cell(t, 0, 9, "Max Drawdown", text_color = color.silver)
+        table.cell(t, 1, 9, str.tostring(endDD, "#.##") + "%", text_color = color.white)
+        table.cell(t, 0, 10, "จำนวนเทรด", text_color = color.silver)
+        table.cell(t, 1, 10, str.tostring(nTrades), text_color = color.white)
+        table.cell(t, 0, 11, "Win rate", text_color = color.silver)
+        table.cell(t, 1, 11, nTrades > 0 ? str.tostring(nWins * 100.0 / nTrades, "#.#") + "%" : "-", text_color = color.white)
+        table.cell(t, 0, 12, "Profit factor", text_color = color.silver)
+        table.cell(t, 1, 12, pfText, text_color = color.white)
