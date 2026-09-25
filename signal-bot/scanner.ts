@@ -10,6 +10,7 @@ import { STRATEGY_FNS, computeStrategyIndicators, type SignalAction } from "@/li
 import { intervalMinutes } from "@/lib/types/kline";
 import { isV3StrategyId, v3BarInsight, v3WarmupBars, type V3BarInsight } from "@/lib/indicators-v3";
 import { isV4StrategyId } from "@/lib/indicators-v4-inYutube";
+import { isV5StrategyId } from "@/lib/indicators-v5-tradingView";
 import { fetchClosedKlines, MAX_KLINES } from "./binance";
 import type { BotSpec } from "./env";
 
@@ -66,7 +67,8 @@ export function analyzeBot(klines: KlineData[], bot: BotSpec): BotAnalysis | nul
     lastFlipTime,
     bars: klines.length,
     // insight อธิบายด้วยแรงซื้อขายสุทธิ ซึ่งไม่มีความหมายกับ Horizon Flow (v4) ที่ออกด้วย SL/TP ตามราคา
-    insight: isV3StrategyId(bot.strategyId) && !isV4StrategyId(bot.strategyId) && ind.v3
+    // และกับ SMC LuxAlgo (v5) ที่ออกด้วยโครงสร้างราคา
+    insight: isV3StrategyId(bot.strategyId) && !isV4StrategyId(bot.strategyId) && !isV5StrategyId(bot.strategyId) && ind.v3
       ? v3BarInsight(bot.strategyId, klines, ind.v3, idx, bot.params)
       : undefined,
   };

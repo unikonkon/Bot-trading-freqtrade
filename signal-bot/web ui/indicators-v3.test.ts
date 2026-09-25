@@ -9,6 +9,7 @@ import {
   orderFlowImbalance, removeOwnMean, tradePlanV3, flowGateV3, FLOW_GATE_V3_DEFAULTS, type V3Result,
 } from '../../lib/indicators-v3';
 import { isV4StrategyId, V4_STRATEGY_IDS } from '../../lib/indicators-v4-inYutube';
+import { isV5StrategyId, V5_STRATEGY_IDS } from '../../lib/indicators-v5-tradingView';
 import { parseKline, type KlineData } from '../../lib/types/kline';
 import { STRATEGIES, STRATEGY_FNS, computeSignals, computeStrategyIndicators } from '../../lib/backtest';
 import { simulateExposure, analyze, INDICATOR_KEYS } from './engine';
@@ -111,14 +112,16 @@ test('V3 respects warmup: no position is carried across startIndex', () => {
 });
 
 test('V3 is wired into every registry the web UI depends on', () => {
-  // v4 (Horizon Flow) ใช้ทะเบียนเดียวกับ v3 แต่แสดงเป็นกลุ่มแยกใน UI จึงนับแยกกัน
-  assert.equal(STRATEGIES.filter((s) => s.version === 3).length, V3_STRATEGY_IDS.length - V4_STRATEGY_IDS.length);
+  // v4 (Horizon Flow) และ v5 (SMC LuxAlgo) ใช้ทะเบียนเดียวกับ v3 แต่แสดงเป็นกลุ่มแยกใน UI จึงนับแยกกัน
+  assert.equal(STRATEGIES.filter((s) => s.version === 3).length,
+    V3_STRATEGY_IDS.length - V4_STRATEGY_IDS.length - V5_STRATEGY_IDS.length);
   assert.equal(STRATEGIES.filter((s) => s.version === 4).length, V4_STRATEGY_IDS.length);
+  assert.equal(STRATEGIES.filter((s) => s.version === 5).length, V5_STRATEGY_IDS.length);
   for (const id of V3_STRATEGY_IDS) {
     assert.ok(isV3StrategyId(id));
     const config = STRATEGIES.find((s) => s.id === id);
     assert.ok(config, `${id} ต้องอยู่ใน STRATEGIES`);
-    assert.equal(config.version, isV4StrategyId(id) ? 4 : 3);
+    assert.equal(config.version, isV5StrategyId(id) ? 5 : isV4StrategyId(id) ? 4 : 3);
     assert.equal(config.twoWay, true, 'ต้องประกาศว่าเป็นกลยุทธ์สองทาง ไม่งั้นจะถูกจำลองด้วยเอนจิน Spot');
     assert.ok(STRATEGY_FNS[id] && config.paramMeta && config.defaultOverlay);
     assert.equal(INDICATOR_KEYS[id], 'v3');
@@ -297,9 +300,11 @@ test('OrderFlow: เชื่อมเข้าทะเบียน v3 คร�
   // ทะเบียนต้องมีแต่รหัสที่ผ่านการวัดแล้ว — กลยุทธ์ที่วัดแล้วขาดทุนต้องไม่กลับเข้ามาเงียบ ๆ
   // รายชื่อนี้เป็นบัญชีขาว: การเพิ่มรหัสใหม่ต้องแก้ที่นี่ด้วย ซึ่งบังคับให้มีคนตัดสินใจจริง
   // horizon_flow_v4* เพิ่มตามคำขอของผู้ใช้ (ท่าจากคลิป YouTube) — ภายหลังถอดตัวตามคลิปและ trail ออกตามคำขอ เหลือ strict
+  // smc_luxalgo_v5* เพิ่มตามคำขอของผู้ใช้ (แปลงจาก Pine ของ TradingView)
   assert.deepEqual([...V3_STRATEGY_IDS].sort(),
     ['flowgate_utbot_v3', 'horizon_flow_v4_strict',
-      'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
+      'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero',
+      'smc_luxalgo_v5', 'smc_luxalgo_v5_long']);
   assert.deepEqual(v3Direction('orderflow_v3'), { allowLong: 1, allowShort: 1 });
   assert.deepEqual(v3Direction('orderflow_v3_long'), { allowLong: 1, allowShort: 0 });
   assert.deepEqual(v3Direction('orderflow_v3_short'), { allowLong: 0, allowShort: 1 });
@@ -327,8 +332,8 @@ test('OrderFlow: เชื่อมเข้าทะเบียน v3 คร�
   assert.ok(computeV3('orderflow_v3', k2, small).exposure.some((e) => e < 0), 'สองทางต้องเปิดฝั่งขายได้');
   assert.ok(computeV3('orderflow_v3_long', k2, small).exposure.every((e) => e >= 0), 'ซื้ออย่างเดียวต้องไม่มี exposure ติดลบ');
   assert.ok(computeV3('orderflow_v3_short', k2, small).exposure.every((e) => e <= 0), 'ขายอย่างเดียวต้องไม่มี exposure เป็นบวก');
-  // ทุกรหัส flow นับเป็นแท่งเป็นค่าตั้งต้น — v4 นับเป็นแท่ง (EMA) ทดสอบแยกใน indicators-v4.test.ts
-  for (const id of V3_STRATEGY_IDS) if (!isV4StrategyId(id)) {
+  // ทุกรหัส flow นับเป็นแท่งเป็นค่าตั้งต้น — v4 (EMA) และ v5 (pivot) ทดสอบแยกในไฟล์เทสต์ของตัวเอง
+  for (const id of V3_STRATEGY_IDS) if (!isV4StrategyId(id) && !isV5StrategyId(id)) {
     assert.equal(v3WarmupBars(id), 6002);
     assert.equal(v3WarmupBars(id, DAY_MODE), 2000, 'โหมดนับเป็นวันที่ไม่รู้ timeframe ใช้ค่าสำรองเดิม');
   }
@@ -709,7 +714,7 @@ test('V3 โหมดนับเป็นแท่ง: ข้อมูลชุ
 });
 
 test('V3 ค่าตั้งต้นนับเป็นแท่งทุกรหัส flow · ตั้งช่องแท่งเป็น 0 กลับไปนับเป็นวันได้ผลเหมือนฟังก์ชันเดิมทุกตัวเลข', () => {
-  for (const id of V3_STRATEGY_IDS.filter((x) => !isV4StrategyId(x))) {
+  for (const id of V3_STRATEGY_IDS.filter((x) => !isV4StrategyId(x) && !isV5StrategyId(x))) {
     assert.equal(v3Defaults(id).flowLookbackBars, 240, `${id}: ค่าตั้งต้นต้องนับเป็นแท่ง`);
     assert.equal(v3Defaults(id).flowDebiasBars, 5760);
   }

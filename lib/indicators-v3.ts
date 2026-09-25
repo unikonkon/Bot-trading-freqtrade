@@ -58,6 +58,7 @@ import type { KlineData } from "@/lib/types/kline";
 import { atr, ema, closes, emaV2, utBotV2, type Series, type V2Signal } from "@/lib/indicators-v2";
 import { trendlinesWithBreaks } from "@/lib/indicators";
 import { V4_REGISTRY, V4_PARAM_META, type V4StrategyId } from "@/lib/indicators-v4-inYutube";
+import { V5_REGISTRY, V5_PARAM_META, type V5StrategyId } from "@/lib/indicators-v5-tradingView";
 
 // ══ 1) สัญญาของผลลัพธ์ ═════════════════════════════════════════
 /** สัญญาณของ v3 รองรับสองทาง: เปิด/ปิด ทั้งฝั่งซื้อและฝั่งขาย */
@@ -1111,7 +1112,9 @@ export type V3StrategyId =
   | "orderflow_v3_short"
   | "flowgate_utbot_v3"
   /** Horizon Flow จากคลิป YouTube — นิยามใน lib/indicators-v4-inYutube.ts ใช้ pipeline เดียวกับ v3 */
-  | V4StrategyId;
+  | V4StrategyId
+  /** SMC LuxAlgo จาก TradingView — นิยามใน lib/indicators-v5-tradingView.ts ใช้ pipeline เดียวกับ v3 */
+  | V5StrategyId;
 
 /** ทุกสิ่งที่ระบบต้องรู้เกี่ยวกับกลยุทธ์ v3 หนึ่งตัว */
 export interface V3Definition {
@@ -1312,6 +1315,7 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     rule: `${FLOW_GATE_RULE_TH}. ${SCOPE.gate}. ${FLOW_BAR_MODE_TH}`,
   },
   ...V4_REGISTRY,
+  ...V5_REGISTRY,
 };
 
 export const V3_STRATEGY_IDS = Object.keys(V3_REGISTRY) as V3StrategyId[];
@@ -1475,4 +1479,6 @@ export const V3_PARAM_META: Record<string, V3ParamMeta> = {
   trendPeriod: bars("EMA เทรนด์", 3, 400),
   // ── ตระกูล Horizon Flow v4 ──
   ...V4_PARAM_META,
+  // ── ตระกูล SMC LuxAlgo v5 ──
+  ...V5_PARAM_META,
 };

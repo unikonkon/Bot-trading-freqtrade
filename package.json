@@ -6,7 +6,7 @@
   "scripts": {
     "web:ui": "tsx \"signal-bot/web ui/server.ts\"",
     "web:check": "tsc --noEmit -p \"signal-bot/web ui/tsconfig.json\" && node --check \"signal-bot/web ui/public/app.js\"",
-    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\" \"signal-bot/web ui/smc-adaptive.test.ts\" \"signal-bot/web ui/smc-adaptive-v2.test.ts\" \"signal-bot/web ui/smc-adaptive-short.test.ts\" \"signal-bot/web ui/indicators-v2.test.ts\" \"signal-bot/web ui/indicators-v3.test.ts\" \"signal-bot/web ui/indicators-v4.test.ts\" \"signal-bot/web ui/shorttrade-baseline.test.ts\"",
+    "web:test": "tsx --test \"signal-bot/web ui/engine.test.ts\" \"signal-bot/web ui/data.test.ts\" \"signal-bot/web ui/export.test.ts\" \"signal-bot/web ui/smc-adaptive.test.ts\" \"signal-bot/web ui/smc-adaptive-v2.test.ts\" \"signal-bot/web ui/smc-adaptive-short.test.ts\" \"signal-bot/web ui/indicators-v2.test.ts\" \"signal-bot/web ui/indicators-v3.test.ts\" \"signal-bot/web ui/indicators-v4.test.ts\" \"signal-bot/web ui/indicators-v5.test.ts\" \"signal-bot/web ui/shorttrade-baseline.test.ts\"",
     "bot": "tsx signal-bot/index.ts",
     "bot:once": "tsx signal-bot/index.ts --once",
     "check:sync": "tsx signal-bot/scripts/check-config-sync.ts",

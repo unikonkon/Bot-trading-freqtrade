@@ -1,5 +1,32 @@
 # Signal Lab — Web UI ทดสอบ indicator และสัญญาณ
 
+## SMC LuxAlgo V5 — ป้าย BUY/SELL จาก TradingView (กลุ่ม เวอร์ชัน 5)
+
+`lib/indicators-v5-tradingView.ts` แปลง `lib/Smart Money Concepts [LuxAlgo] beysell.pine` (Pine v6)
+**เฉพาะส่วนที่กำหนดป้าย BUY/SELL** แบบตรงตัว: pivot ของ swing (50) / internal (5), BOS/CHoCH + bias ของเทรนด์,
+Confluence Filter และส่วน Buy & Sell Signals (โครงสร้าง × ชนิด × cooldown × สลับฝั่ง)
+ส่วน Order Blocks, FVG, EQH/EQL, Premium/Discount และระดับ MTF เป็นแค่การวาดกราฟ ไม่มีผลต่อป้าย จึงไม่ได้แปลง
+
+- `smc_luxalgo_v5` — สองทาง (futures): BUY กลับเป็นซื้อ SELL กลับเป็นขาย ไม่มี SL/TP
+- `smc_luxalgo_v5_long` — ซื้ออย่างเดียว (Spot): BUY เปิด SELL ปิด
+
+พารามิเตอร์ใช้ชื่อ `smc*` ค่าตั้งต้นเท่ากับ input ของ Pine (Internal · CHoCH · cooldown 5 · สลับฝั่ง)
+ตัวเลือกของ Pine เก็บเป็นตัวเลข: `smcSignalStructure` 0 Internal / 1 Swing / 2 Both,
+`smcSignalTrigger` 0 All / 1 BOS / 2 CHoCH · กราฟวาด `v3.internalHigh` เป็นค่าเริ่มต้น
+และมีคอลัมน์ `internalLow`, `swingHigh/Low`, `internalBreak/swingBreak` (±1 BOS, ±2 CHoCH), `smcSignal` ให้เลือกดู
+
+`indicators-v5.test.ts` เทียบป้ายและโครงสร้างทุกแท่งกับแบบจำลอง Pine ที่เขียนแยกทีละบรรทัด ใน 74 ชุดตัวเลือก
+และตรวจว่าไม่ใช้ข้อมูลในอนาคต **ยังไม่ผ่านการวัดความได้เปรียบก่อนลงทะเบียน** — เพิ่มตามคำขอของผู้ใช้
+วัดครั้งแรกผ่าน API ของเว็บ (BTCUSDT 3,000 แท่งล่าสุด, next_open, 26 ก.ย. 2026):
+
+| BTCUSDT | สองทาง (ไม่หักต้นทุน / หักต้นทุน) | ซื้ออย่างเดียว (ไม่หัก / หัก) |
+|---|---|---|
+| 15m | −13.6% / −33.5% (84 ไม้) | −4.2% / −15.9% (42 ไม้) |
+| 1h | +6.0% / −21.6% (88 ไม้) | +10.3% / −5.3% (44 ไม้) |
+
+ต้นทุนที่หัก: ค่าธรรมเนียม 0.10% + slippage 0.05% ต่อขา + funding 0.01%/8 ชม. · buy & hold ช่วงเดียวกัน 15m +5.9% · 1h +10.9%
+บอท Telegram ใช้รหัสเหล่านี้ได้ แต่จะไม่แสดงบรรทัดวิเคราะห์ (insight ของ v3 อธิบายด้วยแรงซื้อขายสุทธิ)
+
 ## Horizon Flow V4 — ท่าเทรดจากคลิป YouTube (กลุ่ม เวอร์ชัน 4)
 
 `lib/indicators-v4-inYutube.ts` แปลงท่า Horizon Flow จากคลิปของช่อง Ball Goldricher
