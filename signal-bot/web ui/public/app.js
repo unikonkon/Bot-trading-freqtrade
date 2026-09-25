@@ -233,9 +233,10 @@ const GROUP_TITLES = {
   1: "เวอร์ชัน 1 — กลยุทธ์เดิม",
   2: "เวอร์ชัน 2 — 20 อินดิเคเตอร์จากเอกสาร TradingView",
   3: "เวอร์ชัน 3 — OrderFlow แรงซื้อขายสุทธิ (สองทาง)",
+  4: "เวอร์ชัน 4 — Horizon Flow จาก YouTube (สองทาง · ใช้ 15m ขึ้นไป)",
 };
 function strategyVersion(s) {
-  return s.version === 3 ? 3 : s.version === 2 ? 2 : 1;
+  return s.version === 4 ? 4 : s.version === 3 ? 3 : s.version === 2 ? 2 : 1;
 }
 // รายการยาวขึ้นมากหลังเพิ่มชุด v2 จึงแบ่งตามเวอร์ชันและมีช่องค้นหา
 function buildStrategyPicker() {
@@ -1465,6 +1466,7 @@ async function init() {
     $("strategy-v1").addEventListener("click", () => selectVersion(1));
     $("strategy-v2").addEventListener("click", () => selectVersion(2));
     $("strategy-v3").addEventListener("click", () => selectVersion(3));
+    $("strategy-v4").addEventListener("click", () => selectVersion(4));
     $("strategy-filter").addEventListener("input", () => {
       buildStrategyPicker();
       syncPicker();

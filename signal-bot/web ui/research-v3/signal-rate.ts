@@ -8,6 +8,8 @@ import { V3_STRATEGY_IDS, computeV3, v3Defaults } from "../../../lib/indicators-
 
 const TFS = ["1m", "3m", "5m", "15m", "30m"] as const;
 const MIN_PER = { "1m": 1, "3m": 3, "5m": 5, "15m": 15, "30m": 30 } as const;
+/** ไฟล์นี้อธิบายปัญหาของโหมดนับเป็นวัน (ต้องสะสม 125 วัน) จึงขอโหมดนั้นตรง ๆ — ค่าตั้งต้นของทะเบียนตอนนี้นับเป็นแท่ง */
+const DAY_MODE = { flowLookbackBars: 0, flowDebiasBars: 0 };
 const LIVE_LIMIT = 1000; // เพดานของ Binance ต่อคำขอ (signal-bot ตั้งค่าตั้งต้นไว้ที่ 500)
 
 console.log("# ทำไม v3 ไม่มีสัญญาณในช่วงสั้น\n");
@@ -29,7 +31,7 @@ for (const tf of TFS) {
   const days = k.length / perDay;
   for (const id of V3_STRATEGY_IDS) {
     if (id.endsWith("_long") || id.endsWith("_short")) continue;
-    const r = computeV3(id, k, {}, 0);
+    const r = computeV3(id, k, DAY_MODE, 0);
     const live = r.signalValue.filter((v) => v !== null).length;
     const sig = r.signal.filter(Boolean).length;
     const entries = r.signal.filter((s) => s === "BUY" || s === "SHORT").length;
@@ -67,7 +69,7 @@ for (const tf of ["15m", "30m"] as const) {
   for (const id of V3_STRATEGY_IDS) {
     if (id.endsWith("_long") || id.endsWith("_short")) continue;
     const per = Object.entries(series).map(([, k]) => {
-      const r = computeV3(id, k, {}, 0);
+      const r = computeV3(id, k, DAY_MODE, 0);
       return r.signal.filter(Boolean).length / (k.length / perDay);
     });
     console.log(`| ${id} | ${per.map((x) => f2(x, 2)).join(" | ")} | **${f2(per.reduce((a, b) => a + b, 0), 2)}** |`);

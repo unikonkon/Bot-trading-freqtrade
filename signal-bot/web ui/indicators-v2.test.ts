@@ -239,7 +239,7 @@ test('V2 Lorentzian is causal and both neighbour pools work', () => {
 });
 
 test('V2 is wired into every registry the web UI depends on', () => {
-  assert.equal(STRATEGIES.filter(s => s.version !== 2 && s.version !== 3).length, 13, 'กลยุทธ์เดิมต้องคงเหลือ 13 ตัว');
+  assert.equal(STRATEGIES.filter(s => (s.version ?? 1) === 1).length, 13, 'กลยุทธ์เดิมต้องคงเหลือ 13 ตัว');
   assert.equal(STRATEGIES.filter(s => s.version === 2).length, 40, 'v2 ต้องมี 40 ตัว');
   for (const id of V2_STRATEGY_IDS) {
     const config = STRATEGIES.find(s => s.id === id);

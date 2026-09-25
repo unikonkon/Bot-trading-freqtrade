@@ -57,6 +57,7 @@
 import type { KlineData } from "@/lib/types/kline";
 import { atr, ema, closes, emaV2, utBotV2, type Series, type V2Signal } from "@/lib/indicators-v2";
 import { trendlinesWithBreaks } from "@/lib/indicators";
+import { V4_REGISTRY, V4_PARAM_META, type V4StrategyId } from "@/lib/indicators-v4-inYutube";
 
 // ══ 1) สัญญาของผลลัพธ์ ═════════════════════════════════════════
 /** สัญญาณของ v3 รองรับสองทาง: เปิด/ปิด ทั้งฝั่งซื้อและฝั่งขาย */
@@ -115,6 +116,12 @@ export interface V3Result {
   volRatio?: Series;
   /** ทิศที่ชั้นจังหวะยิงรายแท่ง (1 ซื้อ, −1 ขาย, 0 ไม่ยิง) — ใช้ตรวจว่าทำไมเข้าหรือไม่เข้า */
   triggerDir?: Series;
+  /**
+   * ราคาที่สถานะถูกปิด **ระหว่าง** แท่งนั้น (SL/TP ที่ high/low แตะถึง) · null = ไม่ได้ปิดระหว่างแท่ง
+   * เมื่อมีช่องนี้ simulateExposure จะปิดไม้ที่ราคานี้แทนการรอราคาเปิดแท่งถัดไป
+   * มีเฉพาะกลยุทธ์ที่ใช้ SL/TP ตายตัว (ตระกูล Horizon Flow v4) — ตระกูลอื่นไม่ใส่ จึงได้ผลเหมือนเดิมทุกตัวเลข
+   */
+  exitFill?: Series;
 }
 
 /**
@@ -145,6 +152,17 @@ export const ORDER_FLOW_V3_DEFAULTS = {
   flowLookbackDays: 5,
   /** ลบค่าเฉลี่ยของตัวเองย้อนหลังกี่วัน เพื่อไม่ให้มีอคติไปข้างเดียวถาวร */
   flowDebiasDays: 120,
+  /**
+   * โหมดนับเป็นแท่ง: ถ้ามากกว่า 0 ใช้จำนวนแท่งนี้แทน `flowLookbackDays` / `flowDebiasDays`
+   * จำนวนไม้จึงโตตามจำนวนแท่งของ timeframe (1s ถี่กว่า 30m ราว 1,800 เท่า)
+   *
+   * ค่าตั้งต้น 0 = นับเป็นวันเหมือนเดิม เพราะ `research-v3/bar-scaling.ts` วัดแล้วว่ากำไรไม่โตตาม:
+   * ตั้ง 240 / 5,760 แท่ง (= 5 / 120 วันที่ 30m) บน BTCUSDT หลังต้นทุน futures taker ได้
+   *   30m +22.5% / +19.5% · 15m −8.7% / +15.1% · 5m −40.2% / −30.1% · 1m −99.0% / −93.6% (train / test)
+   * เพราะกำไรก่อนต้นทุนต่อไม้ขึ้นกับ **เวลาจริง** ที่ถือ (30m 1.16% → 1m −0.004%) แต่ต้นทุน 0.16% คงที่
+   */
+  flowLookbackBars: 0,
+  flowDebiasBars: 0,
   /** ระดับที่ถือว่าแรงพอจะเข้า */
   flowBand: 0.01,
   /**
@@ -208,6 +226,21 @@ export function removeOwnMean(x: Series, M: number): Series {
   return out;
 }
 
+/**
+ * หน้าต่างของชั้นทิศทางเป็นจำนวนแท่ง — จุดเดียวที่ตัดสินว่านับเป็นวันหรือเป็นแท่ง
+ * ใช้ `*Bars` เมื่อมากกว่า 0 มิฉะนั้นแปลงจากวันด้วยจำนวนแท่งต่อวันของ timeframe
+ */
+export function flowWindowBars(
+  p: { flowLookbackDays: number; flowDebiasDays: number; flowLookbackBars?: number; flowDebiasBars?: number },
+  perDay: number,
+): { L: number; M: number } {
+  const lb = p.flowLookbackBars ?? 0, db = p.flowDebiasBars ?? 0;
+  return {
+    L: lb > 0 ? Math.max(1, Math.round(lb)) : Math.max(1, Math.round(p.flowLookbackDays * perDay)),
+    M: db > 0 ? Math.max(2, Math.round(db)) : Math.max(2, Math.round(p.flowDebiasDays * perDay)),
+  };
+}
+
 export function orderFlowV3(
   k: KlineData[],
   overrides: Partial<OrderFlowV3Params> | Record<string, number> = {},
@@ -237,8 +270,8 @@ export function orderFlowV3(
   const c = closes(k);
   const tfMinutes = detectTimeframeMinutes(k);
   const perDay = tfMinutes > 0 ? 1440 / tfMinutes : 1;
-  const L = Math.max(1, Math.round(p.flowLookbackDays * perDay));
-  const M = Math.max(2, Math.round(p.flowDebiasDays * perDay));
+  const { L, M } = flowWindowBars(p, perDay);
+  if (L >= M) throw new Error("OrderFlow V3 requires lookback window < debias window");
 
   const flow = removeOwnMean(orderFlowImbalance(k, L), M);
   const size = p.flowSizePct / 100;
@@ -327,6 +360,18 @@ export const ORDER_FLOW_RULE_TH =
   "drawdown ของพอร์ต 14-18%; ต้องมีข้อมูลย้อนหลังราว flowLookbackDays + flowDebiasDays วันก่อนเริ่มให้สัญญาณ; " +
   "ใช้ taker volume ของตลาด Spot ขณะที่การเปิด Short ต้องทำบน perpetual futures ซึ่งมี order flow คนละชุด; " +
   "ถือสถานะเฉลี่ยหลายวัน จึงเป็นกลยุทธ์ swing ที่ใช้แท่ง 15m/30m เป็นตัวสุ่มสัญญาณ ไม่ใช่การเทรดรายวัน";
+
+/** โหมดนับเป็นแท่ง — ใช้ต่อท้ายกฎของทั้งตระกูล OrderFlow และ FlowGate */
+const FLOW_BAR_MODE_TH =
+  "โหมดนับเป็นแท่ง (ค่าตั้งต้นของรหัสนี้ตามคำขอของผู้ใช้): flowLookbackBars = 240 และ flowDebiasBars = 5,760 " +
+  "นับหน้าต่างเป็นจำนวนแท่งแทนวัน จำนวนไม้จึงโตตามจำนวนแท่งของ timeframe และต้องการแท่งอุ่นเครื่อง 6,002 แท่งทุก timeframe. " +
+  "ที่ 30m เท่ากับ 5/120 วันพอดี ผลจึงเท่ากับที่วัดไว้ในกฎข้างต้น แต่ timeframe อื่นให้ผลต่างออกไป " +
+  "ตั้งทั้งสองช่องเป็น 0 เพื่อกลับไปนับเป็นวัน (ความถี่เท่ากันทุก timeframe และเป็นโหมดเดียวที่ผ่านการตรวจข้ามเหรียญ). " +
+  "วัดแล้ว (research-v3/bar-scaling.ts) ที่ 240/5,760 แท่งบน BTCUSDT หลังต้นทุน futures taker: " +
+  "30m 0.2 ไม้/วัน +22.5%/+19.5% · 15m 0.7 ไม้/วัน -8.7%/+15.1% · 5m 2.1 ไม้/วัน -40.2%/-30.1% · " +
+  "1m 11.5 ไม้/วัน -99.0%/-93.6% · 1s 641 ไม้/วัน -100% (train/test). " +
+  "กำไรก่อนต้นทุนต่อไม้ขึ้นกับเวลาจริงที่ถือ (30m 1.16% ต่อไม้ แต่ 1m -0.004%) ขณะที่ต้นทุนไป-กลับ 0.16% คงที่ " +
+  "ไม้ที่เพิ่มขึ้นบน timeframe สั้นจึงเป็นค่าธรรมเนียมล้วน แม้ใช้ limit order (ต้นทุน 0.04%) 1m และ 3m ก็ยังขาดทุนทุกช่วง";
 
 // ══ 3) ตระกูล TradePlan — ชั้นแผนเทรดที่ครอบแหล่งสัญญาณใดก็ได้ ═══
 /**
@@ -789,6 +834,9 @@ export const FLOW_GATE_V3_DEFAULTS = {
   // ── ชั้นทิศทาง: ค่าเดียวกับ OrderFlow V3 ทุกตัว เพราะผ่านการตรวจข้ามเหรียญมาแล้ว ──
   flowLookbackDays: 5,
   flowDebiasDays: 120,
+  /** โหมดนับเป็นแท่ง ความหมายเดียวกับ OrderFlow V3 (0 = นับเป็นวัน) */
+  flowLookbackBars: 0,
+  flowDebiasBars: 0,
   flowBand: 0.01,
 
   // ── ชั้นจังหวะ: ใช้ค่าตั้งต้นเดิมของอินดิเคเตอร์ต้นทางทุกตัว ไม่ปรับใหม่ ──
@@ -928,8 +976,8 @@ export function flowGateV3(
   const c = closes(k);
   const tfMinutes = detectTimeframeMinutes(k);
   const perDay = tfMinutes > 0 ? 1440 / tfMinutes : 1;
-  const L = Math.max(1, Math.round(p.flowLookbackDays * perDay));
-  const M = Math.max(2, Math.round(p.flowDebiasDays * perDay));
+  const { L, M } = flowWindowBars(p, perDay);
+  if (L >= M) throw new Error("FlowGate V3 requires lookback window < debias window");
   const flow = removeOwnMean(orderFlowImbalance(k, L), M);
   const dirs = triggerDirections(k, p, trigger);
   const size = p.gateSizePct / 100;
@@ -1061,7 +1109,9 @@ export type V3StrategyId =
   | "orderflow_v3_zero"
   | "orderflow_v3_long"
   | "orderflow_v3_short"
-  | "flowgate_utbot_v3";
+  | "flowgate_utbot_v3"
+  /** Horizon Flow จากคลิป YouTube — นิยามใน lib/indicators-v4-inYutube.ts ใช้ pipeline เดียวกับ v3 */
+  | V4StrategyId;
 
 /** ทุกสิ่งที่ระบบต้องรู้เกี่ยวกับกลยุทธ์ v3 หนึ่งตัว */
 export interface V3Definition {
@@ -1089,18 +1139,37 @@ export interface V3Definition {
 }
 
 /** ค่าตั้งต้นของ OrderFlow โดยตัดทิศทางออก เพราะทิศมาจากรหัสกลยุทธ์ */
+/**
+ * ค่าตั้งต้นของรหัสกลยุทธ์ตระกูล flow = **นับเป็นแท่ง** 240 / 5,760 แท่ง (ตามคำขอของผู้ใช้)
+ *
+ * ตั้งที่ชั้นทะเบียน ไม่ใช่ที่ `ORDER_FLOW_V3_DEFAULTS` / `FLOW_GATE_V3_DEFAULTS` โดยตั้งใจ:
+ * สคริปต์วิจัยเรียก `orderFlowV3` / `flowGateV3` ตรงโดยส่งแค่ค่าวัน ถ้าค่าแท่งเป็นค่าตั้งต้นของฟังก์ชัน
+ * ค่าแท่งจะทับค่าวันเงียบ ๆ แล้วงานวิจัยทุกไฟล์จะวัดผิดโดยไม่มี error
+ * ส่วนเว็บ บอท และ `computeV3` อ่านจากทะเบียน จึงได้โหมดนับเป็นแท่งทั้งหมด
+ *
+ * 240 / 5,760 แท่ง = 5 / 120 วันพอดีที่ 30m — ผลที่ 30m จึงเท่ากับที่เคยวัดทุกตัวเลข
+ * ส่วน timeframe อื่นจำนวนไม้โตตามจำนวนแท่ง และขาดทุนตามตารางใน `FLOW_BAR_MODE_TH`
+ * กลับไปนับเป็นวันได้ด้วยการตั้งทั้งสองช่องเป็น 0
+ */
+const FLOW_BAR_DEFAULTS = { flowLookbackBars: 240, flowDebiasBars: 5760 };
+
 function orderFlowDefaults(overrides: Record<string, number> = {}): Record<string, number> {
   const { allowLong: _l, allowShort: _s, ...rest } = ORDER_FLOW_V3_DEFAULTS;
-  return { ...rest, ...overrides };
+  return { ...rest, ...FLOW_BAR_DEFAULTS, ...overrides };
 }
 /** ค่าตั้งต้นของ FlowGate โดยตัดทิศทางออก เพราะทิศมาจากรหัสกลยุทธ์ */
 function flowGateDefaults(overrides: Record<string, number> = {}): Record<string, number> {
   const { allowLong: _l, allowShort: _s, ...rest } = FLOW_GATE_V3_DEFAULTS;
-  return { ...rest, ...overrides };
+  return { ...rest, ...FLOW_BAR_DEFAULTS, ...overrides };
 }
 function flowGateValidate(p: Record<string, number>): string | null {
   if (p.flowLookbackDays >= p.flowDebiasDays)
     return "ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย มิฉะนั้นการลบค่าเฉลี่ยจะหักล้างสัญญาณทิ้ง";
+  const lb = p.flowLookbackBars ?? 0, db = p.flowDebiasBars ?? 0;
+  if (lb > 0 && db > 0 && lb >= db)
+    return "โหมดนับเป็นแท่ง: ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย";
+  if ((lb > 0) !== (db > 0))
+    return "โหมดนับเป็นแท่งต้องตั้งทั้งช่วงสะสมและช่วงลบค่าเฉลี่ย (หรือเป็น 0 ทั้งคู่เพื่อนับเป็นวัน)";
   if (p.emaFastLength >= p.emaSlowLength) return "EMA เร็วต้องสั้นกว่า EMA ช้า";
   if (p.fastPeriod >= p.trendPeriod) return "EMA เร็วต้องสั้นกว่า EMA เทรนด์";
   if (p.gateExitMult > 1 || p.gateExitMult < -1) return "ระดับการออกต้องอยู่ระหว่าง -1 ถึง 1";
@@ -1109,6 +1178,11 @@ function flowGateValidate(p: Record<string, number>): string | null {
 function orderFlowValidate(p: Record<string, number>): string | null {
   if (p.flowLookbackDays >= p.flowDebiasDays)
     return "ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย มิฉะนั้นการลบค่าเฉลี่ยจะหักล้างสัญญาณทิ้ง";
+  const lb = p.flowLookbackBars ?? 0, db = p.flowDebiasBars ?? 0;
+  if (lb > 0 && db > 0 && lb >= db)
+    return "โหมดนับเป็นแท่ง: ช่วงสะสมต้องสั้นกว่าช่วงลบค่าเฉลี่ย";
+  if ((lb > 0) !== (db > 0))
+    return "โหมดนับเป็นแท่งต้องตั้งทั้งช่วงสะสมและช่วงลบค่าเฉลี่ย (หรือเป็น 0 ทั้งคู่เพื่อนับเป็นวัน)";
   if (p.fastPeriod >= p.trendPeriod) return "EMA เร็วต้องสั้นกว่า EMA เทรนด์";
   return null;
 }
@@ -1122,10 +1196,15 @@ function orderFlowValidate(p: Record<string, number>): string | null {
  * ตอนนี้จึงคำนวณจาก timeframe จริงเมื่อผู้เรียกบอกมา และคงค่าเดิมไว้เมื่อไม่รู้
  */
 const orderFlowWarmup = (p: Record<string, number>, timeframeMinutes?: number) => {
-  if (!timeframeMinutes || timeframeMinutes <= 0) return 2000;
-  const days = (p.flowLookbackDays ?? 5) + (p.flowDebiasDays ?? 120);
+  const barMode = (p.flowLookbackBars ?? 0) > 0 && (p.flowDebiasBars ?? 0) > 0;
+  // โหมดนับเป็นแท่งรู้จำนวนแท่งได้ทันทีโดยไม่ต้องรู้ timeframe
+  if (!barMode && (!timeframeMinutes || timeframeMinutes <= 0)) return 2000;
+  const { L, M } = flowWindowBars({
+    flowLookbackDays: p.flowLookbackDays ?? 5, flowDebiasDays: p.flowDebiasDays ?? 120,
+    flowLookbackBars: p.flowLookbackBars, flowDebiasBars: p.flowDebiasBars,
+  }, barMode ? 1 : 1440 / timeframeMinutes!);
   // +2 แท่งกันการปัดเศษ เพื่อให้แท่งแรกของช่วงที่ผู้ใช้เลือกมีค่าสัญญาณแล้วจริง ๆ
-  return Math.ceil((days * 1440) / timeframeMinutes) + 2;
+  return L + M + 2;
 };
 
 /** คำต่อท้ายกฎ บอกว่ารหัสนี้เปิดทิศไหนและมีผลต่อต้นทุนอย่างไร */
@@ -1169,8 +1248,8 @@ const FLOW_OVERLAY = "v3.fastEMA";
 export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
   orderflow_v3: {
     name: "OrderFlow V3 (สองทาง)",
-    th: "เทรดสองทางด้วยแรงซื้อขายสุทธิจาก takerBuyBaseVolume สะสม 5 วันแล้วลบค่าเฉลี่ยของตัวเอง 120 วัน เป็นกลยุทธ์เดียวในโปรเจกต์ที่ผ่านการตรวจข้ามเหรียญและข้ามช่วงเวลาแล้วยังเป็นบวก ต้องกระจายหลายเหรียญ ถือเฉลี่ยหลายวัน",
-    en: "Two-way order-flow imbalance strategy from takerBuyBaseVolume, accumulated over 5 days and de-biased by its own 120-day mean; multi-day holds, requires diversification across coins",
+    th: "เทรดสองทางด้วยแรงซื้อขายสุทธิจาก takerBuyBaseVolume สะสม 240 แท่งแล้วลบค่าเฉลี่ยของตัวเอง 5,760 แท่ง (นับเป็นแท่ง จำนวนไม้โตตามจำนวนแท่ง · ที่ 30m = 5/120 วันซึ่งผ่านการตรวจข้ามเหรียญ) ต่ำกว่า 15m วัดแล้วขาดทุนหลังค่าธรรมเนียม ตั้งช่องแท่งเป็น 0 เพื่อนับเป็นวัน",
+    en: "Two-way order-flow imbalance strategy from takerBuyBaseVolume over 240 bars, de-biased by its own 5,760-bar mean (bar-count windows: trade count scales with bars; equals the validated 5/120 days at 30m, negative after fees below 15m)",
     group: FLOW_GROUP,
     overlay: FLOW_OVERLAY,
     direction: { allowLong: 1, allowShort: 1 },
@@ -1178,7 +1257,7 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     compute: orderFlowV3,
     warmupBars: orderFlowWarmup,
     validate: orderFlowValidate,
-    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.both}`,
+    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.both}. ${FLOW_BAR_MODE_TH}`,
   },
   orderflow_v3_zero: {
     name: "OrderFlow V3 (ออกเมื่อข้ามศูนย์)",
@@ -1191,7 +1270,7 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     compute: orderFlowV3,
     warmupBars: orderFlowWarmup,
     validate: orderFlowValidate,
-    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.zero}`,
+    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.zero}. ${FLOW_BAR_MODE_TH}`,
   },
   orderflow_v3_long: {
     name: "OrderFlow V3 (ซื้ออย่างเดียว)",
@@ -1204,7 +1283,7 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     compute: orderFlowV3,
     warmupBars: orderFlowWarmup,
     validate: orderFlowValidate,
-    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.long}`,
+    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.long}. ${FLOW_BAR_MODE_TH}`,
   },
   orderflow_v3_short: {
     name: "OrderFlow V3 (ขายอย่างเดียว)",
@@ -1217,12 +1296,12 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     compute: orderFlowV3,
     warmupBars: orderFlowWarmup,
     validate: orderFlowValidate,
-    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.short}`,
+    rule: `${ORDER_FLOW_RULE_TH}. ${SCOPE.short}. ${FLOW_BAR_MODE_TH}`,
   },
   flowgate_utbot_v3: {
     name: "FlowGate UT Bot V3 (สองทาง)",
-    th: "แรงซื้อขายสุทธิเป็นชั้นทิศทาง UT Bot V2 เป็นชั้นจังหวะ เข้าเฉพาะเมื่อทั้งสองชั้นเห็นตรงกัน ออกเมื่อแรงซื้อขายสุทธิข้ามศูนย์ เป็นตัวเดียวในตระกูล FlowGate ที่ผ่านการตรวจข้ามเหรียญ 6 จาก 6 ช่อง และชนะ orderflow_v3_zero ทั้งสองช่วงเวลา ใช้ได้จริงบนเว็บเฉพาะ 30m เพราะชั้นทิศทางต้องสะสม 125 วัน",
-    en: "Net taker flow as the direction layer, UT Bot V2 as the timing layer; enters only when both agree and exits when flow crosses zero. The only FlowGate variant that clears the cross-coin bar 6/6 and beats orderflow_v3_zero in both windows. Web-usable at 30m only, since the direction layer needs 125 days of history",
+    th: "แรงซื้อขายสุทธิเป็นชั้นทิศทาง UT Bot V2 เป็นชั้นจังหวะ เข้าเฉพาะเมื่อทั้งสองชั้นเห็นตรงกัน ออกเมื่อแรงซื้อขายสุทธิข้ามศูนย์ เป็นตัวเดียวในตระกูล FlowGate ที่ผ่านการตรวจข้ามเหรียญ 6 จาก 6 ช่อง และชนะ orderflow_v3_zero ทั้งสองช่วงเวลา หน้าต่างนับเป็นแท่ง 240/5,760 (= 5/120 วันที่ 30m) ต่ำกว่า 15m วัดแล้วขาดทุนหลังค่าธรรมเนียม",
+    en: "Net taker flow as the direction layer, UT Bot V2 as the timing layer; enters only when both agree and exits when flow crosses zero. The only FlowGate variant that clears the cross-coin bar 6/6 and beats orderflow_v3_zero in both windows. Windows count bars (240/5,760 = 5/120 days at 30m); below 15m it measured negative after fees",
     group: FLOW_GROUP,
     overlay: FLOW_OVERLAY,
     direction: { allowLong: 1, allowShort: 1 },
@@ -1230,8 +1309,9 @@ export const V3_REGISTRY: Record<V3StrategyId, V3Definition> = {
     compute: (k, params, startIndex) => flowGateV3(k, "utbot", params, startIndex),
     warmupBars: orderFlowWarmup,
     validate: flowGateValidate,
-    rule: `${FLOW_GATE_RULE_TH}. ${SCOPE.gate}`,
+    rule: `${FLOW_GATE_RULE_TH}. ${SCOPE.gate}. ${FLOW_BAR_MODE_TH}`,
   },
+  ...V4_REGISTRY,
 };
 
 export const V3_STRATEGY_IDS = Object.keys(V3_REGISTRY) as V3StrategyId[];
@@ -1371,8 +1451,10 @@ const ratio = (label: string, min: number, max: number, step: number): V3ParamMe
   ({ label, min, max, step, integer: false });
 
 export const V3_PARAM_META: Record<string, V3ParamMeta> = {
-  flowLookbackDays: days("สะสมแรงซื้อขายสุทธิย้อนหลัง (วัน)", 0.5, 60),
-  flowDebiasDays: days("ลบค่าเฉลี่ยของตัวเองย้อนหลัง (วัน)", 5, 365),
+  flowLookbackDays: days("สะสมแรงซื้อขายสุทธิย้อนหลัง (วัน) — ใช้เมื่อช่องแท่งเป็น 0", 0.5, 60),
+  flowDebiasDays: days("ลบค่าเฉลี่ยของตัวเองย้อนหลัง (วัน) — ใช้เมื่อช่องแท่งเป็น 0", 5, 365),
+  flowLookbackBars: bars("สะสมย้อนหลังเป็นแท่ง (ทับค่าวัน · 0 = กลับไปนับเป็นวัน)", 0, 1_000_000),
+  flowDebiasBars: bars("ลบค่าเฉลี่ยย้อนหลังเป็นแท่ง (ทับค่าวัน · 0 = กลับไปนับเป็นวัน)", 0, 10_000_000),
   flowBand: pct("เกณฑ์แรงซื้อขายสุทธิที่ถือว่าแรงพอ", 0.001, 0.3, 0.001),
   flowExitMult: ratio("ออกที่กี่เท่าของเกณฑ์ (0 = ข้ามศูนย์, -1 = ถือจนกลับข้าง)", -1, 1, 0.05),
   flowSizePct: pct("ขนาดไม้ (% ของพอร์ต)", 1, 100, 1),
@@ -1391,4 +1473,6 @@ export const V3_PARAM_META: Record<string, V3ParamMeta> = {
   atrPeriod: bars("ช่วง ATR", 2, 200),
   fastPeriod: bars("EMA เร็ว", 2, 200),
   trendPeriod: bars("EMA เทรนด์", 3, 400),
+  // ── ตระกูล Horizon Flow v4 ──
+  ...V4_PARAM_META,
 };

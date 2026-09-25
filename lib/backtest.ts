@@ -19,6 +19,7 @@ import {
   v3Defaults,
   type V3StrategyId,
 } from "@/lib/indicators-v3";
+import { isV4StrategyId } from "@/lib/indicators-v4-inYutube";
 
 // ─── Types ─────────────────────────────────────────────────────
 /**
@@ -92,8 +93,8 @@ export interface StrategyConfig {
   descriptionEn: string;
   descriptionTh: string;
   params: Record<string, number>;
-  /** 1 = ชุดเดิม, 2 = 20 อินดิเคเตอร์ตามเอกสาร TradingView, 3 = OrderFlow สองทาง */
-  version?: 1 | 2 | 3;
+  /** 1 = ชุดเดิม, 2 = 20 อินดิเคเตอร์ตามเอกสาร TradingView, 3 = OrderFlow สองทาง, 4 = Horizon Flow จาก YouTube */
+  version?: 1 | 2 | 3 | 4;
   /** true = กลยุทธ์เทรดสองทาง ต้องใช้ตัวจำลองที่รองรับสถานะขายและขนาดไม้ */
   twoWay?: boolean;
   /** กลุ่มการใช้งาน เช่น แนวโน้ม / โมเมนตัม / ความผันผวน */
@@ -250,7 +251,8 @@ const V3_STRATEGIES: StrategyConfig[] = V3_STRATEGY_IDS.map((id) => {
     descriptionEn: info.en,
     descriptionTh: info.th,
     params,
-    version: 3 as const,
+    // v4 ใช้ทะเบียนและตัวจำลองเดียวกับ v3 แยกเลขเวอร์ชันไว้ให้ UI จัดกลุ่มเท่านั้น
+    version: isV4StrategyId(id) ? (4 as const) : (3 as const),
     group: info.group,
     paramMeta,
     defaultOverlay: info.overlay,

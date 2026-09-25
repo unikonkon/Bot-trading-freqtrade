@@ -8,6 +8,7 @@ import {
   ORDER_FLOW_V3_DEFAULTS, ORDER_FLOW_RULE_TH, orderFlowV3,
   orderFlowImbalance, removeOwnMean, tradePlanV3, flowGateV3, FLOW_GATE_V3_DEFAULTS, type V3Result,
 } from '../../lib/indicators-v3';
+import { isV4StrategyId, V4_STRATEGY_IDS } from '../../lib/indicators-v4-inYutube';
 import { parseKline, type KlineData } from '../../lib/types/kline';
 import { STRATEGIES, STRATEGY_FNS, computeSignals, computeStrategyIndicators } from '../../lib/backtest';
 import { simulateExposure, analyze, INDICATOR_KEYS } from './engine';
@@ -25,6 +26,13 @@ function bars(prices: number[], stepMs = 3600000, startMs = 0): KlineData[] {
       startMs + (i + 1) * stepMs - 1, '1000', 10, '50', '500']));
 }
 
+/**
+ * ค่าตั้งต้นของรหัส flow ในทะเบียนเป็น **นับเป็นแท่ง** 240 / 5,760 แท่ง (ตามคำขอของผู้ใช้)
+ * เทสต์ที่ตั้งใจย่อหน้าต่างเป็น "วัน" ผ่านทะเบียน ต้องขอโหมดนับเป็นวันด้วยค่านี้ มิฉะนั้นค่าแท่งทับค่าวัน
+ * แล้ว fixture สั้น ๆ จะไม่มีสัญญาณเลย — เทสต์จะผ่านแบบว่างเปล่าหรือตกโดยไม่ได้ตรวจสิ่งที่ตั้งใจ
+ */
+const DAY_MODE = { flowLookbackBars: 0, flowDebiasBars: 0 };
+
 test('V3 detects the timeframe from the bars themselves', () => {
   assert.equal(detectTimeframeMinutes(bars([1, 2, 3, 4], 60000)), 1);
   assert.equal(detectTimeframeMinutes(bars([1, 2, 3, 4], 5 * 60000)), 5);
@@ -40,7 +48,7 @@ test('V3 signals stay causal: future candles cannot change the past', () => {
   for (const id of V3_STRATEGY_IDS) {
     // ย่อหน้าต่างของ OrderFlow ให้สั้นพอที่ fixture รายชั่วโมงจะให้สัญญาณจริง
     // ไม่งั้นทุกแท่งจะเป็น HOLD แล้วเทสต์จะผ่านโดยไม่ได้ตรวจอะไร
-    const params = { ...v3Defaults(id), flowLookbackDays: 0.5, flowDebiasDays: 3 };
+    const params = { ...v3Defaults(id), flowLookbackDays: 0.5, flowDebiasDays: 3, ...DAY_MODE };
     const full = computeSignals(fixture, id, params, { confirmedPivots: true, startIndex: 0 });
     for (const cut of [400, 700]) {
       const prefix = computeSignals(fixture.slice(0, cut), id, params, { confirmedPivots: true, startIndex: 0 });
@@ -103,12 +111,14 @@ test('V3 respects warmup: no position is carried across startIndex', () => {
 });
 
 test('V3 is wired into every registry the web UI depends on', () => {
-  assert.equal(STRATEGIES.filter((s) => s.version === 3).length, V3_STRATEGY_IDS.length);
+  // v4 (Horizon Flow) ใช้ทะเบียนเดียวกับ v3 แต่แสดงเป็นกลุ่มแยกใน UI จึงนับแยกกัน
+  assert.equal(STRATEGIES.filter((s) => s.version === 3).length, V3_STRATEGY_IDS.length - V4_STRATEGY_IDS.length);
+  assert.equal(STRATEGIES.filter((s) => s.version === 4).length, V4_STRATEGY_IDS.length);
   for (const id of V3_STRATEGY_IDS) {
     assert.ok(isV3StrategyId(id));
     const config = STRATEGIES.find((s) => s.id === id);
     assert.ok(config, `${id} ต้องอยู่ใน STRATEGIES`);
-    assert.equal(config.version, 3);
+    assert.equal(config.version, isV4StrategyId(id) ? 4 : 3);
     assert.equal(config.twoWay, true, 'ต้องประกาศว่าเป็นกลยุทธ์สองทาง ไม่งั้นจะถูกจำลองด้วยเอนจิน Spot');
     assert.ok(STRATEGY_FNS[id] && config.paramMeta && config.defaultOverlay);
     assert.equal(INDICATOR_KEYS[id], 'v3');
@@ -158,9 +168,12 @@ test('V3 request validation covers funding, bounds and relationships', () => {
   assert.throws(() => validate({ ...base, params: { orderflow_v3: { flowBand: 5 } } }), /flowBand/);
   assert.throws(() => validate({ ...base, params: { orderflow_v3: { flowLookbackDays: 200 } } }), /flowLookbackDays/);
   const cfg = validate({ ...base, params: {} });
-  // cfg.interval คือ 5m — แท่งอุ่นเครื่องต้องคิดจาก timeframe จริง ไม่ใช่ค่าคงที่เดิม 2,000
+  // cfg.interval คือ 5m — ค่าตั้งต้นนับเป็นแท่ง จึงต้องการ 240 + 5,760 + 2 แท่งทุก timeframe
   assert.equal(warmupBars(cfg), v3WarmupBars('orderflow_v3', v3Defaults('orderflow_v3'), 5));
-  assert.equal(warmupBars(cfg), 36002, '125 วันที่ 5m = 36,000 แท่ง +2 กันปัดเศษ');
+  assert.equal(warmupBars(cfg), 6002, '240 + 5,760 แท่ง +2 กันปัดเศษ ไม่ขึ้นกับ timeframe');
+  // โหมดนับเป็นวันยังคิดจาก timeframe จริง: 125 วันที่ 5m = 36,000 แท่ง
+  const dayCfg = validate({ ...base, params: { orderflow_v3: DAY_MODE } });
+  assert.equal(warmupBars(dayCfg), 36002);
   assert.ok(warmupBars(cfg) >= 300);
 });
 
@@ -283,8 +296,10 @@ test('OrderFlow: ปฏิเสธค่าพารามิเตอร์ท
 test('OrderFlow: เชื่อมเข้าทะเบียน v3 ครบและไม่มีตระกูลอื่นค้างอยู่', () => {
   // ทะเบียนต้องมีแต่รหัสที่ผ่านการวัดแล้ว — กลยุทธ์ที่วัดแล้วขาดทุนต้องไม่กลับเข้ามาเงียบ ๆ
   // รายชื่อนี้เป็นบัญชีขาว: การเพิ่มรหัสใหม่ต้องแก้ที่นี่ด้วย ซึ่งบังคับให้มีคนตัดสินใจจริง
+  // horizon_flow_v4* เพิ่มตามคำขอของผู้ใช้ (ท่าจากคลิป YouTube) ผลวัดอยู่ใน indicators-v4.test.ts และ README
   assert.deepEqual([...V3_STRATEGY_IDS].sort(),
-    ['flowgate_utbot_v3', 'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
+    ['flowgate_utbot_v3', 'horizon_flow_v4', 'horizon_flow_v4_strict', 'horizon_flow_v4_trail',
+      'orderflow_v3', 'orderflow_v3_long', 'orderflow_v3_short', 'orderflow_v3_zero']);
   assert.deepEqual(v3Direction('orderflow_v3'), { allowLong: 1, allowShort: 1 });
   assert.deepEqual(v3Direction('orderflow_v3_long'), { allowLong: 1, allowShort: 0 });
   assert.deepEqual(v3Direction('orderflow_v3_short'), { allowLong: 0, allowShort: 1 });
@@ -294,10 +309,12 @@ test('OrderFlow: เชื่อมเข้าทะเบียน v3 คร�
   assert.ok(!('allowLong' in defaults), 'ทิศทางต้องมาจากรหัสกลยุทธ์');
   assert.equal(validateV3Params('orderflow_v3', defaults), null);
   assert.ok(validateV3Params('orderflow_v3', { ...defaults, flowLookbackDays: 999 }));
-  assert.equal(v3WarmupBars('orderflow_v3'), 2000);
+  // ค่าตั้งต้นนับเป็นแท่ง จึงรู้จำนวนแท่งได้โดยไม่ต้องรู้ timeframe · โหมดนับเป็นวันยังใช้ค่าสำรอง 2,000
+  assert.equal(v3WarmupBars('orderflow_v3'), 6002);
+  assert.equal(v3WarmupBars('orderflow_v3', DAY_MODE), 2000);
   // computeV3 ต้องส่งต่อไปยังอินดิเคเตอร์ที่ถูกตัว
   const k = flowBars(flat(24 * 8), 0.9);
-  const viaRegistry = computeV3('orderflow_v3', k, { flowLookbackDays: 1, flowDebiasDays: 3 });
+  const viaRegistry = computeV3('orderflow_v3', k, { flowLookbackDays: 1, flowDebiasDays: 3, ...DAY_MODE });
   const direct = orderFlowV3(k, { flowLookbackDays: 1, flowDebiasDays: 3, allowLong: 1, allowShort: 1 });
   assert.deepEqual(viaRegistry.exposure, direct.exposure);
   // กฎสำหรับไฟล์ Export ต้องบอกข้อจำกัดไว้ ไม่ใช่โฆษณาอย่างเดียว
@@ -306,11 +323,15 @@ test('OrderFlow: เชื่อมเข้าทะเบียน v3 คร�
   // รหัสฝั่งเดียวต้องล็อกทิศได้จริงผ่านทะเบียน ไม่ใช่แค่ประกาศไว้
   const share = Array.from({ length: 24 * 12 }, (_, i) => (i < 24 * 8 ? 0.5 : 0.05));
   const k2 = flowBars(flat(24 * 12), share);
-  const small = { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05 };
+  const small = { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05, ...DAY_MODE };
   assert.ok(computeV3('orderflow_v3', k2, small).exposure.some((e) => e < 0), 'สองทางต้องเปิดฝั่งขายได้');
   assert.ok(computeV3('orderflow_v3_long', k2, small).exposure.every((e) => e >= 0), 'ซื้ออย่างเดียวต้องไม่มี exposure ติดลบ');
   assert.ok(computeV3('orderflow_v3_short', k2, small).exposure.every((e) => e <= 0), 'ขายอย่างเดียวต้องไม่มี exposure เป็นบวก');
-  for (const id of V3_STRATEGY_IDS) assert.equal(v3WarmupBars(id), 2000);
+  // ทุกรหัส flow นับเป็นแท่งเป็นค่าตั้งต้น — v4 นับเป็นแท่ง (EMA) ทดสอบแยกใน indicators-v4.test.ts
+  for (const id of V3_STRATEGY_IDS) if (!isV4StrategyId(id)) {
+    assert.equal(v3WarmupBars(id), 6002);
+    assert.equal(v3WarmupBars(id, DAY_MODE), 2000, 'โหมดนับเป็นวันที่ไม่รู้ timeframe ใช้ค่าสำรองเดิม');
+  }
 });
 
 // ══ ตระกูล TradePlan ══════════════════════════════════════════
@@ -496,8 +517,8 @@ test('V3: computeV3 ที่ไม่ส่งพารามิเตอร์
     assert.deepEqual(bare.exposure, explicit.exposure, `${id}: computeV3 ต้องเติมค่าตั้งต้นของทะเบียนให้เอง`);
   }
   // และค่าตั้งต้นที่ต่างกันต้องให้ผลต่างกันจริง ไม่งั้นเทสต์ข้างบนผ่านแบบว่างเปล่า
-  const a = computeV3('orderflow_v3', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05 }, 0);
-  const b = computeV3('orderflow_v3_zero', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05 }, 0);
+  const a = computeV3('orderflow_v3', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05, ...DAY_MODE }, 0);
+  const b = computeV3('orderflow_v3_zero', k, { flowLookbackDays: 1, flowDebiasDays: 3, flowBand: 0.05, ...DAY_MODE }, 0);
   assert.notDeepEqual(a.exposure, b.exposure, 'สองรหัสต้องให้ผลต่างกันเมื่อส่งพารามิเตอร์ร่วมชุดเดียวกัน');
 });
 
@@ -614,19 +635,23 @@ test('FlowGate: ลงทะเบียนเฉพาะ utbot ตัวเด
   // รหัสนี้ต้องใช้ UT Bot เป็นชั้นจังหวะจริง ไม่ใช่ตัวเร็วตัวอื่น
   const n = 24 * 20;
   const k = gateBars(vShape(n), Array.from({ length: n }, (_, i) => (i < n / 2 ? 0.5 : 0.95)));
-  const viaRegistry = computeV3('flowgate_utbot_v3', k, gateOpts);
+  const viaRegistry = computeV3('flowgate_utbot_v3', k, { ...gateOpts, ...DAY_MODE });
   assert.deepEqual(viaRegistry.exposure,
     flowGateV3(k, 'utbot', { ...gateOpts, gateExitMult: 0 }).exposure);
   assert.notDeepEqual(viaRegistry.exposure, flowGateV3(k, 'ema', { ...gateOpts, gateExitMult: 0 }).exposure);
-  // เรียกแบบไม่ส่งพารามิเตอร์ต้องได้ค่าตั้งต้นของรหัส ไม่ใช่ของตระกูล
-  assert.deepEqual(computeV3('flowgate_utbot_v3', k).exposure, flowGateV3(k, 'utbot', { gateExitMult: 0 }).exposure);
+  // เรียกแบบไม่ส่งพารามิเตอร์ต้องได้ค่าตั้งต้นของรหัส ไม่ใช่ของตระกูล — ทั้งกฎออกที่ศูนย์และหน้าต่างนับเป็นแท่ง
+  const bare = computeV3('flowgate_utbot_v3', k);
+  assert.deepEqual(bare.exposure,
+    flowGateV3(k, 'utbot', { gateExitMult: 0, flowLookbackBars: 240, flowDebiasBars: 5760 }).exposure);
+  assert.equal(bare.resolvedLookbackBars, 240);
+  assert.equal(bare.resolvedDebiasBars, 5760);
 });
 
 test('V3 insight: บอกระดับที่จะออกเป็นตัวเลข และบอกเมื่อข้อมูลยังไม่พอ', async () => {
   const { v3BarInsight } = await import('../../lib/indicators-v3');
   const { insightLines } = await import('../format');
   const id = 'orderflow_v3' as const;
-  const params = { ...v3Defaults(id), flowLookbackDays: 0.5, flowDebiasDays: 3 };
+  const params: Record<string, number> = { ...v3Defaults(id), flowLookbackDays: 0.5, flowDebiasDays: 3, ...DAY_MODE };
   const r = computeV3(id, fixture, params, 0);
 
   const early = v3BarInsight(id, fixture.slice(0, 1), r, 0, params);
@@ -654,4 +679,83 @@ test('signal-bot: BOTS รับหลายเหรียญในรายก
     'BTCUSDT:30m:orderflow_v3', 'ETHUSDT:30m:orderflow_v3', 'SOLUSDT:30m:orderflow_v3',
   ]);
   assert.deepEqual(bots[1].params, v3Defaults('orderflow_v3'));
+});
+
+// ══ โหมดนับเป็นแท่ง — จำนวนไม้โตตามจำนวนแท่งของ timeframe ══════════
+
+/** ลำดับแรงซื้อที่แกว่งเป็นช่วง ๆ ให้ชั้นทิศทางข้ามเกณฑ์หลายรอบ */
+const swingShare = (n: number) => Array.from({ length: n }, (_, i) => 0.5 + 0.3 * Math.sin((2 * Math.PI * i) / 60));
+
+test('V3 โหมดนับเป็นแท่ง: ข้อมูลชุดเดียวกัน ต่าง timeframe ได้สัญญาณตรงกันทุกแท่ง จำนวนไม้ต่อวันจึงโตตามจำนวนแท่ง', () => {
+  const n = 600, share = swingShare(n);
+  const barMode = { flowLookbackBars: 12, flowDebiasBars: 48, flowBand: 0.05 };
+  for (const id of ['orderflow_v3', 'orderflow_v3_zero', 'flowgate_utbot_v3'] as const) {
+    const at = (stepMs: number) => computeV3(id, flowBars(flat(n).map((p, i) => p + (i % 7)), share, stepMs), barMode, 0);
+    const m1 = at(60_000), m30 = at(30 * 60_000), s1 = at(1000);
+    // หน้าต่างเป็นแท่งจริงทุก timeframe ไม่ขึ้นกับระยะห่างของเวลา
+    for (const r of [m1, m30, s1]) {
+      assert.equal(r.resolvedLookbackBars, 12, id);
+      assert.equal(r.resolvedDebiasBars, 48, id);
+    }
+    assert.deepEqual(m1.signal, m30.signal, `${id}: จำนวนแท่งเท่ากันต้องได้สัญญาณตรงกันทุกแท่ง`);
+    assert.deepEqual(s1.signal, m30.signal, `${id}: 1s ต้องได้สัญญาณเหมือน 30m ที่จำนวนแท่งเท่ากัน`);
+    // FlowGate ต้องให้ชั้นเร็วยิงก่อน จึงอาจไม่มีไม้บนข้อมูลเทียม — ตรวจความถี่เฉพาะตระกูล OrderFlow
+    if (id !== 'flowgate_utbot_v3') assert.ok(m30.signal.filter(Boolean).length >= 4, `${id}: ข้อมูลเทียมต้องให้สัญญาณจริงจึงจะตรวจอะไรได้`);
+  }
+  // จำนวนไม้เท่ากันต่อแท่ง = ต่อวัน 1m ถี่กว่า 30m 30 เท่า และ 1s ถี่กว่า 30m 1,800 เท่า
+  const count = computeV3('orderflow_v3', flowBars(flat(n), share, 60_000), barMode, 0).signal.filter(Boolean).length;
+  const days1m = n / 1440, days30m = n / 48;
+  assert.ok(Math.abs(count / days1m / (count / days30m) - 30) < 1e-9);
+});
+
+test('V3 ค่าตั้งต้นนับเป็นแท่งทุกรหัส flow · ตั้งช่องแท่งเป็น 0 กลับไปนับเป็นวันได้ผลเหมือนฟังก์ชันเดิมทุกตัวเลข', () => {
+  for (const id of V3_STRATEGY_IDS.filter((x) => !isV4StrategyId(x))) {
+    assert.equal(v3Defaults(id).flowLookbackBars, 240, `${id}: ค่าตั้งต้นต้องนับเป็นแท่ง`);
+    assert.equal(v3Defaults(id).flowDebiasBars, 5760);
+  }
+  // ค่าตั้งต้นของ *ฟังก์ชัน* ต้องนับเป็นวัน เพราะสคริปต์วิจัยเรียกตรงโดยส่งแค่ค่าวัน
+  assert.equal(ORDER_FLOW_V3_DEFAULTS.flowLookbackBars, 0);
+  assert.equal(FLOW_GATE_V3_DEFAULTS.flowLookbackBars, 0);
+  // ที่ 30m ค่าแท่งเท่ากับ 5 / 120 วันพอดี ผลที่วัดไว้จึงไม่เปลี่ยน
+  // แรงซื้อสลับเป็นช่วงละ 400 แท่ง ช้าพอที่หน้าต่าง 240 แท่งจะเห็นและข้ามเกณฑ์จริง
+  const k30 = flowBars(flat(6800), Array.from({ length: 6800 }, (_, i) => (Math.floor(i / 400) % 2 ? 0.44 : 0.56)), 30 * 60_000);
+  assert.deepEqual(computeV3('orderflow_v3', k30).exposure, computeV3('orderflow_v3', k30, DAY_MODE).exposure);
+  assert.ok(computeV3('orderflow_v3', k30).exposure.some((e) => e !== 0), 'ต้องมีสถานะจริงจึงจะเทียบได้');
+  for (const id of ['orderflow_v3', 'orderflow_v3_zero', 'flowgate_utbot_v3'] as const) {
+    const short = { flowLookbackDays: 0.5, flowDebiasDays: 3, ...DAY_MODE };
+    const a = computeV3(id, fixture, short, 0);
+    const b = id === 'flowgate_utbot_v3'
+      ? flowGateV3(fixture, 'utbot', { ...short, gateExitMult: 0 })
+      : orderFlowV3(fixture, { ...short, flowExitMult: v3Defaults(id).flowExitMult });
+    assert.deepEqual(a.exposure, b.exposure);
+    // fixture เป็น 1h: 0.5 วัน = 12 แท่ง · 3 วัน = 72 แท่ง
+    assert.equal(a.resolvedLookbackBars, 12);
+    assert.equal(a.resolvedDebiasBars, 72);
+  }
+});
+
+test('V3 โหมดนับเป็นแท่ง: แท่งอุ่นเครื่องไม่ขึ้นกับ timeframe และตรวจค่าที่ขัดกันเอง', () => {
+  const barMode = { flowLookbackBars: 240, flowDebiasBars: 5760 };
+  // นับเป็นแท่ง: 1m ต้องการ 6,002 แท่งเท่ากับ 30m (นับเป็นวันที่ 1m ต้องการ 180,002)
+  assert.equal(v3WarmupBars('orderflow_v3', barMode, 1), 6002);
+  assert.equal(v3WarmupBars('orderflow_v3', barMode, 30), 6002);
+  assert.equal(v3WarmupBars('orderflow_v3', barMode), 6002, 'ไม่รู้ timeframe ก็คำนวณได้');
+  assert.equal(v3WarmupBars('orderflow_v3', {}, 1), 6002, 'ค่าตั้งต้นนับเป็นแท่ง');
+  assert.equal(v3WarmupBars('orderflow_v3', DAY_MODE, 1), 180002);
+  assert.equal(v3WarmupBars('flowgate_utbot_v3', barMode, 1), 6002);
+
+  const d = v3Defaults('orderflow_v3');
+  assert.equal(validateV3Params('orderflow_v3', { ...d, ...barMode }), null);
+  assert.match(validateV3Params('orderflow_v3', { ...d, flowLookbackBars: 500, flowDebiasBars: 100 }) ?? '', /สั้นกว่า/);
+  assert.match(validateV3Params('orderflow_v3', { ...d, flowDebiasBars: 0 }) ?? '', /ทั้งช่วงสะสมและช่วงลบค่าเฉลี่ย/);
+  assert.match(validateV3Params('flowgate_utbot_v3', { ...v3Defaults('flowgate_utbot_v3'), flowDebiasBars: 0 }) ?? '', /ทั้งช่วงสะสม/);
+  assert.equal(validateV3Params('orderflow_v3', { ...d, ...DAY_MODE }), null, 'โหมดนับเป็นวันต้องยังใช้ได้');
+  assert.throws(() => orderFlowV3(fixture, { flowLookbackBars: 100, flowDebiasBars: 50 }), /lookback window < debias window/);
+  assert.throws(() => flowGateV3(fixture, 'utbot', { flowLookbackBars: 100, flowDebiasBars: 50 }), /lookback window < debias window/);
+
+  // กฎในไฟล์ Export ต้องบอกผลที่วัดได้ ไม่ใช่แค่บอกว่าถี่ขึ้น
+  for (const id of ['orderflow_v3', 'flowgate_utbot_v3'] as const) {
+    assert.ok(v3RuleFor(id).includes('โหมดนับเป็นแท่ง'));
+    assert.ok(v3RuleFor(id).includes('-99.0%'), 'ต้องบอกว่า 1m ขาดทุน');
+  }
 });

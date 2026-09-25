@@ -119,12 +119,21 @@ test("v3 บน timeframe ที่ต้องการแท่งเกิน
   // 1m ต้องการ 180,002 แท่ง = 180 คำขอ เกินเพดาน 50,000 แท่งที่ระบบยอมไล่ให้
   const rows = bars(600);
   const data = await loadData(
-    validate({ ...base, interval: "1m", strategy: "orderflow_v3", selected: "orderflow_v3", limit: 300, params: {} }),
+    // โหมดนับเป็นวัน (ช่องแท่ง = 0) — ค่าตั้งต้นนับเป็นแท่งต้องการแค่ 6,002 แท่งจึงไม่ติดเพดาน
+    validate({ ...base, interval: "1m", strategy: "orderflow_v3", selected: "orderflow_v3", limit: 300,
+      params: { orderflow_v3: { flowLookbackBars: 0, flowDebiasBars: 0 } } }),
     async (p) => rows.filter((b) => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit)),
     rows.at(-1)!.openTime + 100,
   );
   assert.ok(data.warnings.some((w) => w.includes("เกินเพดาน") && w.includes("180,002")),
     "ต้องบอกจำนวนแท่งที่ต้องการจริง เพื่อให้ผู้ใช้เลือก timeframe ที่ใช้ได้");
+  // ค่าตั้งต้นนับเป็นแท่ง: 1m ต้องการ 6,002 แท่ง อยู่ใต้เพดาน จึงต้องไม่เตือน
+  const barData = await loadData(
+    validate({ ...base, interval: "1m", strategy: "orderflow_v3", selected: "orderflow_v3", limit: 300, params: {} }),
+    async (p) => rows.filter((b) => !p.endTime || b.openTime <= +p.endTime).slice(-Number(p.limit)),
+    rows.at(-1)!.openTime + 100,
+  );
+  assert.ok(!barData.warnings.some((w) => w.includes("เกินเพดาน")), "โหมดนับเป็นแท่งต้องไม่ติดเพดานที่ 1m");
 });
 
 test("range paginates, prepends warmup, excludes unclosed/end-overlapping candle", async () => {

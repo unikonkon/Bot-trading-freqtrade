@@ -135,6 +135,11 @@ export function simulateNextOpen(
  *     ทั้งฝั่งซื้อและฝั่งขาย ซึ่งเป็นสมมติฐานแบบระมัดระวัง เพราะ funding จริงสลับ
  *     เครื่องหมายได้และเราไม่มีข้อมูล funding ย้อนหลังในชุดนี้ ตั้งเป็น 0 เพื่อปิด
  *   • size ≤ 1 เสมอ จึงไม่มี leverage และไม่มีการจำลอง margin call
+ *   • `levelExit` (ทางเลือก): กลยุทธ์ที่ใช้ SL/TP ตายตัวประกาศราคาที่ไม้ถูกปิดระหว่างแท่ง
+ *     ตัวจำลองจะปิดที่ราคานั้น (หัก slippage เหมือนการปิดทั่วไป) แทนการรอราคาเปิดแท่งถัดไป
+ *     โหมด next_open ตรวจหลังคำสั่งที่ราคาเปิด (ไม้ที่เพิ่งเปิดชน SL ในแท่งเดียวกันได้)
+ *     โหมด legacy ตรวจก่อนคำสั่งที่ราคาปิด เพราะการแตะระดับเกิดก่อนแท่งจะปิด
+ *     ไม่ส่งค่านี้ = พฤติกรรมเดิมทุกประการ
  */
 export function simulateExposure(
   k: KlineData[],
@@ -144,6 +149,7 @@ export function simulateExposure(
   slipPct: number,
   fundingPct8h: number,
   fillMode: "next_open" | "legacy",
+  levelExit?: { price: (number | null)[]; reason: string[] },
 ): Simulation {
   const fee = feePct / 100,
     slip = slipPct / 100,
@@ -215,10 +221,17 @@ export function simulateExposure(
     const wantedDir = wanted > 0 ? 1 : wanted < 0 ? -1 : 0;
     const wantedSize = Math.min(1, Math.abs(wanted));
 
+    const hitLevel = () => {
+      const px = levelExit?.price[i];
+      if (dir !== 0 && px != null && Number.isFinite(px))
+        close(i, px, k[i].openTime, levelExit!.reason[i] || "ปิดที่ราคา SL/TP");
+    };
+    if (fillMode === "legacy") hitLevel();
     if (dir !== 0 && wantedDir !== dir)
       close(i, raw, time, wantedDir === 0 ? "สัญญาณปิดสถานะ" : "กลับข้างสถานะ");
     if (dir === 0 && wantedDir !== 0 && wantedSize > 0 && !last)
       open(i, raw, time, wantedDir as 1 | -1, wantedSize);
+    if (fillMode === "next_open") hitLevel();
     if (last && dir !== 0) close(i, +k[i].close, k[i].closeTime, "ปิดเมื่อจบข้อมูล");
 
     const value = dir === 0 ? equity : equity + dir * (qty * +k[i].close - notional);
@@ -309,10 +322,12 @@ export function analyze(
   if (isV3StrategyId(id)) {
     const exposure = ind.v3?.exposure;
     if (!exposure) throw new Error(`ยังไม่ได้คำนวณ exposure สำหรับกลยุทธ์ ${id}`);
+    // กลยุทธ์ที่ใช้ SL/TP ตายตัว (v4) ประกาศราคาปิดระหว่างแท่งไว้ ตัวอื่นไม่มีช่องนี้
+    const levelExit = ind.v3?.exitFill ? { price: ind.v3.exitFill, reason: ind.v3.reason } : undefined;
     if (mode !== "legacy")
-      simulations.push(simulateExposure(k, exposure, start, fee, slip, funding, "next_open"));
+      simulations.push(simulateExposure(k, exposure, start, fee, slip, funding, "next_open", levelExit));
     if (mode !== "next_open")
-      simulations.push(simulateExposure(k, exposure, start, fee, slip, funding, "legacy"));
+      simulations.push(simulateExposure(k, exposure, start, fee, slip, funding, "legacy", levelExit));
     return {
       id,
       name: STRATEGIES.find((s) => s.id === id)!.name,
