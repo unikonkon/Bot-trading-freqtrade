@@ -16,10 +16,12 @@
 //    • กำไร Short ต่อไม้ = (เข้า − ออก) / เข้า × 100 − 2 × fee · ไม่รวม funding ของ Futures
 //
 // ═══ ตารางกำไร/ขาดทุนรายช่วง ═══════════════════════════════════════════════════════════
-//    ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง (ย้อนจากแท่งล่าสุด 24 ชม. / 7 / 30 / 365 วัน)
+//    ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง (ย้อนจากแท่งล่าสุด 1 / 7 / 30 / 90 / 365 วัน)
 //    equity = ผลรวม % ของไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่คิดที่ราคาปิดของแท่งนั้น (หัก 2 × fee เหมือนเว็บปิดไม้ตอนจบข้อมูล)
 //    ไม้ที่ถือข้ามต้นช่วงจึงนับเฉพาะส่วนที่ราคาเปลี่ยนในช่วงนั้น · "ทั้งหมด" ของ Long = ผลรวมของเว็บพอดี
-//    แถวเทรด = ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่ · "*" = กราฟมีข้อมูลไม่ถึงช่วงนั้น แสดงตั้งแต่แท่งแรก
+//    "ทั้งหมด" บอกจำนวนวันที่คำนวณได้จริง (แท่งแรกของช่วงทดสอบ → แท่งล่าสุด)
+//    ช่วงที่ยาวกว่าข้อมูลจะไม่แสดง (เช่นข้อมูลไม่ถึง 1 ปี ไม่มีแถว 1 ปี) เพราะจะได้ค่าเดียวกับ "ทั้งหมด"
+//    แถวเทรด = ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่
 //
 // ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
 // 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
@@ -152,6 +154,11 @@ lastWindowBar = time <= endTime and time_close > endTime
 // sig = สัญญาณเดียวที่วาดและแจ้งเตือน: 1 BUY · −1 SELL (เฉพาะในช่วง backtest)
 int sig = inWindow ? streamSig : 0
 
+// เวลาเปิดของแท่งแรกในช่วงทดสอบ = จุดเริ่มของ "ทั้งหมด"
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
 //-----------------------------------------------------------------------------}
 //Books — บัญชีแยกของแต่ละแบบการเทรด (legacy: ราคาปิดแท่งสัญญาณ, บวก % ไม่ทบต้น)
 //-----------------------------------------------------------------------------{
@@ -259,8 +266,8 @@ if showTable and barstate.islast
     bg    = color.new(#131722, 10)
     muted = color.new(color.white, 45)
     band  = color.new(color.white, 92)
-    var table t = table.new(tPos, 4, 11, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
-    table.clear(t, 0, 0, 3, 10)
+    var table t = table.new(tPos, 4, 12, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 11)
 
     // หัวตาราง
     table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
@@ -271,45 +278,57 @@ if showTable and barstate.islast
     table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY ปิด (ต้องใช้ Futures · ไม่รวม funding)')
     table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
 
-    // 1 วัน · 1 สัปดาห์ · 1 เดือน · 1 ปี — ย้อนจากแท่งล่าสุด
-    names  = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '1 ปี')
-    spans  = array.from(1, 7, 30, 365)
-    nowT   = time_close
-    firstT = eqTime.size() > 0 ? eqTime.first() : nowT
-    for i = 0 to 3
-        refT    = nowT - spans.get(i) * 86400000
-        idx     = lastAtOrBefore(eqTime, refT)
-        chgL    = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
-        chgS    = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
-        chgB    = chgL + chgS
-        partial = refT < firstT
-        tip     = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด' + (partial ? ' · กราฟมีข้อมูลไม่ถึง แสดงตั้งแต่แท่งแรก' : '')
-        table.cell(t, 0, i + 2, names.get(i) + (partial ? ' *' : ''), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = tip)
-        table.cell(t, 1, i + 2, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, i + 2, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 3, i + 2, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
+    // ระยะเวลาที่คำนวณได้จริง: แท่งแรกของช่วงทดสอบ → แท่งล่าสุด (แท่งที่ยังไม่ปิดนับถึงเวลาปัจจุบัน)
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
 
-    // ทั้งหมด (Long = ผลรวมของเว็บ · ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุด)
-    eqB = eqL + eqS
-    table.cell(t, 0, 6, 'ทั้งหมด', text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band)
-    table.cell(t, 1, 6, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
-    table.cell(t, 2, 6, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
-    table.cell(t, 3, 6, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    // 1 วัน · 1 สัปดาห์ · 1 เดือน · 3 เดือน · 1 ปี — ย้อนจากแท่งล่าสุด · แสดงเฉพาะช่วงที่ข้อมูลยาวพอ
+    names = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '1 ปี')
+    spans = array.from(1, 7, 30, 90, 365)
+    int row = 2
+    for i = 0 to 4
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            refT = nowT - spanMs
+            idx  = lastAtOrBefore(eqTime, refT)
+            chgL = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+            chgS = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+            chgB = chgL + chgS
+            table.cell(t, 0, row, names.get(i), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด')
+            table.cell(t, 1, row, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 2, row, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 3, row, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
+            row += 1
+
+    // ทั้งหมด + จำนวนวัน (Long = ผลรวมของเว็บ · ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุด)
+    eqB      = eqL + eqS
+    days     = math.floor(totalMs / DAY_MS)
+    allLabel = 'ทั้งหมด · ' + (days >= 1 ? str.tostring(days) + ' วัน' : str.tostring(math.floor(totalMs / 3600000)) + ' ชม.')
+    allTip   = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)\nเริ่มนับจากแท่งแรกของช่วงทดสอบ (Backtest From หรือแท่งแรกของกราฟ)'
+    table.cell(t, 0, row, allLabel, text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band, tooltip = allTip)
+    table.cell(t, 1, row, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, row, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, row, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    row += 1
 
     // จำนวนเทรด (ปิดแล้ว + ถืออยู่)
     nL = bookL.n + (bookL.inPos ? 1 : 0)
     nS = bookS.n + (bookS.inPos ? 1 : 0)
-    table.cell(t, 0, 7, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left)
-    table.cell(t, 1, 7, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
-    table.cell(t, 2, 7, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
-    table.cell(t, 3, 7, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 0, row, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, row, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
 
     // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL, สองฝั่งถือตามป้ายล่าสุด
     openL  = bookL.pnlAt(close)
     openS  = bookS.pnlAt(close)
     status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายแรก'
-    table.cell(t, 0, 8, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
-    table.merge_cells(t, 0, 8, 3, 8)
+    table.cell(t, 0, row, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
 
     // รายละเอียด (ปิดไว้เป็นค่าตั้งต้น) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ
     if showDetail
@@ -318,14 +337,14 @@ if showTable and barstate.islast
         ddL   = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
         ddS   = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
         ddB   = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
-        table.cell(t, 0, 9, 'Win rate', text_color = muted, text_size = tSize, text_halign = text.align_left)
-        table.cell(t, 1, 9, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, 9, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 3, 9, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 0, 10, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (หน่วยเดียวกับผลรวม)')
-        table.cell(t, 1, 10, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, 10, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 3, 10, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 0, row, 'Win rate', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 0, row + 1, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (หน่วยเดียวกับผลรวม)')
+        table.cell(t, 1, row + 1, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row + 1, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row + 1, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
 
 //-----------------------------------------------------------------------------}
 //Alerts
