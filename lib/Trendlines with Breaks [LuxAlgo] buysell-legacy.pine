@@ -4,7 +4,13 @@
 //
 // ═══ สัญญาณมีแบบเดียว: BUY/SELL = จุดเข้า/ออกของ backtest บนเว็บพอดี ════════════════════════
 //    ไม่มีป้าย "B" (จุดทะลุดิบ) และไม่ใช่ strategy() จึงไม่มีลูกศรคำสั่งของ Strategy Tester ซ้อน
-//    ผล backtest ดูที่ตาราง "Web legacy" มุมขวาบน ซึ่งคำนวณแบบเดียวกับเว็บ (lib/backtest.ts `runBacktest`)
+//    ผล backtest ดูที่ตารางมุมขวาบน ซึ่งคำนวณแบบเดียวกับเว็บ (lib/backtest.ts `runBacktest`)
+//
+// ═══ ตารางกำไร/ขาดทุนรายช่วง ═══════════════════════════════════════════════════════════
+//    ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง (ย้อนจากแท่งล่าสุด 24 ชม. / 7 / 30 / 365 วัน)
+//    equity = ผลรวม % ของไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่คิดที่ราคาปิดของแท่งนั้น (หัก 2 × fee เหมือนเว็บปิดไม้ตอนจบข้อมูล)
+//    ไม้ที่ถือข้ามต้นช่วงจึงนับเฉพาะส่วนที่ราคาเปลี่ยนในช่วงนั้น · "ทั้งหมด" = ผลรวมของเว็บพอดี
+//    คอลัมน์เทรด = ไม้ที่ปิดในช่วง + ไม้ที่ถืออยู่ตอนนี้ (ถ้ามี) · "*" = กราฟมีข้อมูลไม่ถึงช่วงนั้น แสดงตั้งแต่แท่งแรก
 //
 // ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
 // 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
@@ -39,7 +45,10 @@ calcMethod = input.string('Atr', 'Slope Calculation Method', options = ['Atr', '
 startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest (legacy)', tooltip = 'แท่งแรกของช่วงทดสอบบนเว็บ — เริ่มสถานะว่างที่นี่ ป้าย BUY/SELL มีเฉพาะในช่วงนี้')
 endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
 feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
-showTable  = input.bool(true, 'Show Web legacy table', group = 'Backtest (legacy)')
+showTable  = input.bool(true, 'Show P/L table', group = 'Table')
+showDetail = input.bool(false, 'Show Win rate / PF / Drawdown', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
 
 upCss      = input.color(color.teal, 'Up Trendline Color', group = 'Style')
 dnCss      = input.color(color.red, 'Down Trendline Color', group = 'Style')
@@ -157,6 +166,8 @@ else if inWindow and streamSig == -1 and inPos
 if inPos and na(exitPx) and lastWindowBar and barstate.isconfirmed
     exitPx := close
 
+var array<int> exitTimes = array.new<int>()
+
 if not na(exitPx)
     pnl = (exitPx - entryPx) / entryPx * 100 - 2 * feeInput
     nTrades += 1
@@ -169,6 +180,33 @@ if not na(exitPx)
     peakEq := math.max(peakEq, sumPnl)
     maxDD  := math.max(maxDD, peakEq - sumPnl)
     inPos  := false
+    exitTimes.push(time_close)
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง (ใช้หากำไร/ขาดทุนรายช่วง)
+//-----------------------------------------------------------------------------{
+openPnl   = inPos ? (close - entryPx) / entryPx * 100 - 2 * feeInput : 0.
+equityNow = sumPnl + openPnl
+
+var array<int>   eqTime = array.new<int>()
+var array<float> eqVal  = array.new<float>()
+if barstate.isconfirmed
+    eqTime.push(time_close)
+    eqVal.push(equityNow)
+
+// ดัชนีสุดท้ายที่ค่า ≤ t (อาเรย์เรียงจากน้อยไปมาก) · −1 = ไม่มี
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
 
 //-----------------------------------------------------------------------------}
 //Plots
@@ -181,31 +219,65 @@ plotshape(sig == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text =
 
 plot(sig, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
 
-// ไม้ที่ยังถือตอนจบกราฟนับปิดที่ราคาปิดล่าสุดเหมือนเว็บ (คำนวณเพื่อแสดงเท่านั้น ไม่เปลี่ยนสถานะ)
+//-----------------------------------------------------------------------------}
+//ตารางกำไร/ขาดทุนรายช่วง
+//-----------------------------------------------------------------------------{
+fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+
 if showTable and barstate.islast
-    var table t = table.new(position.top_right, 2, 7, bgcolor = color.new(color.black, 20), border_width = 1)
-    float openPnl = inPos ? (close - entryPx) / entryPx * 100 - 2 * feeInput : na
-    float sumAll  = sumPnl + nz(openPnl)
-    int   nAll    = nTrades + (inPos ? 1 : 0)
-    int   winAll  = nWins + (inPos and openPnl > 0 ? 1 : 0)
-    float gWin    = grossWin + (inPos and openPnl > 0 ? openPnl : 0)
-    float gLoss   = grossLoss + (inPos and openPnl <= 0 ? -openPnl : 0)
-    float ddAll   = math.max(maxDD, math.max(peakEq, sumAll) - sumAll)
-    float pf      = gLoss > 0 ? gWin / gLoss : na
-    table.cell(t, 0, 0, 'Web legacy', text_color = color.white)
-    table.cell(t, 1, 0, 'fee ' + str.tostring(feeInput) + '%/ขา', text_color = color.white)
-    table.cell(t, 0, 1, 'ผลรวม %', text_color = color.white)
-    table.cell(t, 1, 1, str.tostring(sumAll, '#.##') + '%', text_color = sumAll >= 0 ? buyCss : sellCss)
-    table.cell(t, 0, 2, 'เทรด', text_color = color.white)
-    table.cell(t, 1, 2, str.tostring(nAll), text_color = color.white)
-    table.cell(t, 0, 3, 'Win rate', text_color = color.white)
-    table.cell(t, 1, 3, nAll > 0 ? str.tostring(winAll * 100.0 / nAll, '#.#') + '%' : '—', text_color = color.white)
-    table.cell(t, 0, 4, 'Profit factor', text_color = color.white)
-    table.cell(t, 1, 4, na(pf) ? '—' : str.tostring(pf, '#.##'), text_color = color.white)
-    table.cell(t, 0, 5, 'Drawdown', text_color = color.white)
-    table.cell(t, 1, 5, str.tostring(ddAll, '#.##') + '%', text_color = color.white)
-    table.cell(t, 0, 6, 'สถานะ', text_color = color.white)
-    table.cell(t, 1, 6, inPos ? 'ถือ (เข้า ' + str.tostring(entryPx, format.mintick) + ')' : 'ว่าง', text_color = color.white)
+    tPos  = tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right
+    tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+    bg    = color.new(#131722, 10)
+    muted = color.new(color.white, 45)
+    var table t = table.new(tPos, 3, 9, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+
+    // หัวตาราง
+    table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 2, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับเว็บ')
+    table.merge_cells(t, 0, 0, 1, 0)
+    table.cell(t, 0, 1, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 1, 'กำไร/ขาดทุน', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, 1, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    // 1 วัน · 1 สัปดาห์ · 1 เดือน · 1 ปี — ย้อนจากแท่งล่าสุด
+    names   = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '1 ปี')
+    spans   = array.from(1, 7, 30, 365)
+    nowT    = time_close
+    firstT  = eqTime.size() > 0 ? eqTime.first() : nowT
+    for i = 0 to 3
+        refT    = nowT - spans.get(i) * 86400000
+        idx     = lastAtOrBefore(eqTime, refT)
+        eqRef   = idx >= 0 ? eqVal.get(idx) : 0.
+        chg     = equityNow - eqRef
+        closedN = exitTimes.size() - (lastAtOrBefore(exitTimes, refT) + 1)
+        partial = refT < firstT
+        tip     = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด' + (partial ? ' · กราฟมีข้อมูลไม่ถึง แสดงตั้งแต่แท่งแรก' : '')
+        table.cell(t, 0, i + 2, names.get(i) + (partial ? ' *' : ''), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = tip)
+        table.cell(t, 1, i + 2, fmtPct(chg), text_color = pnlColor(chg), text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, i + 2, str.tostring(closedN + (inPos ? 1 : 0)), text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    // ทั้งหมด = ผลรวมของเว็บ (ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุด)
+    nAll = nTrades + (inPos ? 1 : 0)
+    table.cell(t, 0, 6, 'ทั้งหมด', text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = color.new(color.white, 92))
+    table.cell(t, 1, 6, fmtPct(equityNow), text_color = pnlColor(equityNow), text_size = tSize, text_halign = text.align_right, bgcolor = color.new(color.white, 92))
+    table.cell(t, 2, 6, str.tostring(nAll), text_color = color.white, text_size = tSize, text_halign = text.align_right, bgcolor = color.new(color.white, 92))
+
+    // สถานะไม้ปัจจุบัน
+    status = inPos ? '● ถือ · เข้า ' + str.tostring(entryPx, format.mintick) + ' · ' + fmtPct(openPnl) : '○ ว่าง · รอ BUY'
+    table.cell(t, 0, 7, status, text_color = inPos ? pnlColor(openPnl) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, 7, 2, 7)
+
+    // รายละเอียด (ปิดไว้เป็นค่าตั้งต้น)
+    if showDetail
+        winAll = nWins + (inPos and openPnl > 0 ? 1 : 0)
+        gWin   = grossWin + (inPos and openPnl > 0 ? openPnl : 0.)
+        gLoss  = grossLoss + (inPos and openPnl <= 0 ? -openPnl : 0.)
+        ddAll  = math.max(maxDD, math.max(peakEq, equityNow) - equityNow)
+        winTxt = nAll > 0 ? str.tostring(winAll * 100.0 / nAll, '0.0') + '%' : '—'
+        pfTxt  = gLoss > 0 ? str.tostring(gWin / gLoss, '0.00') : '—'
+        table.cell(t, 0, 8, 'Win ' + winTxt + ' · PF ' + pfTxt + ' · DD ' + str.tostring(ddAll, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.merge_cells(t, 0, 8, 2, 8)
 
 //-----------------------------------------------------------------------------}
 //Alerts
