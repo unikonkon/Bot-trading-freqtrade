@@ -3,6 +3,7 @@ import { computeAll, SMC_ADAPTIVE_DEFAULTS, SMC_ADAPTIVE_V2_DEFAULTS, SMC_ADAPTI
 import {
   V2_STRATEGY_IDS,
   V2_PARAM_META,
+  INVERTED_V2_STRATEGIES,
   isV2StrategyId,
   resolveV2Strategy,
   v2Defaults,
@@ -185,21 +186,28 @@ const V1_STRATEGIES: StrategyConfig[] = [
  */
 const V2_STRATEGIES: StrategyConfig[] = V2_STRATEGY_IDS.map((id) => {
   const { def, filtered } = resolveV2Strategy(id);
+  const inverted = INVERTED_V2_STRATEGIES.has(id);
   const params = v2Defaults(id);
   const paramMeta: Record<string, V2ParamMeta> = {};
   for (const key of Object.keys(params)) {
     const meta = V2_PARAM_META[key];
     if (meta) paramMeta[key] = meta;
   }
+  const descriptionEn = filtered
+    ? `${def.descriptionEn}. Gated by trend/ADX/volatility filters with ATR stop, trailing and max hold.`
+    : def.descriptionEn;
+  const descriptionTh = filtered
+    ? `${def.descriptionTh} · เพิ่มตัวกรอง EMA เทรนด์ + ADX/DI + ความผันผวน และบริหารการออกด้วย ATR stop/trailing/เวลาถือ`
+    : def.descriptionTh;
   return {
     id,
-    name: filtered ? `${def.name} + ตัวกรอง` : def.name,
-    descriptionEn: filtered
-      ? `${def.descriptionEn}. Gated by trend/ADX/volatility filters with ATR stop, trailing and max hold.`
-      : def.descriptionEn,
-    descriptionTh: filtered
-      ? `${def.descriptionTh} · เพิ่มตัวกรอง EMA เทรนด์ + ADX/DI + ความผันผวน และบริหารการออกด้วย ATR stop/trailing/เวลาถือ`
-      : def.descriptionTh,
+    name: `${def.name}${filtered ? " + ตัวกรอง" : ""}${inverted ? " (สลับซื้อขาย)" : ""}`,
+    descriptionEn: inverted
+      ? `INVERTED (BUY↔SELL, still long-only): ${descriptionEn}${filtered ? " — raw signals are inverted before the filter." : ""}`
+      : descriptionEn,
+    descriptionTh: inverted
+      ? `สลับซื้อขาย (ยัง Long ทางเดียว) — เข้าซื้อเมื่อเกิดสัญญาณขายของกฎเดิม ออกเมื่อเกิดสัญญาณซื้อของกฎเดิม${filtered ? " (สลับสัญญาณดิบก่อนเข้าตัวกรอง)" : ""} · กฎเดิม: ${descriptionTh}`
+      : descriptionTh,
     params,
     version: 2 as const,
     group: def.group,

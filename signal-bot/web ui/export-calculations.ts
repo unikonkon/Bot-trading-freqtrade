@@ -6,6 +6,8 @@ import {
 import {
   V2_STRATEGY_IDS,
   V2_FILTER_RULE_TH,
+  V2_INVERTED_RULE_TH,
+  INVERTED_V2_STRATEGIES,
   resolveV2Strategy,
   type V2StrategyId,
 } from "../../lib/indicators-v2";
@@ -25,7 +27,8 @@ import { analyze } from "./engine";
 const V2_RULES = Object.fromEntries(
   V2_STRATEGY_IDS.map((id) => {
     const { def, filtered } = resolveV2Strategy(id);
-    return [id, filtered ? `${def.ruleTh}. ${V2_FILTER_RULE_TH}` : def.ruleTh];
+    const rule = filtered ? `${def.ruleTh}. ${V2_FILTER_RULE_TH}` : def.ruleTh;
+    return [id, INVERTED_V2_STRATEGIES.has(id) ? `${rule}. ${V2_INVERTED_RULE_TH}` : rule];
   }),
 ) as Record<V2StrategyId, string>;
 

@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import {
   V2_INDICATORS, V2_STRATEGY_IDS, V2_PARAM_META, TRADE_FILTER_DEFAULTS,
   applyTradeFilter, computeV2, isV2StrategyId, resolveV2Strategy, v2Defaults,
-  v2SignalOf, v2WarmupBars, validateV2Params,
+  v2SignalOf, v2WarmupBars, validateV2Params, INVERTED_V2_STRATEGIES, invertV2Signals, utBotV2,
   sma, ema, rma, stdev, dmi, atr, crossOver, crossUnder, findPivots,
   rsiV2, macdV2, supertrendV2, ichimokuV2, vwapV2, volumeProfileV2, lorentzianV2,
   type V2StrategyId,
@@ -218,13 +218,38 @@ test('V2 filtered mode never trades more than its own baseline', () => {
     if (def.id === 'lorentzian_v2') continue;
     const filteredId = `${def.id}_filtered` as V2StrategyId;
     const r = computeV2(filteredId, fixture, v2Defaults(filteredId), 0);
-    const rawBuys = r.signal.filter(s => s === 'BUY').length;
+    // กลยุทธ์สลับซื้อขายรับ SELL ดิบเป็นเจตนาเข้า
+    const entryIntent = INVERTED_V2_STRATEGIES.has(filteredId) ? 'SELL' : 'BUY';
+    const rawBuys = r.signal.filter(s => s === entryIntent).length;
     const gatedBuys = r.signalFiltered.filter(s => s === 'BUY').length;
     assert.ok(gatedBuys <= rawBuys, `${def.id}: ตัวกรองต้องไม่สร้างสัญญาณเข้าเพิ่ม (${gatedBuys} > ${rawBuys})`);
     // โหมดมีตัวกรองต้องสลับ BUY/SELL เสมอ เพราะบริหารสถานะเอง
     const ordered = r.signalFiltered.filter((s): s is 'BUY' | 'SELL' => s !== null);
     ordered.forEach((s, i) => assert.equal(s, i % 2 === 0 ? 'BUY' : 'SELL', `${def.id}: ลำดับสัญญาณต้องสลับกัน`));
   }
+});
+
+test('V2 inverted strategies swap BUY/SELL and leave the source signals untouched', () => {
+  assert.deepEqual([...INVERTED_V2_STRATEGIES].sort(), ['supertrend_v2', 'ut_bot_v2_filtered']);
+  // supertrend_v2: สลับสัญญาณดิบตรง ๆ แต่ supertrend_v2_filtered ยังกรองจากสัญญาณเดิม
+  const st = supertrendV2(fixture, {}, 0);
+  assert.ok(st.signal.some(s => s !== null), 'fixture ต้องมีสัญญาณ Supertrend');
+  assert.deepEqual(v2SignalOf('supertrend_v2', st), invertV2Signals(st.signal));
+  assert.equal(v2SignalOf('supertrend_v2_filtered', st), st.signalFiltered);
+  const stFiltered = applyTradeFilter(fixture, st.signal, { ...TRADE_FILTER_DEFAULTS }, 0);
+  assert.deepEqual(st.signalFiltered, stFiltered.signal, 'supertrend_v2_filtered ต้องไม่ถูกสลับ');
+  // ut_bot_v2_filtered: สลับเจตนาดิบก่อนเข้าตัวกรอง ส่วน signal ดิบ (ชั้นจังหวะ v3) ยังเป็นของเดิม
+  const ut = utBotV2(fixture, {}, 0);
+  const expected = applyTradeFilter(fixture, invertV2Signals(ut.signal), { ...TRADE_FILTER_DEFAULTS }, 0);
+  assert.deepEqual(ut.signalFiltered, expected.signal);
+  ut.signalFiltered.forEach((s, i) => {
+    if (s === 'BUY') assert.equal(ut.signal[i], 'SELL', `แท่ง ${i}: เข้าซื้อได้เฉพาะแท่งที่ UT Bot ดิบเป็น SELL`);
+  });
+  const names = Object.fromEntries(STRATEGIES.map(s => [s.id, s.name]));
+  assert.match(names.supertrend_v2, /สลับซื้อขาย/);
+  assert.match(names.ut_bot_v2_filtered, /สลับซื้อขาย/);
+  assert.doesNotMatch(names.supertrend_v2_filtered, /สลับซื้อขาย/);
+  assert.match(RULES.ut_bot_v2_filtered, /สลับสัญญาณ/);
 });
 
 test('V2 Lorentzian is causal and both neighbour pools work', () => {

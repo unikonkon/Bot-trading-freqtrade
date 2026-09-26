@@ -2,15 +2,24 @@
 // © LuxAlgo — ต้นฉบับ "Trendlines with Breaks [LuxAlgo]"
 // ดัดแปลงให้ BUY/SELL ตรงกับบอท: lib/indicators.ts `trendlinesWithBreaks()` + backtest โหมด "ราคาปิดแท่งสัญญาณ (เดิม)"
 //
-// ═══ สัญญาณมีแบบเดียว: BUY/SELL = จุดเข้า/ออกของ backtest บนเว็บพอดี ════════════════════════
+// ═══ สัญญาณมีแบบเดียว: BUY/SELL สลับกันเสมอ ═══════════════════════════════════════════════
 //    ไม่มีป้าย "B" (จุดทะลุดิบ) และไม่ใช่ strategy() จึงไม่มีลูกศรคำสั่งของ Strategy Tester ซ้อน
-//    ผล backtest ดูที่ตารางมุมขวาบน ซึ่งคำนวณแบบเดียวกับเว็บ (lib/backtest.ts `runBacktest`)
+//    ป้ายชุดเดียวกันใช้ได้ทั้ง 3 แบบการเทรดในตาราง (ดูหัวข้อถัดไป)
+//
+// ═══ 3 แบบการเทรดจากป้ายชุดเดียวกัน ═══════════════════════════════════════════════════════
+//    Long    : BUY เปิด Long · SELL ปิด                  = backtest legacy ของเว็บพอดี (Spot)
+//    Short   : SELL เปิด Short · BUY ปิด                 ต้องเทรดบน Futures
+//    สองฝั่ง : BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short (ถือตลอดหลังป้ายแรก)
+//    • ป้ายสลับ BUY → SELL → BUY เสมอ ไม้ของ "สองฝั่ง" จึงเป็นไม้ Long + ไม้ Short ชุดเดียวกันพอดี
+//      และเพราะผลรวมเป็นการบวก % ต่อไม้ (ไม่ทบต้น) ผลของสองฝั่ง = Long + Short ทุกช่วง
+//      (Drawdown / Win rate ของสองฝั่งคำนวณจากลำดับไม้รวมจริง ไม่ใช่บวกกัน)
+//    • กำไร Short ต่อไม้ = (เข้า − ออก) / เข้า × 100 − 2 × fee · ไม่รวม funding ของ Futures
 //
 // ═══ ตารางกำไร/ขาดทุนรายช่วง ═══════════════════════════════════════════════════════════
 //    ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง (ย้อนจากแท่งล่าสุด 24 ชม. / 7 / 30 / 365 วัน)
 //    equity = ผลรวม % ของไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่คิดที่ราคาปิดของแท่งนั้น (หัก 2 × fee เหมือนเว็บปิดไม้ตอนจบข้อมูล)
-//    ไม้ที่ถือข้ามต้นช่วงจึงนับเฉพาะส่วนที่ราคาเปลี่ยนในช่วงนั้น · "ทั้งหมด" = ผลรวมของเว็บพอดี
-//    คอลัมน์เทรด = ไม้ที่ปิดในช่วง + ไม้ที่ถืออยู่ตอนนี้ (ถ้ามี) · "*" = กราฟมีข้อมูลไม่ถึงช่วงนั้น แสดงตั้งแต่แท่งแรก
+//    ไม้ที่ถือข้ามต้นช่วงจึงนับเฉพาะส่วนที่ราคาเปลี่ยนในช่วงนั้น · "ทั้งหมด" ของ Long = ผลรวมของเว็บพอดี
+//    แถวเทรด = ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่ · "*" = กราฟมีข้อมูลไม่ถึงช่วงนั้น แสดงตั้งแต่แท่งแรก
 //
 // ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
 // 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
@@ -21,9 +30,8 @@
 // 4) ทะลุ: close > upper (ไม่ใช่ upper − slope × length แบบ LuxAlgo ต้นฉบับ) · ทะลุได้ครั้งเดียวต่อเส้น
 // 5) แท่งแรกของข้อมูล: upper เริ่มที่ 0 บอทจึงนับ close > 0 เป็นการทะลุขึ้น → BUY ที่แท่งแรกของกราฟ (ทำตามบอท)
 // 6) แท่งเดียวทะลุทั้งสองเส้น: SELL ทับ BUY
-// 7) กฎสลับเปิด–ปิด (`alternateSignals`, Spot ทางเดียว): ว่างรับเฉพาะ BUY · ถือรับเฉพาะ SELL
+// 7) กฎสลับเปิด–ปิด (`alternateSignals`): เก็บเฉพาะจุดทะลุแรกของแต่ละฝั่ง → BUY/SELL สลับกันเสมอ
 // 8) Backtest legacy: เริ่มว่างที่ "Backtest From" · เข้า/ออกที่ราคาปิดของแท่งสัญญาณ · ไม่มี slippage
-//    กำไรต่อไม้ = (ออก − เข้า) / เข้า × 100 − 2 × fee · ผลรวม = บวกเปอร์เซ็นต์ (ไม่ทบต้น)
 //    ไม้ที่ยังถือตอนจบช่วงนับปิดที่ราคาปิดแท่งสุดท้าย (เฉพาะในตาราง ไม่วาดป้าย เพราะบอทไม่ส่งสัญญาณนี้)
 //
 // ═══ ข้อควรรู้ก่อนเทียบกับเว็บ ═══════════════════════════════════════════════════════════
@@ -46,7 +54,7 @@ startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', g
 endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
 feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
 showTable  = input.bool(true, 'Show P/L table', group = 'Table')
-showDetail = input.bool(false, 'Show Win rate / PF / Drawdown', group = 'Table')
+showDetail = input.bool(false, 'Show Win rate / Drawdown', group = 'Table')
 tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
 tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
 
@@ -127,7 +135,7 @@ dnos := isPl ? 0 : close < lower ? 1 : dnos
 rawSig = not barstate.isconfirmed ? 0 : dnos > prevDnos ? -1 : upos > prevUpos ? 1 : 0
 
 //-----------------------------------------------------------------------------}
-//Signals — alternateSignals() แล้วเข้า/ออกแบบ runBacktest() legacy
+//Signals — alternateSignals(): BUY/SELL สลับกันเสมอ
 //-----------------------------------------------------------------------------{
 var int altState = 0
 int streamSig = 0
@@ -141,58 +149,78 @@ else if altState == 1 and rawSig == -1
 inWindow      = time >= startTime and time <= endTime
 lastWindowBar = time <= endTime and time_close > endTime
 
-var bool  inPos     = false
-var float entryPx   = na
-var int   nTrades   = 0
-var int   nWins     = 0
-var float sumPnl    = 0.
-var float grossWin  = 0.
-var float grossLoss = 0.
-var float peakEq    = 0.
-var float maxDD     = 0.
+// sig = สัญญาณเดียวที่วาดและแจ้งเตือน: 1 BUY · −1 SELL (เฉพาะในช่วง backtest)
+int sig = inWindow ? streamSig : 0
 
-// sig = สัญญาณเดียวที่วาดและแจ้งเตือน: 1 BUY (เข้า) · −1 SELL (ออก)
-int   sig    = 0
-float exitPx = na
-if inWindow and streamSig == 1 and not inPos
-    sig     := 1
-    inPos   := true
-    entryPx := close
-else if inWindow and streamSig == -1 and inPos
-    sig    := -1
-    exitPx := close
+//-----------------------------------------------------------------------------}
+//Books — บัญชีแยกของแต่ละแบบการเทรด (legacy: ราคาปิดแท่งสัญญาณ, บวก % ไม่ทบต้น)
+//-----------------------------------------------------------------------------{
+type Book
+    int        side               // 1 = Long, −1 = Short (บัญชีรวมไม่ใช้)
+    bool       inPos = false
+    float      entry = na
+    int        n     = 0
+    int        wins  = 0
+    float      sum   = 0.
+    float      peak  = 0.
+    float      dd    = 0.
+    array<int> exits
 
-// จบช่วงที่ตั้ง "Backtest To": ปิดไม้ค้างที่ราคาปิด (ไม่วาดป้าย)
-if inPos and na(exitPx) and lastWindowBar and barstate.isconfirmed
-    exitPx := close
+// บันทึกไม้ที่ปิด: ผลรวม · ชนะ · drawdown ของผลรวมที่ปิดแล้ว · เวลาปิด (ใช้นับเทรดรายช่วง)
+method record(Book b, float pnl) =>
+    b.n    := b.n + 1
+    b.sum  := b.sum + pnl
+    b.wins := b.wins + (pnl > 0 ? 1 : 0)
+    b.peak := math.max(b.peak, b.sum)
+    b.dd   := math.max(b.dd, b.peak - b.sum)
+    b.exits.push(time_close)
 
-var array<int> exitTimes = array.new<int>()
+// ผล % ของไม้ถ้าปิดที่ราคา px (หัก 2 × fee)
+method pnlAt(Book b, float px) =>
+    b.inPos ? b.side * (px - b.entry) / b.entry * 100 - 2 * feeInput : 0.
 
-if not na(exitPx)
-    pnl = (exitPx - entryPx) / entryPx * 100 - 2 * feeInput
-    nTrades += 1
-    sumPnl  += pnl
-    if pnl > 0
-        nWins    += 1
-        grossWin += pnl
-    else
-        grossLoss += -pnl
-    peakEq := math.max(peakEq, sumPnl)
-    maxDD  := math.max(maxDD, peakEq - sumPnl)
-    inPos  := false
-    exitTimes.push(time_close)
+var Book bookL = Book.new(side = 1, exits = array.new<int>())
+var Book bookS = Book.new(side = -1, exits = array.new<int>())
+var Book bookB = Book.new(side = 0, exits = array.new<int>())   // สองฝั่ง = ไม้ของ Long และ Short เรียงตามเวลา
+
+// ปิดไม้ของบัญชีหนึ่งที่ราคาปิดแท่งนี้ แล้วลงบัญชีสองฝั่งด้วย
+closeBook(Book b) =>
+    if b.inPos
+        float pnl = b.pnlAt(close)
+        b.record(pnl)
+        bookB.record(pnl)
+        b.inPos := false
+
+openBook(Book b) =>
+    if not b.inPos
+        b.inPos := true
+        b.entry := close
+
+if sig == 1
+    closeBook(bookS)       // BUY: ปิด Short
+    openBook(bookL)        //      เปิด Long
+else if sig == -1
+    closeBook(bookL)       // SELL: ปิด Long
+    openBook(bookS)        //       เปิด Short
+
+// จบช่วงที่ตั้ง "Backtest To": ปิดไม้ค้างที่ราคาปิด (ไม่วาดป้าย) — ไม้ที่เพิ่งเปิดแท่งนี้ก็ปิดทันทีเหมือนเว็บ
+if lastWindowBar and barstate.isconfirmed
+    closeBook(bookL)
+    closeBook(bookS)
 
 //-----------------------------------------------------------------------------}
 //Equity รายแท่ง (ใช้หากำไร/ขาดทุนรายช่วง)
 //-----------------------------------------------------------------------------{
-openPnl   = inPos ? (close - entryPx) / entryPx * 100 - 2 * feeInput : 0.
-equityNow = sumPnl + openPnl
+eqL = bookL.sum + bookL.pnlAt(close)
+eqS = bookS.sum + bookS.pnlAt(close)
 
 var array<int>   eqTime = array.new<int>()
-var array<float> eqVal  = array.new<float>()
+var array<float> eqValL = array.new<float>()
+var array<float> eqValS = array.new<float>()
 if barstate.isconfirmed
     eqTime.push(time_close)
-    eqVal.push(equityNow)
+    eqValL.push(eqL)
+    eqValS.push(eqS)
 
 // ดัชนีสุดท้ายที่ค่า ≤ t (อาเรย์เรียงจากน้อยไปมาก) · −1 = ไม่มี
 lastAtOrBefore(array<int> a, int t) =>
@@ -220,7 +248,7 @@ plotshape(sig == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text =
 plot(sig, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
 
 //-----------------------------------------------------------------------------}
-//ตารางกำไร/ขาดทุนรายช่วง
+//ตารางกำไร/ขาดทุน: แถว = ช่วงเวลา · คอลัมน์ = แบบการเทรด
 //-----------------------------------------------------------------------------{
 fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
 pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
@@ -230,64 +258,84 @@ if showTable and barstate.islast
     tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
     bg    = color.new(#131722, 10)
     muted = color.new(color.white, 45)
-    var table t = table.new(tPos, 3, 9, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    band  = color.new(color.white, 92)
+    var table t = table.new(tPos, 4, 11, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 10)
 
     // หัวตาราง
     table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
-    table.cell(t, 2, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับเว็บ')
-    table.merge_cells(t, 0, 0, 1, 0)
+    table.merge_cells(t, 0, 0, 2, 0)
+    table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับเว็บ · ไม่รวม funding')
     table.cell(t, 0, 1, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
-    table.cell(t, 1, 1, 'กำไร/ขาดทุน', text_color = muted, text_size = tSize, text_halign = text.align_right)
-    table.cell(t, 2, 1, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด Long · SELL ปิด (Spot) — ตรงกับ backtest ของเว็บ')
+    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY ปิด (ต้องใช้ Futures · ไม่รวม funding)')
+    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
 
     // 1 วัน · 1 สัปดาห์ · 1 เดือน · 1 ปี — ย้อนจากแท่งล่าสุด
-    names   = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '1 ปี')
-    spans   = array.from(1, 7, 30, 365)
-    nowT    = time_close
-    firstT  = eqTime.size() > 0 ? eqTime.first() : nowT
+    names  = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '1 ปี')
+    spans  = array.from(1, 7, 30, 365)
+    nowT   = time_close
+    firstT = eqTime.size() > 0 ? eqTime.first() : nowT
     for i = 0 to 3
         refT    = nowT - spans.get(i) * 86400000
         idx     = lastAtOrBefore(eqTime, refT)
-        eqRef   = idx >= 0 ? eqVal.get(idx) : 0.
-        chg     = equityNow - eqRef
-        closedN = exitTimes.size() - (lastAtOrBefore(exitTimes, refT) + 1)
+        chgL    = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+        chgS    = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+        chgB    = chgL + chgS
         partial = refT < firstT
         tip     = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด' + (partial ? ' · กราฟมีข้อมูลไม่ถึง แสดงตั้งแต่แท่งแรก' : '')
         table.cell(t, 0, i + 2, names.get(i) + (partial ? ' *' : ''), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = tip)
-        table.cell(t, 1, i + 2, fmtPct(chg), text_color = pnlColor(chg), text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, i + 2, str.tostring(closedN + (inPos ? 1 : 0)), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 1, i + 2, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, i + 2, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, i + 2, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
 
-    // ทั้งหมด = ผลรวมของเว็บ (ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุด)
-    nAll = nTrades + (inPos ? 1 : 0)
-    table.cell(t, 0, 6, 'ทั้งหมด', text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = color.new(color.white, 92))
-    table.cell(t, 1, 6, fmtPct(equityNow), text_color = pnlColor(equityNow), text_size = tSize, text_halign = text.align_right, bgcolor = color.new(color.white, 92))
-    table.cell(t, 2, 6, str.tostring(nAll), text_color = color.white, text_size = tSize, text_halign = text.align_right, bgcolor = color.new(color.white, 92))
+    // ทั้งหมด (Long = ผลรวมของเว็บ · ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุด)
+    eqB = eqL + eqS
+    table.cell(t, 0, 6, 'ทั้งหมด', text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band)
+    table.cell(t, 1, 6, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, 6, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, 6, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
 
-    // สถานะไม้ปัจจุบัน
-    status = inPos ? '● ถือ · เข้า ' + str.tostring(entryPx, format.mintick) + ' · ' + fmtPct(openPnl) : '○ ว่าง · รอ BUY'
-    table.cell(t, 0, 7, status, text_color = inPos ? pnlColor(openPnl) : muted, text_size = tSize, text_halign = text.align_left)
-    table.merge_cells(t, 0, 7, 2, 7)
+    // จำนวนเทรด (ปิดแล้ว + ถืออยู่)
+    nL = bookL.n + (bookL.inPos ? 1 : 0)
+    nS = bookS.n + (bookS.inPos ? 1 : 0)
+    table.cell(t, 0, 7, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 7, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, 7, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, 7, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
 
-    // รายละเอียด (ปิดไว้เป็นค่าตั้งต้น)
+    // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL, สองฝั่งถือตามป้ายล่าสุด
+    openL  = bookL.pnlAt(close)
+    openS  = bookS.pnlAt(close)
+    status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายแรก'
+    table.cell(t, 0, 8, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
+    table.merge_cells(t, 0, 8, 3, 8)
+
+    // รายละเอียด (ปิดไว้เป็นค่าตั้งต้น) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ
     if showDetail
-        winAll = nWins + (inPos and openPnl > 0 ? 1 : 0)
-        gWin   = grossWin + (inPos and openPnl > 0 ? openPnl : 0.)
-        gLoss  = grossLoss + (inPos and openPnl <= 0 ? -openPnl : 0.)
-        ddAll  = math.max(maxDD, math.max(peakEq, equityNow) - equityNow)
-        winTxt = nAll > 0 ? str.tostring(winAll * 100.0 / nAll, '0.0') + '%' : '—'
-        pfTxt  = gLoss > 0 ? str.tostring(gWin / gLoss, '0.00') : '—'
-        table.cell(t, 0, 8, 'Win ' + winTxt + ' · PF ' + pfTxt + ' · DD ' + str.tostring(ddAll, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_left)
-        table.merge_cells(t, 0, 8, 2, 8)
+        winL  = bookL.wins + (bookL.inPos and openL > 0 ? 1 : 0)
+        winS  = bookS.wins + (bookS.inPos and openS > 0 ? 1 : 0)
+        ddL   = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
+        ddS   = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB   = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, 9, 'Win rate', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, 9, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, 9, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, 9, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 0, 10, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (หน่วยเดียวกับผลรวม)')
+        table.cell(t, 1, 10, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, 10, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, 10, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
 
 //-----------------------------------------------------------------------------}
 //Alerts
 //-----------------------------------------------------------------------------{
-alertcondition(sig == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Trendlines break @ {{close}}')
-alertcondition(sig == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Trendlines break @ {{close}}')
+alertcondition(sig == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Long เข้า / Short ปิด @ {{close}}')
+alertcondition(sig == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Long ปิด / Short เข้า @ {{close}}')
 
 if sig == 1
-    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Trendlines break @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Long เข้า / Short ปิด @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
 if sig == -1
-    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Trendlines break @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Long ปิด / Short เข้า @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
 
 //-----------------------------------------------------------------------------}

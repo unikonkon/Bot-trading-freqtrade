@@ -539,6 +539,10 @@ function merge<T extends Record<string, number>>(defaults: T, params?: Record<st
   }
   return out;
 }
+/** สลับ BUY↔SELL ทุกแท่ง ใช้กับกลยุทธ์ใน INVERTED_V2_STRATEGIES */
+export function invertV2Signals(signals: V2Signal[]): V2Signal[] {
+  return signals.map(s => (s === "BUY" ? "SELL" : s === "SELL" ? "BUY" : s));
+}
 /** ต่อชุดตัวกรองเข้ากับเจตนาดิบ */
 function withFilter(
   k: KlineData[], intent: V2Signal[], params: Record<string, number>,
@@ -1773,7 +1777,9 @@ export function utBotV2(k: KlineData[], params: Record<string, number> = {}, sta
     }
     prevStop = stop;
   }
-  return { trailingStop, position, signal, ...withFilter(k, signal, params, startIndex) };
+  // ut_bot_v2_filtered สลับเจตนาดิบก่อนเข้าตัวกรอง (ดู INVERTED_V2_STRATEGIES)
+  // signal ยังเป็นสัญญาณดิบตามต้นฉบับ เพราะ flowgate_utbot_v3 ใช้เป็นชั้นจังหวะ
+  return { trailingStop, position, signal, ...withFilter(k, invertV2Signals(signal), params, startIndex) };
 }
 
 // ══ 20) Machine Learning: Lorentzian Classification ════════════
@@ -2516,9 +2522,21 @@ export function computeV2(
   return resolveV2Strategy(id).def.compute(k, params, startIndex);
 }
 
+/**
+ * กลยุทธ์ที่สลับ BUY↔SELL ตามคำขอของผู้ใช้ ยังเป็น Long ทางเดียว ไม่ใช่การเปิด Short
+ *   supertrend_v2      สลับสัญญาณดิบตรง ๆ ที่ v2SignalOf (supertrend_v2_filtered ยังใช้สัญญาณเดิม)
+ *   ut_bot_v2_filtered สลับเจตนาดิบก่อนเข้า applyTradeFilter ภายใน utBotV2
+ *                      ตัวกรองเข้า/stop/trailing/เวลาถือจึงยังทำงานกับฝั่งที่สลับแล้วครบ
+ */
+export const INVERTED_V2_STRATEGIES: ReadonlySet<V2StrategyId> = new Set<V2StrategyId>(["supertrend_v2", "ut_bot_v2_filtered"]);
+export const V2_INVERTED_RULE_TH =
+  "สลับสัญญาณ: BUY ของกฎข้างต้นกลายเป็น SELL และ SELL กลายเป็น BUY (ยังเป็น Long ทางเดียว ไม่ใช่เปิด Short). " +
+  "โหมด _filtered สลับเจตนาดิบก่อนเข้าตัวกรอง จึงเข้าซื้อเมื่อสัญญาณดิบเป็น SELL ที่ผ่านตัวกรองครบ และใช้สัญญาณดิบ BUY เป็นทางออก";
+
 /** สัญญาณที่กลยุทธ์นั้นใช้จริง: โหมดพื้นฐานใช้ signal, โหมด filtered ใช้ signalFiltered */
 export function v2SignalOf(id: V2StrategyId, result: V2Base): V2Signal[] {
-  return resolveV2Strategy(id).filtered ? result.signalFiltered : result.signal;
+  if (resolveV2Strategy(id).filtered) return result.signalFiltered;
+  return INVERTED_V2_STRATEGIES.has(id) ? invertV2Signals(result.signal) : result.signal;
 }
 
 /**
