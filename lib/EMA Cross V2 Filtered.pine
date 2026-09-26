@@ -33,6 +33,8 @@
 //   • ตารางกำไร/ขาดทุนคำนวณแบบเดียวกับ simulateNextOpen: เริ่ม 100 หน่วย ทบต้น
 //     entry = open × (1+slip), qty = cash / (entry × (1+fee)), exit = open × (1−slip) หักค่าธรรมเนียมอีกขา
 //     และบังคับปิดที่ราคาปิดแท่งสุดท้าย — ใช้ตัวเลขนี้เทียบกับเว็บ ไม่ใช่ Strategy Tester
+//   • Win rate ในตาราง: ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short กลับกัน) เทียบราคาตลาด ไม่หัก fee / slippage
+//     ต่างจากเว็บที่นับชนะเมื่อกำไรหลังหักต้นทุน · Profit factor / Drawdown ยังคิดแบบเว็บ
 //
 // ตารางกำไร/ขาดทุน (รูปแบบเดียวกับ "Trendlines with Breaks [LuxAlgo] buysell-legacy.pine")
 //   คอลัมน์ = 3 แบบการเทรดจากสัญญาณ BUY/SELL ชุดเดียวกัน (ลงมือที่ open แท่งถัดไปทุกแบบ)
@@ -280,6 +282,7 @@ type Sim
     float qty      = 0.0
     int   dir      = 0        // 1 ถือ Long · −1 ถือ Short · 0 ว่าง
     float entry    = na       // ราคาเข้าหลัง slippage
+    float px0      = na       // ราคาตลาดตอนเข้า (open ก่อน slippage) ใช้ตัดสินชนะ/แพ้
     float invested = 0.0
     float peak     = 100.0
     float dd       = 0.0
@@ -302,8 +305,13 @@ method liq(Sim s, float p) =>
 method openPnl(Sim s, float p) =>
     s.dir == 0 ? 0.0 : (s.liq(p) / s.invested - 1) * 100
 
+// ชนะ/แพ้ตัดสินจากราคาเท่านั้น (ไม่หัก fee / slippage): Long ชนะเมื่อราคาขาย > ราคาซื้อ · Short ชนะเมื่อราคาซื้อคืน < ราคาขาย
+method priceWin(Sim s, float p) =>
+    s.dir != 0 and s.dir * (p - s.px0) > 0
+
 method openPos(Sim s, int d, float p) =>
     s.invested := s.cash
+    s.px0      := p
     s.entry    := d == 1 ? p * (1 + slip) : p * (1 - slip)
     s.qty      := s.cash / (s.entry * (1 + fee))
     s.cash     := 0.0
@@ -311,12 +319,14 @@ method openPos(Sim s, int d, float p) =>
 
 method closePos(Sim s, float p) =>
     float pnl = s.openPnl(p)
+    bool  win = s.priceWin(p)
     s.cash := s.liq(p)
     s.qty  := 0.0
     s.dir  := 0
     s.n    := s.n + 1
-    if pnl > 0
+    if win
         s.wins := s.wins + 1
+    if pnl > 0
         s.gain := s.gain + pnl
     else
         s.loss := s.loss - pnl
@@ -397,9 +407,10 @@ mk(bool ok) => ok ? "✓" : "✗"
 // ผลตอบแทนตอนนี้เทียบมูลค่าเมื่อต้นช่วง (ก่อนเริ่มทดสอบ = 100 หน่วย)
 retSince(float nowV, array<float> vals, int idx) => (nowV / (idx >= 0 ? vals.get(idx) : 100.0) - 1) * 100
 // Win rate / PF / Drawdown รวมไม้ที่ถืออยู่ (บังคับปิดที่ราคาล่าสุดเหมือนเว็บ)
+// Win rate ตัดสินจากราคา (ไม่หัก fee / slippage) · PF / Drawdown ยังหักต้นทุนแบบเว็บ
 winText(Sim s, float p) =>
     int   n = s.n + (s.dir != 0 ? 1 : 0)
-    int   w = s.wins + (s.dir != 0 and s.openPnl(p) > 0 ? 1 : 0)
+    int   w = s.wins + (s.priceWin(p) ? 1 : 0)
     n > 0 ? str.tostring(w * 100.0 / n, "0.0") + "%" : "—"
 ddText(Sim s, float p) =>
     float endV = s.liq(p)
@@ -479,8 +490,8 @@ if showTable and barstate.islast and simStarted
     table.cell(t, 3, row, str.tostring(nB), text_color = muted, text_size = tSize, text_halign = text.align_right)
     row += 1
 
-    // Win rate (แสดงเสมอ) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ
-    table.cell(t, 0, row, "Win rate", text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = "สัดส่วนไม้ที่กำไรหลังหักค่าธรรมเนียมและ slippage")
+    // Win rate จากราคา (ขายสูงกว่าซื้อ = ชนะ · ไม่หัก fee / slippage) — ไม้ที่ถืออยู่เทียบราคาล่าสุด
+    table.cell(t, 0, row, "Win rate", text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = "ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short: ซื้อคืนต่ำกว่าราคาที่ขาย) · เท่าเดิมหรือแย่กว่า = แพ้\nเทียบราคาตลาด (open ที่ลงมือ) อย่างเดียว ไม่หักค่าธรรมเนียม/slippage จึงอาจสูงกว่า Win rate บนเว็บ\nไม้ที่ถืออยู่เทียบกับราคาล่าสุด")
     table.cell(t, 1, row, winText(simL, close), text_color = color.white, text_size = tSize, text_halign = text.align_right)
     table.cell(t, 2, row, winText(simS, close), text_color = color.white, text_size = tSize, text_halign = text.align_right)
     table.cell(t, 3, row, winText(simB, close), text_color = color.white, text_size = tSize, text_halign = text.align_right)

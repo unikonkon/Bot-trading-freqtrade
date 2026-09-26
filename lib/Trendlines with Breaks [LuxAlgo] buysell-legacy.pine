@@ -22,6 +22,8 @@
 //    "ทั้งหมด" บอกจำนวนวันที่คำนวณได้จริง (แท่งแรกของช่วงทดสอบ → แท่งล่าสุด)
 //    ช่วงที่ยาวกว่าข้อมูลจะไม่แสดง (เช่นข้อมูลไม่ถึง 1 ปี ไม่มีแถว 1 ปี) เพราะจะได้ค่าเดียวกับ "ทั้งหมด"
 //    แถวเทรด = ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่
+//    Win rate = ไม้ชนะ ÷ ไม้ทั้งหมด · ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short กลับกัน) ไม่หัก fee
+//      ไม้ที่ถืออยู่เทียบราคาล่าสุด · ต่างจากเว็บที่นับชนะเมื่อกำไรหลังหัก fee
 //
 // ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
 // 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
@@ -173,11 +175,11 @@ type Book
     float      dd    = 0.
     array<int> exits
 
-// บันทึกไม้ที่ปิด: ผลรวม · ชนะ · drawdown ของผลรวมที่ปิดแล้ว · เวลาปิด (ใช้นับเทรดรายช่วง)
-method record(Book b, float pnl) =>
+// บันทึกไม้ที่ปิด: ผลรวม · ชนะ (ตัดสินจากราคา ไม่ใช่ pnl) · drawdown ของผลรวมที่ปิดแล้ว · เวลาปิด (ใช้นับเทรดรายช่วง)
+method record(Book b, float pnl, bool win) =>
     b.n    := b.n + 1
     b.sum  := b.sum + pnl
-    b.wins := b.wins + (pnl > 0 ? 1 : 0)
+    b.wins := b.wins + (win ? 1 : 0)
     b.peak := math.max(b.peak, b.sum)
     b.dd   := math.max(b.dd, b.peak - b.sum)
     b.exits.push(time_close)
@@ -185,6 +187,11 @@ method record(Book b, float pnl) =>
 // ผล % ของไม้ถ้าปิดที่ราคา px (หัก 2 × fee)
 method pnlAt(Book b, float px) =>
     b.inPos ? b.side * (px - b.entry) / b.entry * 100 - 2 * feeInput : 0.
+
+// ชนะ/แพ้ตัดสินจากราคาเท่านั้น (ไม่หัก fee): Long ชนะเมื่อราคาขาย > ราคาซื้อ · Short ชนะเมื่อราคาซื้อคืน < ราคาขาย
+// ราคาเท่าเดิมหรือแย่กว่า = แพ้
+method priceWin(Book b, float px) =>
+    b.inPos and b.side * (px - b.entry) > 0
 
 var Book bookL = Book.new(side = 1, exits = array.new<int>())
 var Book bookS = Book.new(side = -1, exits = array.new<int>())
@@ -194,8 +201,9 @@ var Book bookB = Book.new(side = 0, exits = array.new<int>())   // สองฝ�
 closeBook(Book b) =>
     if b.inPos
         float pnl = b.pnlAt(close)
-        b.record(pnl)
-        bookB.record(pnl)
+        bool  win = b.priceWin(close)
+        b.record(pnl, win)
+        bookB.record(pnl, win)
         b.inPos := false
 
 openBook(Book b) =>
@@ -322,12 +330,12 @@ if showTable and barstate.islast
     table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
     row += 1
 
-    // Win rate (แสดงเสมอ) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ · สองฝั่ง = ไม้ Long + Short รวมกัน
+    // Win rate จากราคา (ขายสูงกว่าซื้อ = ชนะ · ไม่หัก fee) — ไม้ที่ถืออยู่เทียบราคาล่าสุด · สองฝั่ง = ไม้ Long + Short รวมกัน
     openL = bookL.pnlAt(close)
     openS = bookS.pnlAt(close)
-    winL  = bookL.wins + (bookL.inPos and openL > 0 ? 1 : 0)
-    winS  = bookS.wins + (bookS.inPos and openS > 0 ? 1 : 0)
-    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'สัดส่วนไม้ที่กำไรหลังหักค่าธรรมเนียม')
+    winL  = bookL.wins + (bookL.priceWin(close) ? 1 : 0)
+    winS  = bookS.wins + (bookS.priceWin(close) ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short: ซื้อคืนต่ำกว่าราคาที่ขาย) · เท่าเดิมหรือแย่กว่า = แพ้\nเทียบราคาอย่างเดียว ไม่หักค่าธรรมเนียม จึงอาจสูงกว่า Win rate บนเว็บที่นับหลังหัก fee\nไม้ที่ถืออยู่เทียบกับราคาล่าสุด')
     table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
     table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
     table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
