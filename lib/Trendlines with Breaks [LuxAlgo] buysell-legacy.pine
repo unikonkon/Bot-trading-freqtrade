@@ -56,7 +56,7 @@ startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', g
 endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
 feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
 showTable  = input.bool(true, 'Show P/L table', group = 'Table')
-showDetail = input.bool(false, 'Show Win rate / Drawdown', group = 'Table')
+showDetail = input.bool(false, 'Show Drawdown', group = 'Table')
 tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
 tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
 
@@ -322,29 +322,32 @@ if showTable and barstate.islast
     table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
     row += 1
 
+    // Win rate (แสดงเสมอ) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ · สองฝั่ง = ไม้ Long + Short รวมกัน
+    openL = bookL.pnlAt(close)
+    openS = bookS.pnlAt(close)
+    winL  = bookL.wins + (bookL.inPos and openL > 0 ? 1 : 0)
+    winS  = bookS.wins + (bookS.inPos and openS > 0 ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'สัดส่วนไม้ที่กำไรหลังหักค่าธรรมเนียม')
+    table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
     // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL, สองฝั่งถือตามป้ายล่าสุด
-    openL  = bookL.pnlAt(close)
-    openS  = bookS.pnlAt(close)
     status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายแรก'
     table.cell(t, 0, row, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
     table.merge_cells(t, 0, row, 3, row)
     row += 1
 
-    // รายละเอียด (ปิดไว้เป็นค่าตั้งต้น) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ
+    // Drawdown (ปิดไว้เป็นค่าตั้งต้น) — ไม้ที่ถืออยู่นับปิดที่ราคาล่าสุดเหมือนเว็บ
     if showDetail
-        winL  = bookL.wins + (bookL.inPos and openL > 0 ? 1 : 0)
-        winS  = bookS.wins + (bookS.inPos and openS > 0 ? 1 : 0)
-        ddL   = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
-        ddS   = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
-        ddB   = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
-        table.cell(t, 0, row, 'Win rate', text_color = muted, text_size = tSize, text_halign = text.align_left)
-        table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 0, row + 1, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (หน่วยเดียวกับผลรวม)')
-        table.cell(t, 1, row + 1, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 2, row + 1, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
-        table.cell(t, 3, row + 1, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        ddL = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
+        ddS = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, row, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (หน่วยเดียวกับผลรวม)')
+        table.cell(t, 1, row, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
 
 //-----------------------------------------------------------------------------}
 //Alerts
