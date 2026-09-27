@@ -9,7 +9,7 @@
 // ═══ 3 แบบการเทรดจากป้ายชุดเดียวกัน ═══════════════════════════════════════════════════════
 //    Long    : BUY เปิด Long · SELL ปิด                  = backtest legacy ของเว็บพอดี (Spot)
 //    Short   : SELL เปิด Short · BUY ปิด                 ต้องเทรดบน Futures
-//    สองฝั่ง : BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short (ถือตลอดหลังป้ายแรก)
+//    สองฝั่ง : BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short (ถ้าเปิด TP: ถึง TP ปิดแล้วรอป้ายถัดไป)
 //    • ป้ายสลับ BUY → SELL → BUY เสมอ ไม้ของ "สองฝั่ง" จึงเป็นไม้ Long + ไม้ Short ชุดเดียวกันพอดี
 //      และเพราะผลรวมเป็นการบวก % ต่อไม้ (ไม่ทบต้น) ผลของสองฝั่ง = Long + Short ทุกช่วง
 //      (Drawdown / Win rate ของสองฝั่งคำนวณจากลำดับไม้รวมจริง ไม่ใช่บวกกัน)
@@ -38,6 +38,19 @@
 // 8) Backtest legacy: เริ่มว่างที่ "Backtest From" · เข้า/ออกที่ราคาปิดของแท่งสัญญาณ · ไม่มี slippage
 //    ไม้ที่ยังถือตอนจบช่วงนับปิดที่ราคาปิดแท่งสุดท้าย (เฉพาะในตาราง ไม่วาดป้าย เพราะบอทไม่ส่งสัญญาณนี้)
 //
+// ═══ Take profit 0.1% (ค่าตั้งต้น) — ดัน Win rate บน 1m เกิน 50% โดยจำนวนเทรดเท่าเดิม ═══════════════
+//    ไม่แตะสัญญาณเลย: ป้าย BUY/SELL ชุดเดิมทุกจุด ทุกไม้ยังเข้าที่ป้ายเดิม จำนวนเทรดจึงเท่าเดิมทุกไม้
+//    เปลี่ยนแค่การออก: ราคาปิดไปทางกำไรถึง 0.1% → ปิดไม้ที่ราคาปิดแท่งนั้น (ไม่ถึง → ออกที่ป้ายตรงข้ามเหมือนเดิม)
+//    ทำไม Win rate เดิมต่ำ (~32%): ราคามักวิ่งไปทางกำไรก่อน แล้วย้อนกลับก่อนป้ายตรงข้ามจะมา
+//      TP เก็บจังหวะนั้นไว้ก่อนราคาย้อน
+//    ผลทดสอบ BTCUSDT / ETHUSDT 1m ย้อนหลัง 90 วัน · Win rate สองฝั่ง (จำนวนไม้เท่าเดิมทุกช่วง):
+//      BTC 3 ช่วง × 30 วัน: 61% / 61% / 63% (เดิม 32% / 32% / 31%) · 6 วันล่าสุด 71% (เดิม 34%)
+//      ETH 3 ช่วง × 30 วัน: 65% / 61% / 64% (เดิม 35% / 33% / 29%) · 6 วันล่าสุด 66% (เดิม 32%)
+//    ⚠ ชนะตามราคาแต่ยังขาดทุนสุทธิ: TP 0.1% น้อยกว่าค่าธรรมเนียมไป-กลับ 0.2% ไม้ที่ "ชนะ" จึงติดลบ ~−0.1% หลังหัก fee
+//      ผลรวมดีขึ้นเล็กน้อย (BTC 30 วันล่าสุด −116% เทียบเดิม −132%) แต่ยังติดลบ — สัญญาณ 1m ก่อนหัก fee ได้ ~0%/ไม้
+//      ถ้าจำนวนเทรดต้องเท่าเดิม ไม่มีการตั้งค่าการออกแบบไหนที่ทำให้กำไรได้ (ทดสอบ TP / SL / breakeven แล้ว)
+//    TP ใหญ่ขึ้น Win rate ลดลง: 0.15% ≈ 51–57% (ขอบบาง) · 0.2% ต่ำกว่า 50% · ตั้ง 0 = ไม่มี TP = ผลตรงกับ backtest ของเว็บ
+//
 // ═══ ข้อควรรู้ก่อนเทียบกับเว็บ ═══════════════════════════════════════════════════════════
 //    • ใช้ BINANCE:<คู่เหรียญ> (Spot) ไม่ใช่ perpetual (.P) และตั้ง timezone กราฟเป็นกรุงเทพ
 //    • ตั้ง "Backtest From" = แท่งแรกหลังช่วงอุ่นเครื่องของเว็บ (ช่วงที่ผลทดสอบเริ่ม)
@@ -56,6 +69,7 @@ calcMethod = input.string('Atr', 'Slope Calculation Method', options = ['Atr', '
 
 startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest (legacy)', tooltip = 'แท่งแรกของช่วงทดสอบบนเว็บ — เริ่มสถานะว่างที่นี่ ป้าย BUY/SELL มีเฉพาะในช่วงนี้')
 endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
+tpPct      = input.float(0.10, 'Take profit %', minval = 0, maxval = 20, step = 0.05, group = 'Backtest (legacy)', tooltip = '0 = ไม่มี TP (ผลตรงกับ backtest ของเว็บ)\nราคาปิดไปทางกำไรถึง % นี้ → ปิดไม้ที่ราคาปิดแท่งนั้น · ไม่เปลี่ยนจุดเข้า จำนวนเทรดจึงเท่าเดิม\nเล็กลง = Win rate สูงขึ้น · ต่ำกว่า 2 × fee ไม้ที่ "ชนะ" ยังขาดทุนสุทธิ')
 feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
 showTable  = input.bool(true, 'Show P/L table', group = 'Table')
 showDetail = input.bool(false, 'Show Drawdown', group = 'Table')
@@ -188,6 +202,10 @@ method record(Book b, float pnl, bool win) =>
 method pnlAt(Book b, float px) =>
     b.inPos ? b.side * (px - b.entry) / b.entry * 100 - 2 * feeInput : 0.
 
+// Take profit (ตรวจที่ราคาปิด): ราคาไปทางกำไรถึง tpPct % → ปิดไม้ที่ราคาปิดแท่งนี้
+method hitTp(Book b) =>
+    tpPct > 0 and b.inPos and b.side * (close - b.entry) / b.entry * 100 >= tpPct
+
 // ชนะ/แพ้ตัดสินจากราคาเท่านั้น (ไม่หัก fee): Long ชนะเมื่อราคาขาย > ราคาซื้อ · Short ชนะเมื่อราคาซื้อคืน < ราคาขาย
 // ราคาเท่าเดิมหรือแย่กว่า = แพ้
 method priceWin(Book b, float px) =>
@@ -210,6 +228,14 @@ openBook(Book b) =>
     if not b.inPos
         b.inPos := true
         b.entry := close
+
+// TP ก่อนป้าย (ไม้ที่ถือมีได้ทีละฝั่ง และป้ายตรงข้ามก็ปิดที่ราคาเดียวกัน ลำดับจึงไม่เปลี่ยนผล) · ตัดสินเมื่อปิดแท่ง
+bool tpL = barstate.isconfirmed and inWindow and bookL.hitTp()
+bool tpS = barstate.isconfirmed and inWindow and bookS.hitTp()
+if tpL
+    closeBook(bookL)
+if tpS
+    closeBook(bookS)
 
 if sig == 1
     closeBook(bookS)       // BUY: ปิด Short
@@ -260,6 +286,9 @@ plot(showLines and hasPl ? lower : na, 'Lower (up-trendline)', color = isPl ? na
 plotshape(sig == 1, 'BUY', shape.labelup, location.belowbar, buyCss, text = 'BUY', textcolor = color.white, size = size.small)
 plotshape(sig == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text = 'SELL', textcolor = color.white, size = size.small)
 
+plotshape(tpL, 'TP Long', shape.labeldown, location.abovebar, color.new(buyCss, 45), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(tpS, 'TP Short', shape.labelup, location.belowbar, color.new(sellCss, 45), text = 'TP', textcolor = color.white, size = size.tiny)
+
 plot(sig, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
 
 //-----------------------------------------------------------------------------}
@@ -278,13 +307,13 @@ if showTable and barstate.islast
     table.clear(t, 0, 0, 3, 11)
 
     // หัวตาราง
-    table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period + (tpPct > 0 ? ' · TP ' + str.tostring(tpPct) + '%' : ''), text_color = color.white, text_size = tSize, text_halign = text.align_left)
     table.merge_cells(t, 0, 0, 2, 0)
     table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับเว็บ · ไม่รวม funding')
     table.cell(t, 0, 1, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
-    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด Long · SELL ปิด (Spot) — ตรงกับ backtest ของเว็บ')
-    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY ปิด (ต้องใช้ Futures · ไม่รวม funding)')
-    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
+    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด Long · SELL หรือ TP ปิด (Spot)\nTake profit = 0 → ตรงกับ backtest ของเว็บ')
+    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY หรือ TP ปิด (ต้องใช้ Futures · ไม่รวม funding)')
+    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short · ถึง TP ปิดแล้วรอป้ายถัดไป\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
 
     // ระยะเวลาที่คำนวณได้จริง: แท่งแรกของช่วงทดสอบ → แท่งล่าสุด (แท่งที่ยังไม่ปิดนับถึงเวลาปัจจุบัน)
     nowT    = math.min(time_close, timenow)
@@ -342,7 +371,7 @@ if showTable and barstate.islast
     row += 1
 
     // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL, สองฝั่งถือตามป้ายล่าสุด
-    status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายแรก'
+    status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : bookL.n + bookS.n > 0 ? '○ ว่าง · ปิดที่ TP แล้ว รอป้ายถัดไป' : '○ ว่าง · รอป้ายแรก'
     table.cell(t, 0, row, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
     table.merge_cells(t, 0, row, 3, row)
     row += 1
@@ -362,10 +391,14 @@ if showTable and barstate.islast
 //-----------------------------------------------------------------------------{
 alertcondition(sig == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Long เข้า / Short ปิด @ {{close}}')
 alertcondition(sig == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Long ปิด / Short เข้า @ {{close}}')
+alertcondition(tpL, 'TP Long', 'TP Long {{ticker}} ({{interval}}) | ปิด Long ทำกำไร @ {{close}}')
+alertcondition(tpS, 'TP Short', 'TP Short {{ticker}} ({{interval}}) | ปิด Short ทำกำไร @ {{close}}')
 
 if sig == 1
     alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Long เข้า / Short ปิด @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
 if sig == -1
     alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Long ปิด / Short เข้า @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+if tpL or tpS
+    alert('🎯 TP ' + (tpL ? 'Long' : 'Short') + ' ' + syminfo.ticker + ' (' + timeframe.period + ') | ปิดทำกำไร @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
 
 //-----------------------------------------------------------------------------}
