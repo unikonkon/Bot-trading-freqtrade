@@ -13,40 +13,23 @@
  * รันซ้ำด้วยข้อมูล ตัวจำลอง และตัวเลือกเดิม จะอ่านผลจาก cache ทันที (--force = คำนวณใหม่)
  */
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
 import { runBacktest } from "../../../lib/backtest";
 import type { KlineData } from "../../../lib/types/kline";
-import { DATA_DIR, RANGES, sha256, type Manifest } from "./download";
+import {
+  cached, chainOut, date, HERE, lowerBound, median, MIN_COINS, newChain, openSnapshot, parseCli, pct, r4, sourceHash, WARM, WF,
+  type ChainOut, type Fold,
+} from "./common";
+import { sha256 } from "./download";
 import { simulate, toSeries, trendLines, VARIANT_LABEL, VARIANTS, type Chain, type Costs, type Result, type Variant } from "./sim";
 
-const HERE = fileURLToPath(new URL(".", import.meta.url));
-const DAY = 86_400_000;
-/** ความยาวช่วง train / test (วัน) ต่อ timeframe */
-const WF: Record<string, { train: number; test: number }> = {
-  "15m": { train: 60, test: 30 },
-  "1h": { train: 270, test: 90 },
-  "4h": { train: 540, test: 180 },
-  "1d": { train: 1095, test: 365 },
-};
-const WARM = 200;              // แท่งอุ่นเครื่องก่อน train ช่วงแรกของแต่ละเหรียญ
 const LENS = [5, 7, 10, 14, 20, 28, 40, 56];
 const BASE = "A@14";           // ค่าตั้งต้นของบอทบนเว็บ
-const MIN_COINS = 3;           // ช่วงที่มีเหรียญพร้อมน้อยกว่านี้ไม่นับ
 
-// ─── CLI ────────────────────────────────────────────────────────
-const argv = process.argv.slice(2);
-const flag = (name: string) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : undefined; };
-const snapshot: string = argv.find((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"))
-  ?? (existsSync(DATA_DIR) ? readdirSync(DATA_DIR) : []).filter((d) => existsSync(path.join(DATA_DIR, d, "manifest.json"))).sort().at(-1)
-  ?? (() => { throw Error("ไม่พบ snapshot — รัน npm run web:tl:download ก่อน"); })();
-const TFS = (flag("tf") ?? Object.keys(WF).join(",")).split(",");
-const COST: Costs = { feePct: +(flag("fee") ?? 0.1), slipPct: +(flag("slip") ?? 0.05) };
-const FORCE = argv.includes("--force");
-/** ต้นทุนไม่ใช่ค่าตั้งต้น → แยกไฟล์ผล เพื่อไม่ทับ cache ของชุดหลัก */
-const SUFFIX = COST.feePct === 0.1 && COST.slipPct === 0.05 ? "" : `-fee${COST.feePct}-slip${COST.slipPct}`;
-for (const tf of TFS) if (!WF[tf]) throw Error(`ไม่รองรับ timeframe ${tf}`);
+const { snapshot, tfs: TFS, cost: COST, force: FORCE, suffix: SUFFIX } = parseCli();
+const snap = openSnapshot(snapshot);
+const manifest = snap.manifest;
 
 const cfgKey = (v: Variant, len: number) => `${v}@${len}`;
 const CONFIGS = VARIANTS.flatMap((v) => LENS.map((len) => ({ v, len, key: cfgKey(v, len) })));
@@ -57,31 +40,8 @@ const PROCEDURES: Record<string, { label: string; pool: string[] }> = {
   variant: { label: "WF เลือกแค่แบบ (length 14)", pool: VARIANTS.map((v) => cfgKey(v, 14)) },
 };
 
-const r4 = (x: number) => Math.round(x * 1e4) / 1e4;
-const median = (a: number[]) => {
-  if (!a.length) return NaN;
-  const b = [...a].sort((x, y) => x - y), m = b.length >> 1;
-  return b.length % 2 ? b[m] : (b[m - 1] + b[m]) / 2;
-};
-const lowerBound = (t: Float64Array, x: number) => {
-  let lo = 0, hi = t.length;
-  while (lo < hi) { const mid = (lo + hi) >> 1; if (t[mid] < x) lo = mid + 1; else hi = mid; }
-  return lo;
-};
-
-// ─── Data ───────────────────────────────────────────────────────
-const snapDir = path.join(DATA_DIR, snapshot);
-const manifest: Manifest = JSON.parse(readFileSync(path.join(snapDir, "manifest.json"), "utf8"));
-function loadFile(name: string): KlineData[] {
-  const text = readFileSync(path.join(snapDir, name), "utf8");
-  assert.equal(sha256(text), manifest.files[name].sha256, `checksum ไม่ตรง: ${name}`);
-  return text.trim().split("\n").map((line) => JSON.parse(line));
-}
-
 // ─── Walk-forward ต่อ timeframe ──────────────────────────────────
-interface Fold { trainStart: number; testStart: number; testEnd: number; coins: string[] }
 type Cell = { train: Record<string, number>; test: Record<string, Result>; bh: number };
-interface ChainOut { comp: number; mdd: number; trades: number; folds: number }
 interface TfResult {
   key: string; snapshot: string; asOf: number; tf: string; cost: Costs; train: number; test: number;
   folds: Fold[];
@@ -93,43 +53,31 @@ interface TfResult {
 }
 
 function runTf(tf: string): TfResult {
-  const { train, test } = WF[tf];
-  const ms = RANGES[tf].ms;
-  const names = Object.keys(manifest.files).filter((n) => manifest.files[n].interval === tf).sort();
-  if (!names.length) throw Error(`snapshot ${snapshot} ไม่มี ${tf}`);
+  const names = snap.names(tf);
   const key = sha256(JSON.stringify({
     data: names.map((n) => manifest.files[n].sha256), cost: COST, WF: WF[tf], WARM, LENS, MIN_COINS,
-    code: [readFileSync(path.join(HERE, "sim.ts"), "utf8"), readFileSync(fileURLToPath(import.meta.url), "utf8")].map(sha256),
+    code: sourceHash("sim.ts", "common.ts", "walk-forward.ts"),
   }));
   const out = path.join(HERE, "results", snapshot, `wf-${tf}${SUFFIX}.json`);
-  if (!FORCE && existsSync(out)) {
-    const cached: TfResult = JSON.parse(readFileSync(out, "utf8"));
-    if (cached.key === key) { console.log(`${tf}: ใช้ผลจาก cache`); return cached; }
-  }
+  return cached(out, key, FORCE, tf, () => computeTf(tf, key, names));
+}
 
-  // ช่วงเวลา: เริ่มเมื่อเหรียญแรกอุ่นเครื่องครบ · ช่วง test สุดท้ายต้องยาวอย่างน้อยครึ่งหนึ่ง
-  const starts = Object.fromEntries(names.map((n) => [manifest.files[n].symbol, manifest.files[n].from + WARM * ms]));
-  const end = Math.max(...names.map((n) => manifest.files[n].to)) + 1;
-  const t0 = Math.min(...Object.values(starts));
-  const folds: Fold[] = [];
-  for (let ts = t0 + train * DAY; end - ts >= (test * DAY) / 2; ts += test * DAY) {
-    const coins = Object.keys(starts).filter((s) => starts[s] <= ts - train * DAY).sort();
-    if (coins.length >= MIN_COINS) folds.push({ trainStart: ts - train * DAY, testStart: ts, testEnd: Math.min(end, ts + test * DAY), coins });
-  }
-
+function computeTf(tf: string, key: string, names: string[]): TfResult {
+  const { train, test } = WF[tf];
+  const folds = snap.folds(tf);
   const cells: TfResult["cells"] = {}, fixed: TfResult["fixed"] = {}, bh: TfResult["bh"] = {};
   const series: Record<string, { k: KlineData[]; t: Float64Array }> = {};
   let check: TfResult["check"] | undefined;
   const t1 = Date.now();
   for (const name of names) {
     const symbol = manifest.files[name].symbol;
-    const k = loadFile(name), S = toSeries(k), t = Float64Array.from(k, (x) => x.openTime);
+    const k = snap.load(name), S = toSeries(k), t = Float64Array.from(k, (x) => x.openTime);
     series[symbol] = { k, t };
     const idx = (x: number) => lowerBound(t, x);
     cells[symbol] = folds.map(() => null);
-    const chains: Record<string, Chain> = Object.fromEntries(CONFIGS.map((c) => [c.key, { eq: 1, peak: 1, mdd: 0 }]));
+    const chains: Record<string, Chain> = Object.fromEntries(CONFIGS.map((c) => [c.key, newChain()]));
     const trades: Record<string, number> = Object.fromEntries(CONFIGS.map((c) => [c.key, 0]));
-    const bhChain: Chain = { eq: 1, peak: 1, mdd: 0 };
+    const bhChain = newChain();
     let nFolds = 0;
     for (const len of LENS) {
       const L = trendLines(k, len);
@@ -163,10 +111,8 @@ function runTf(tf: string): TfResult {
         check = { symbol, sim: r4(sim), runBacktest: r4(web) };
       }
     }
-    fixed[symbol] = Object.fromEntries(CONFIGS.map((c) => [c.key, {
-      comp: r4((chains[c.key].eq - 1) * 100), mdd: r4(chains[c.key].mdd * 100), trades: trades[c.key], folds: nFolds,
-    }]));
-    bh[symbol] = { comp: r4((bhChain.eq - 1) * 100), mdd: r4(bhChain.mdd * 100), trades: 0, folds: nFolds };
+    fixed[symbol] = Object.fromEntries(CONFIGS.map((c) => [c.key, chainOut(chains[c.key], trades[c.key], nFolds)]));
+    bh[symbol] = chainOut(bhChain, 0, nFolds);
   }
 
   // เลือกค่าต่อช่วง: median ผลทบต้นบน train ข้ามเหรียญสูงสุด · เสมอกันเลือกค่าบอทเดิมก่อน
@@ -184,7 +130,7 @@ function runTf(tf: string): TfResult {
     const perCoin: Record<string, ChainOut> = {};
     for (const symbol of Object.keys(series)) {
       const { k, t } = series[symbol], S = toSeries(k), lines = new Map<number, ReturnType<typeof trendLines>>();
-      const chain: Chain = { eq: 1, peak: 1, mdd: 0 };
+      const chain = newChain();
       let n = 0, nf = 0;
       folds.forEach((f, fi) => {
         if (!f.coins.includes(symbol)) return;
@@ -193,21 +139,16 @@ function runTf(tf: string): TfResult {
         n += simulate(S, lines.get(len)!, v as Variant, lowerBound(t, f.testStart), lowerBound(t, f.testEnd), COST, chain).trades;
         nf++;
       });
-      perCoin[symbol] = { comp: r4((chain.eq - 1) * 100), mdd: r4(chain.mdd * 100), trades: n, folds: nf };
+      perCoin[symbol] = chainOut(chain, n, nf);
     }
     procedures[pid] = { selected, perCoin };
   }
   console.log(`${tf}: ${names.length} เหรียญ · ${folds.length} ช่วง · ${((Date.now() - t1) / 1000).toFixed(1)} วินาที`);
 
-  const res: TfResult = { key, snapshot, asOf: manifest.asOf, tf, cost: COST, train, test, folds, cells, fixed, bh, procedures, check: check! };
-  mkdirSync(path.dirname(out), { recursive: true });
-  writeFileSync(out, JSON.stringify(res));
-  return res;
+  return { key, snapshot, asOf: manifest.asOf, tf, cost: COST, train, test, folds, cells, fixed, bh, procedures, check: check! };
 }
 
 // ─── Report ─────────────────────────────────────────────────────
-const pct = (x: number) => (Number.isNaN(x) ? "—" : `${x >= 0 ? "+" : ""}${x.toFixed(1)}%`);
-const date = (t: number) => new Date(t).toISOString().slice(0, 10);
 const cfgLabel = (key: string) => { const [v, len] = key.split("@"); return `${v} · L${len}`; };
 
 function summarize(r: TfResult, rows: { label: string; per: Record<string, ChainOut> }[]) {

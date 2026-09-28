@@ -43,7 +43,7 @@ export interface Lines {
   upper: Float64Array; lower: Float64Array;
   /** ราคาเส้นที่รู้ตั้งแต่เปิดแท่ง (ลากต่อจากแท่งก่อน) — ใช้วาง stop order · NaN = ยังไม่มีเส้น */
   upProj: Float64Array; loProj: Float64Array;
-  isPh: Uint8Array; hasPl: Uint8Array;
+  isPh: Uint8Array; hasPh: Uint8Array; hasPl: Uint8Array;
   atr: Float64Array;
   /** สัญญาณดิบ (1 BUY / −1 SELL) และสตรีมหลังกฎสลับของบอท */
   raw: Int8Array; stream: Int8Array;
@@ -56,7 +56,7 @@ export function trendLines(k: KlineData[], len: number, mult = 1.0): Lines {
   const ref = trendlinesWithBreaks(k, len, mult, "Atr", true);
   const L: Lines = {
     upper: new Float64Array(n), lower: new Float64Array(n), upProj: new Float64Array(n), loProj: new Float64Array(n),
-    isPh: new Uint8Array(n), hasPl: new Uint8Array(n), atr: Float64Array.from(a, (x) => x ?? 0),
+    isPh: new Uint8Array(n), hasPh: new Uint8Array(n), hasPl: new Uint8Array(n), atr: Float64Array.from(a, (x) => x ?? 0),
     raw: Int8Array.from(ref.signal, (s) => (s === "BUY" ? 1 : s === "SELL" ? -1 : 0)),
     stream: Int8Array.from(alternateSignals(ref.signal.map((s) => s ?? "HOLD")), (s) => (s === "BUY" ? 1 : s === "SELL" ? -1 : 0)),
   };
@@ -67,7 +67,7 @@ export function trendLines(k: KlineData[], len: number, mult = 1.0): Lines {
     L.loProj[i] = hasPl ? cl + spl : NaN;
     if (pv.highPrice[i] !== null) { cu = pv.highPrice[i]!; sph = slope; hasPh = true; L.isPh[i] = 1; } else cu -= sph;
     if (pv.lowPrice[i] !== null) { cl = pv.lowPrice[i]!; spl = slope; hasPl = true; } else cl += spl;
-    L.upper[i] = cu; L.lower[i] = cl; L.hasPl[i] = hasPl ? 1 : 0;
+    L.upper[i] = cu; L.lower[i] = cl; L.hasPh[i] = hasPh ? 1 : 0; L.hasPl[i] = hasPl ? 1 : 0;
     if (Math.abs(cu - ref.upper[i]!) > 1e-9 * Math.max(1, cu) || Math.abs(cl - ref.lower[i]!) > 1e-9 * Math.max(1, cl))
       throw Error(`เส้นไม่ตรงกับ trendlinesWithBreaks ที่แท่ง ${i}`);
   }

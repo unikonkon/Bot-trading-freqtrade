@@ -7,9 +7,9 @@
 //    ป้ายชุดเดียวกันใช้ได้ทั้ง 3 แบบการเทรดในตาราง (ดูหัวข้อถัดไป)
 //
 // ═══ 3 แบบการเทรดจากป้ายชุดเดียวกัน ═══════════════════════════════════════════════════════
-//    Long    : BUY เปิด Long · SELL ปิด                  = backtest legacy ของเว็บพอดี (Spot)
-//    Short   : SELL เปิด Short · BUY ปิด                 ต้องเทรดบน Futures
-//    สองฝั่ง : BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short (ถือตลอดหลังป้ายแรก)
+//    Long    : BUY เปิด Long · SELL ปิด                  = backtest legacy ของเว็บพอดี (Spot) เมื่อ Long ไม่ตั้ง TP/SL
+//    Short   : SELL เปิด Short · BUY หรือ TP/SL ปิด       ต้องเทรดบน Futures
+//    สองฝั่ง : BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short · ปิดด้วย TP/SL แล้วรอป้ายถัดไป
 //    • ป้ายสลับ BUY → SELL → BUY เสมอ ไม้ของ "สองฝั่ง" จึงเป็นไม้ Long + ไม้ Short ชุดเดียวกันพอดี
 //      และเพราะผลรวมเป็นการบวก % ต่อไม้ (ไม่ทบต้น) ผลของสองฝั่ง = Long + Short ทุกช่วง
 //      (Drawdown / Win rate ของสองฝั่งคำนวณจากลำดับไม้รวมจริง ไม่ใช่บวกกัน)
@@ -25,6 +25,18 @@
 //    Win rate = ไม้ชนะ ÷ ไม้ทั้งหมด · ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short กลับกัน) ไม่หัก fee
 //      ไม้ที่ถืออยู่เทียบราคาล่าสุด · ต่างจากเว็บที่นับชนะเมื่อกำไรหลังหัก fee
 //
+// ═══ ออกก่อนป้ายด้วย TP / SL — จำนวนเทรดเท่าเดิมทุกไม้ ═══════════════════════════════════════
+//    ป้าย BUY/SELL และจุดเข้าเหมือนเดิมทุกจุด ต่างแค่ไม้ออกได้ก่อนป้ายตรงข้าม แล้วรอป้ายเข้าถัดไป (ไม่เข้าซ้ำระหว่างทาง)
+//    TP = limit ที่ ราคาเข้า ± TP × ATR · SL = stop ที่ ราคาเข้า ∓ SL × ATR · ATR(length) ณ แท่งเข้า · เริ่มทำงานแท่งถัดไป
+//    fill: ราคาเปิดถ้ากระโดดข้ามระดับ ไม่งั้นที่ระดับพอดี · แท่งเดียวแตะทั้งคู่นับ SL (ไม่รู้ลำดับในแท่ง) · SL หัก slippage
+//    ใช้จริง: วางคำสั่ง TP/SL ที่ exchange ตอนเข้า (ราคาอยู่ในข้อความแจ้งเตือน BUY/SELL) · ป้าย TP/SL วาดเมื่อปิดแท่ง
+//    ค่าตั้งต้นจาก walk-forward 15 เหรียญ × 15m/1h/4h/1d (`npm run web:tl:exits` · signal-bot/web ui/research-trendlines/)
+//    ทดสอบ 67 แบบ (trailing, TP, SL, breakeven, หลุดเส้นซ้ำ, ถือครบ n แท่ง, แบบผสม) เลือกจาก 3 TF แล้ววัดบน TF ที่เหลือ:
+//      Long : ไม่มีแบบไหนดีขึ้นบน TF ที่ไม่ได้ใช้เลือก (0/4) — ออกก่อนป้ายตัดไม้ที่วิ่งยาวทิ้ง → ค่าตั้งต้นไม่ตั้ง TP/SL
+//      Short: TP 8 × ATR + SL 3 × ATR ดีขึ้นบน TF ที่ไม่ได้ใช้เลือก 4/4 · ผลรวม %/ไม้ต่อเหรียญ (median) ดีขึ้น
+//             15m +2 · 1h +30 · 4h +77 · 1d +15 จุด · ดีขึ้น 9–11 จาก 15 เหรียญ · slippage 2 เท่ายังดีขึ้นใน 1h/4h/1d
+//      ⚠ เป็นผลย้อนหลัง และไม่ใช่ทุกเหรียญดีขึ้น (เช่น BTC 4h −24 จุด) · ตั้ง TP/SL = 0 = ออกตามป้ายเดิม
+//
 // ═══ กฎที่ทำซ้ำจากโค้ดของบอท (ค่าตั้งต้น = กลยุทธ์ `trendlines` บนเว็บ) ═══════════════════════
 // 1) Pivot (`pivotEvents`, confirmed = true): high[p] สูงกว่าทุกแท่งใน length แท่งซ้ายและขวาแบบเข้มงวด
 //    รู้ผลที่แท่ง p + length และเกิดได้ตั้งแต่ bar_index ≥ 2 × length — เขียนเองแทน ta.pivothigh ให้กฎราคาเท่ากันตรงกับบอท
@@ -37,6 +49,7 @@
 // 7) กฎสลับเปิด–ปิด (`alternateSignals`): เก็บเฉพาะจุดทะลุแรกของแต่ละฝั่ง → BUY/SELL สลับกันเสมอ
 // 8) Backtest legacy: เริ่มว่างที่ "Backtest From" · เข้า/ออกที่ราคาปิดของแท่งสัญญาณ · ไม่มี slippage
 //    ไม้ที่ยังถือตอนจบช่วงนับปิดที่ราคาปิดแท่งสุดท้าย (เฉพาะในตาราง ไม่วาดป้าย เพราะบอทไม่ส่งสัญญาณนี้)
+// 9) TP/SL ไม่มีในบอทและเว็บ — Long ที่ไม่ตั้ง TP/SL (ค่าตั้งต้น) จึงยังตรงกับ backtest ของเว็บพอดี
 //
 // ═══ ข้อควรรู้ก่อนเทียบกับเว็บ ═══════════════════════════════════════════════════════════
 //    • ใช้ BINANCE:<คู่เหรียญ> (Spot) ไม่ใช่ perpetual (.P) และตั้ง timezone กราฟเป็นกรุงเทพ
@@ -57,6 +70,13 @@ calcMethod = input.string('Atr', 'Slope Calculation Method', options = ['Atr', '
 startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest (legacy)', tooltip = 'แท่งแรกของช่วงทดสอบบนเว็บ — เริ่มสถานะว่างที่นี่ ป้าย BUY/SELL มีเฉพาะในช่วงนี้')
 endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest (legacy)', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
 feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest (legacy)', tooltip = 'ค่าธรรมเนียม/ขา เท่ากับช่องบนเว็บ (ค่าตั้งต้น 0.10)')
+
+tpLongM    = input.float(0.0, 'Long · TP × ATR', minval = 0, maxval = 50, step = 0.5, group = 'Exit before signal (TP / SL)', inline = 'xl')
+slLongM    = input.float(0.0, 'SL × ATR', minval = 0, maxval = 50, step = 0.5, group = 'Exit before signal (TP / SL)', inline = 'xl', tooltip = 'Long: 0 = ไม่มี (ค่าตั้งต้น · ตรงกับ backtest ของเว็บ)\nทดสอบ 67 แบบบน 15 เหรียญ × 4 TF แล้ว ไม่มีแบบไหนทำให้ Long ดีขึ้นบน TF ที่ไม่ได้ใช้เลือก — ออกก่อนป้ายตัดไม้ที่วิ่งยาวทิ้ง')
+tpShortM   = input.float(8.0, 'Short · TP × ATR', minval = 0, maxval = 50, step = 0.5, group = 'Exit before signal (TP / SL)', inline = 'xs')
+slShortM   = input.float(3.0, 'SL × ATR', minval = 0, maxval = 50, step = 0.5, group = 'Exit before signal (TP / SL)', inline = 'xs', tooltip = 'Short: TP = ราคาเข้า − TP × ATR (limit) · SL = ราคาเข้า + SL × ATR (stop) · ATR(length) ณ แท่งเข้า\nค่าตั้งต้น TP 8 · SL 3 ดีขึ้นบน 15m/1h/4h/1d ที่ทดสอบ (15m ใกล้เคียงเดิม) · 0 = ไม่มี')
+slipInput  = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = 'Exit before signal (TP / SL)', tooltip = 'หักจากราคา fill ของ SL (คำสั่ง stop) · TP เป็น limit ไม่หัก · งานวิจัยใช้ 0.05')
+
 showTable  = input.bool(true, 'Show P/L table', group = 'Table')
 showDetail = input.bool(false, 'Show Drawdown', group = 'Table')
 tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
@@ -65,6 +85,7 @@ tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large
 upCss      = input.color(color.teal, 'Up Trendline Color', group = 'Style')
 dnCss      = input.color(color.red, 'Down Trendline Color', group = 'Style')
 showLines  = input.bool(true, 'Show trendlines', group = 'Style')
+showLevels = input.bool(true, 'Show TP / SL levels', group = 'Style')
 buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'sig')
 sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'sig')
 
@@ -168,8 +189,13 @@ type Book
     int        side               // 1 = Long, −1 = Short (บัญชีรวมไม่ใช้)
     bool       inPos = false
     float      entry = na
+    float      tp    = na         // ราคา TP (limit) ของไม้ที่ถืออยู่ · na = ไม่ตั้ง
+    float      sl    = na         // ราคา SL (stop) ของไม้ที่ถืออยู่ · na = ไม่ตั้ง
+    float      xPx   = na         // ราคาที่ปิดด้วย TP/SL ครั้งล่าสุด (ใช้ในแจ้งเตือน)
     int        n     = 0
     int        wins  = 0
+    int        nTp   = 0          // ไม้ที่ปิดด้วย TP / SL ก่อนป้าย (นับรวมอยู่ใน n แล้ว)
+    int        nSl   = 0
     float      sum   = 0.
     float      peak  = 0.
     float      dd    = 0.
@@ -197,26 +223,66 @@ var Book bookL = Book.new(side = 1, exits = array.new<int>())
 var Book bookS = Book.new(side = -1, exits = array.new<int>())
 var Book bookB = Book.new(side = 0, exits = array.new<int>())   // สองฝั่ง = ไม้ของ Long และ Short เรียงตามเวลา
 
-// ปิดไม้ของบัญชีหนึ่งที่ราคาปิดแท่งนี้ แล้วลงบัญชีสองฝั่งด้วย
-closeBook(Book b) =>
+// ปิดไม้ของบัญชีหนึ่งที่ราคา px แล้วลงบัญชีสองฝั่งด้วย
+closeBookAt(Book b, float px) =>
     if b.inPos
-        float pnl = b.pnlAt(close)
-        bool  win = b.priceWin(close)
+        float pnl = b.pnlAt(px)
+        bool  win = b.priceWin(px)
         b.record(pnl, win)
         bookB.record(pnl, win)
         b.inPos := false
 
-openBook(Book b) =>
+closeBook(Book b) =>
+    closeBookAt(b, close)
+
+// เปิดไม้ที่ราคาปิดแท่งสัญญาณ แล้ววาง TP / SL จาก ATR ณ แท่งนี้ (เริ่มทำงานแท่งถัดไป)
+openBook(Book b, float tpM, float slM) =>
     if not b.inPos
         b.inPos := true
         b.entry := close
+        b.tp    := tpM > 0 ? close + b.side * tpM * atrV : na
+        b.sl    := slM > 0 ? close - b.side * slM * atrV : na
+
+// คำสั่ง TP / SL ที่ค้างจากแท่งก่อน: ดูราคาเปิดที่กระโดดข้ามก่อน แล้วค่อยดูสูง/ต่ำของแท่ง
+// แท่งเดียวแตะทั้งคู่นับ SL เพราะไม่รู้ลำดับราคาในแท่ง · คืน 1 = ปิดด้วย TP · −1 = ปิดด้วย SL · 0 = ไม่โดน
+exitOrders(Book b) =>
+    int hit = 0
+    if b.inPos
+        float slip    = slipInput / 100
+        float adverse = b.side == 1 ? low : high
+        float favor   = b.side == 1 ? high : low
+        float px      = na
+        if not na(b.sl) and b.side * (open - b.sl) <= 0
+            hit := -1
+            px  := open * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (open - b.tp) >= 0
+            hit := 1
+            px  := open
+        else if not na(b.sl) and b.side * (adverse - b.sl) <= 0
+            hit := -1
+            px  := b.sl * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (favor - b.tp) >= 0
+            hit := 1
+            px  := b.tp
+        if hit != 0
+            closeBookAt(b, px)
+            b.xPx := px
+            if hit == 1
+                b.nTp := b.nTp + 1
+            else
+                b.nSl := b.nSl + 1
+    hit
+
+// TP / SL ก่อนป้าย (ตัดสินเมื่อปิดแท่ง) แล้วค่อยป้ายที่ราคาปิด · แท่งที่เพิ่งเข้าไม่ตรวจ เพราะคำสั่งเริ่มทำงานแท่งถัดไป
+int xL = barstate.isconfirmed ? exitOrders(bookL) : 0
+int xS = barstate.isconfirmed ? exitOrders(bookS) : 0
 
 if sig == 1
-    closeBook(bookS)       // BUY: ปิด Short
-    openBook(bookL)        //      เปิด Long
+    closeBook(bookS)                        // BUY: ปิด Short (ถ้ายังไม่ปิดด้วย TP/SL)
+    openBook(bookL, tpLongM, slLongM)       //      เปิด Long
 else if sig == -1
-    closeBook(bookL)       // SELL: ปิด Long
-    openBook(bookS)        //       เปิด Short
+    closeBook(bookL)                        // SELL: ปิด Long
+    openBook(bookS, tpShortM, slShortM)     //       เปิด Short
 
 // จบช่วงที่ตั้ง "Backtest To": ปิดไม้ค้างที่ราคาปิด (ไม่วาดป้าย) — ไม้ที่เพิ่งเปิดแท่งนี้ก็ปิดทันทีเหมือนเว็บ
 if lastWindowBar and barstate.isconfirmed
@@ -260,12 +326,25 @@ plot(showLines and hasPl ? lower : na, 'Lower (up-trendline)', color = isPl ? na
 plotshape(sig == 1, 'BUY', shape.labelup, location.belowbar, buyCss, text = 'BUY', textcolor = color.white, size = size.small)
 plotshape(sig == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text = 'SELL', textcolor = color.white, size = size.small)
 
+// ระดับ TP / SL ของไม้ที่ถืออยู่ และจุดที่ปิดก่อนป้าย (Long ปิดด้านบนแท่ง · Short ปิดด้านล่างแท่ง)
+plot(showLevels and bookL.inPos ? bookL.tp : na, 'Long TP level', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookL.inPos ? bookL.sl : na, 'Long SL level', color = color.new(sellCss, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.tp : na, 'Short TP level', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.sl : na, 'Short SL level', color = color.new(sellCss, 40), style = plot.style_linebr)
+plotshape(xL == 1, 'Long TP', shape.labeldown, location.abovebar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xL == -1, 'Long SL', shape.labeldown, location.abovebar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+plotshape(xS == 1, 'Short TP', shape.labelup, location.belowbar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xS == -1, 'Short SL', shape.labelup, location.belowbar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+
 plot(sig, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
 
 //-----------------------------------------------------------------------------}
 //ตารางกำไร/ขาดทุน: แถว = ช่วงเวลา · คอลัมน์ = แบบการเทรด
 //-----------------------------------------------------------------------------{
 fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+exitTxt(float tpM, float slM) => (tpM > 0 ? 'TP ' + str.tostring(tpM) + ' × ATR' : '') + (tpM > 0 and slM > 0 ? ' · ' : '') + (slM > 0 ? 'SL ' + str.tostring(slM) + ' × ATR' : '')
+// ระดับ TP / SL ของไม้ที่ถืออยู่ สำหรับข้อความสถานะและแจ้งเตือน
+levelTxt(Book b) => (na(b.tp) ? '' : ' · TP ' + str.tostring(b.tp, format.mintick)) + (na(b.sl) ? '' : ' · SL ' + str.tostring(b.sl, format.mintick))
 pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
 
 if showTable and barstate.islast
@@ -274,17 +353,19 @@ if showTable and barstate.islast
     bg    = color.new(#131722, 10)
     muted = color.new(color.white, 45)
     band  = color.new(color.white, 92)
-    var table t = table.new(tPos, 4, 12, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
-    table.clear(t, 0, 0, 3, 11)
+    var table t = table.new(tPos, 4, 13, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 12)
+    hasExitL = tpLongM > 0 or slLongM > 0
+    hasExitS = tpShortM > 0 or slShortM > 0
 
     // หัวตาราง
     table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
     table.merge_cells(t, 0, 0, 2, 0)
     table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับเว็บ · ไม่รวม funding')
     table.cell(t, 0, 1, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
-    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด Long · SELL ปิด (Spot) — ตรงกับ backtest ของเว็บ')
-    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY ปิด (ต้องใช้ Futures · ไม่รวม funding)')
-    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
+    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด Long · SELL ปิด (Spot)' + (hasExitL ? '\nปิดก่อนป้ายด้วย ' + exitTxt(tpLongM, slLongM) + ' — ไม่ตรงกับ backtest ของเว็บ' : ' — ตรงกับ backtest ของเว็บ'))
+    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SELL เปิด Short · BUY ปิด (ต้องใช้ Futures · ไม่รวม funding)' + (hasExitS ? '\nปิดก่อนป้ายด้วย ' + exitTxt(tpShortM, slShortM) : ''))
+    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY ปิด Short แล้วเปิด Long · SELL ปิด Long แล้วเปิด Short · ปิดด้วย TP/SL แล้วรอป้ายถัดไป\nไม้ชุดเดียวกับ Long + Short จึงได้ผลรวมเท่ากัน')
 
     // ระยะเวลาที่คำนวณได้จริง: แท่งแรกของช่วงทดสอบ → แท่งล่าสุด (แท่งที่ยังไม่ปิดนับถึงเวลาปัจจุบัน)
     nowT    = math.min(time_close, timenow)
@@ -330,6 +411,15 @@ if showTable and barstate.islast
     table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
     row += 1
 
+    // ไม้ที่ปิดด้วย TP / SL ก่อนป้าย (นับรวมในแถวเทรดแล้ว — จำนวนเทรดไม่เพิ่ม)
+    if hasExitL or hasExitS
+        tipX = 'ไม้ที่ปิดด้วย TP / SL ก่อนถึงป้ายตรงข้าม นับรวมอยู่ในแถวเทรดแล้ว จำนวนเทรดจึงเท่าเดิม'
+        table.cell(t, 0, row, 'ปิดก่อนป้าย', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = tipX)
+        table.cell(t, 1, row, 'TP ' + str.tostring(bookL.nTp) + ' · SL ' + str.tostring(bookL.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, 'TP ' + str.tostring(bookS.nTp) + ' · SL ' + str.tostring(bookS.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, 'TP ' + str.tostring(bookL.nTp + bookS.nTp) + ' · SL ' + str.tostring(bookL.nSl + bookS.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        row += 1
+
     // Win rate จากราคา (ขายสูงกว่าซื้อ = ชนะ · ไม่หัก fee) — ไม้ที่ถืออยู่เทียบราคาล่าสุด · สองฝั่ง = ไม้ Long + Short รวมกัน
     openL = bookL.pnlAt(close)
     openS = bookS.pnlAt(close)
@@ -341,9 +431,9 @@ if showTable and barstate.islast
     table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
     row += 1
 
-    // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL, สองฝั่งถือตามป้ายล่าสุด
-    status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายแรก'
-    table.cell(t, 0, row, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · สองฝั่งถือฝั่งเดียวกับป้ายล่าสุดเสมอ')
+    // สถานะ: ป้ายสลับกันเสมอ จึงถือได้ทีละฝั่ง — Long ถือหลัง BUY, Short ถือหลัง SELL จนป้ายตรงข้ามหรือ TP/SL
+    status = bookL.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + levelTxt(bookL) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + levelTxt(bookS) + ' · ' + fmtPct(openS) : bookL.n + bookS.n > 0 ? '○ ว่าง · รอป้ายถัดไป' : '○ ว่าง · รอป้ายแรก'
+    table.cell(t, 0, row, status, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ถือหลัง BUY · Short ถือหลัง SELL · ปิดที่ป้ายตรงข้าม หรือก่อนหน้านั้นด้วย TP/SL แล้วว่างจนถึงป้ายถัดไป')
     table.merge_cells(t, 0, row, 3, row)
     row += 1
 
@@ -362,10 +452,17 @@ if showTable and barstate.islast
 //-----------------------------------------------------------------------------{
 alertcondition(sig == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Long เข้า / Short ปิด @ {{close}}')
 alertcondition(sig == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Long ปิด / Short เข้า @ {{close}}')
+alertcondition(xL == 1 or xS == 1, 'TP', 'TP {{ticker}} ({{interval}}) | ปิดทำกำไรก่อนป้าย')
+alertcondition(xL == -1 or xS == -1, 'SL', 'SL {{ticker}} ({{interval}}) | ปิดตัดขาดทุนก่อนป้าย')
 
+// ข้อความ BUY/SELL มีราคา TP/SL ของไม้ใหม่ ใช้วางคำสั่งที่ exchange ตอนเข้า · แจ้งเตือน TP/SL มาหลังปิดแท่งที่โดน
 if sig == 1
-    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Long เข้า / Short ปิด @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Long เข้า / Short ปิด @ ' + str.tostring(close, format.mintick) + levelTxt(bookL), alert.freq_once_per_bar_close)
 if sig == -1
-    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Long ปิด / Short เข้า @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Long ปิด / Short เข้า @ ' + str.tostring(close, format.mintick) + levelTxt(bookS), alert.freq_once_per_bar_close)
+if xL != 0
+    alert((xL == 1 ? '🎯 TP' : '🛑 SL') + ' Long ' + syminfo.ticker + ' (' + timeframe.period + ') | ปิด Long ก่อนป้าย @ ' + str.tostring(bookL.xPx, format.mintick), alert.freq_once_per_bar_close)
+if xS != 0
+    alert((xS == 1 ? '🎯 TP' : '🛑 SL') + ' Short ' + syminfo.ticker + ' (' + timeframe.period + ') | ปิด Short ก่อนป้าย @ ' + str.tostring(bookS.xPx, format.mintick), alert.freq_once_per_bar_close)
 
 //-----------------------------------------------------------------------------}
