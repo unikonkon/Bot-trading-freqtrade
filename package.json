@@ -26,6 +26,7 @@
     "web:tl:download": "tsx \"signal-bot/web ui/research-trendlines/download.ts\"",
     "web:tl:wf": "tsx \"signal-bot/web ui/research-trendlines/walk-forward.ts\"",
     "web:tl:exits": "tsx \"signal-bot/web ui/research-trendlines/exits-wf.ts\"",
+    "web:tl:enhance": "tsx \"signal-bot/web ui/research-trendlines/enhance-wf.ts\"",
     "history:api": "tsx scripts/klines-server.ts",
     "history:download": "tsx scripts/download-history.ts",
     "history:verify": "tsx scripts/verify-history.ts",

@@ -28,7 +28,9 @@ export interface Cli { snapshot: string; tfs: string[]; cost: Costs; force: bool
 export function parseCli(argv = process.argv.slice(2)): Cli {
   const flag = (name: string) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : undefined; };
   const snapshot = argv.find((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"))
-    ?? (existsSync(DATA_DIR) ? readdirSync(DATA_DIR) : []).filter((d) => existsSync(path.join(DATA_DIR, d, "manifest.json"))).sort().at(-1);
+    // ค่าตั้งต้น = snapshot หลักล่าสุด (ชุดตรวจ *-holdout / *-holdout2 ต้องระบุชื่อเอง)
+    ?? (existsSync(DATA_DIR) ? readdirSync(DATA_DIR) : [])
+      .filter((d) => !/-holdout\d*$/.test(d) && existsSync(path.join(DATA_DIR, d, "manifest.json"))).sort().at(-1);
   if (!snapshot) throw Error("ไม่พบ snapshot — รัน npm run web:tl:download ก่อน");
   const tfs = (flag("tf") ?? Object.keys(WF).join(",")).split(",");
   for (const tf of tfs) if (!WF[tf]) throw Error(`ไม่รองรับ timeframe ${tf}`);

@@ -3,6 +3,9 @@
  *
  *   npm run web:tl:download                 # snapshot ใหม่ชื่อ tl-YYYYMMDD (วันที่ UTC)
  *   npm run web:tl:download -- tl-20260928  # snapshot เดิม = โหลดต่อเฉพาะไฟล์ที่ยังไม่มี
+ *   npm run web:tl:download -- tl-20260928-holdout --symbols holdout --asof-from tl-20260928
+ *     ชุดเหรียญที่ไม่เคยใช้เลือกค่า (HOLDOUT_SYMBOLS) ตัดเวลาเดียวกับ snapshot หลัก
+ *   npm run web:tl:download -- tl-20260928-holdout2 --symbols holdout2 --asof-from tl-20260928
  *
  * snapshot ตรึงเวลา `asOf` ไว้ใน manifest.json ทุกไฟล์ในชุดจึงจบที่แท่งปิดแท่งเดียวกัน
  * และรัน walk-forward ซ้ำได้ผลเท่าเดิมโดยไม่เรียก Binance อีก
@@ -21,6 +24,19 @@ export const DATA_DIR = path.join(ROOT, "data-test", "trendlines");
 export const SYMBOLS = [
   "BTCUSDT", "ETHUSDT", "BNBUSDT", "XRPUSDT", "SOLUSDT", "ADAUSDT", "DOGEUSDT", "TRXUSDT",
   "LINKUSDT", "AVAXUSDT", "DOTUSDT", "LTCUSDT", "BCHUSDT", "XLMUSDT", "ATOMUSDT",
+];
+/**
+ * ชุดตรวจขั้นสุดท้าย: เหรียญที่ไม่อยู่ใน SYMBOLS และไม่เคยใช้เลือกค่า (เหรียญที่ลิสต์บน Spot ถึงวันที่โหลด)
+ * เหรียญที่ดึงไม่ได้ (เช่นถูกถอด) ข้ามไปพร้อมคำเตือน
+ */
+export const HOLDOUT_SYMBOLS = [
+  "ETCUSDT", "NEOUSDT", "VETUSDT", "ALGOUSDT", "NEARUSDT", "UNIUSDT", "FILUSDT", "AAVEUSDT",
+  "SANDUSDT", "MANAUSDT", "HBARUSDT", "THETAUSDT", "XTZUSDT", "INJUSDT", "ZECUSDT",
+];
+/** ชุดตรวจ 2: ใช้ยืนยันค่าที่ลงทะเบียนไว้ใน enhance-wf.ts (PRESET) ครั้งเดียว — ห้ามใช้เลือกค่า */
+export const HOLDOUT2_SYMBOLS = [
+  "IOTAUSDT", "ONTUSDT", "QTUMUSDT", "ZILUSDT", "BATUSDT", "ENJUSDT", "CHZUSDT", "COMPUSDT",
+  "SNXUSDT", "CRVUSDT", "KAVAUSDT", "RUNEUSDT", "EGLDUSDT", "ICXUSDT", "ZRXUSDT",
 ];
 /** จุดเริ่มข้อมูลต่อ timeframe (เหรียญที่ลิสต์ทีหลังเริ่มที่แท่งแรกของมันเอง) */
 export const RANGES: Record<string, { from: number; ms: number }> = {
@@ -56,31 +72,47 @@ async function page(symbol: string, interval: string, startTime: number, endTime
 }
 
 async function main() {
-  const snapshot = process.argv[2] ?? `tl-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+  const argv = process.argv.slice(2);
+  const flag = (name: string) => { const i = argv.indexOf(`--${name}`); return i >= 0 ? argv[i + 1] : undefined; };
+  const snapshot = argv.find((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"))
+    ?? `tl-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
+  const symbolsArg = flag("symbols");
+  const symbols = symbolsArg === "holdout" ? HOLDOUT_SYMBOLS : symbolsArg === "holdout2" ? HOLDOUT2_SYMBOLS : symbolsArg ? symbolsArg.split(",") : SYMBOLS;
+  const asOfFrom = flag("asof-from");
   const dir = path.join(DATA_DIR, snapshot);
   mkdirSync(dir, { recursive: true });
   const manifestPath = path.join(dir, "manifest.json");
   const manifest: Manifest = existsSync(manifestPath)
     ? JSON.parse(readFileSync(manifestPath, "utf8"))
-    : { snapshot, asOf: Date.now(), files: {} };
+    : {
+      snapshot, files: {},
+      // ใช้เวลาตัดของ snapshot อื่น เพื่อให้ทุกชุดจบที่แท่งเดียวกัน
+      asOf: asOfFrom ? (JSON.parse(readFileSync(path.join(DATA_DIR, asOfFrom, "manifest.json"), "utf8")) as Manifest).asOf : Date.now(),
+    };
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
   for (const [interval, { from, ms }] of Object.entries(RANGES)) {
     // แท่งสุดท้าย = แท่งที่ปิดครบก่อน asOf
     const to = Math.floor(manifest.asOf / ms) * ms - 1;
-    for (const symbol of SYMBOLS) {
+    for (const symbol of symbols) {
       const name = `${symbol}-${interval}.jsonl`;
       if (manifest.files[name]) continue;
       const bars: KlineData[] = [];
       let cursor = from;
-      while (cursor <= to) {
-        const rows = await page(symbol, interval, cursor, to);
-        if (!rows.length) break;
-        bars.push(...rows);
-        cursor = rows[rows.length - 1].openTime + ms;
-        await pause(300);
+      try {
+        while (cursor <= to) {
+          const rows = await page(symbol, interval, cursor, to);
+          if (!rows.length) break;
+          bars.push(...rows);
+          cursor = rows[rows.length - 1].openTime + ms;
+          await pause(300);
+        }
+      } catch (e) {
+        console.log(`  ⚠ ข้าม ${name}: ${String(e).slice(0, 200)}`);
+        continue;
       }
       const done = bars.filter((b) => b.closeTime <= to);
+      if (!done.length) { console.log(`  ⚠ ข้าม ${name}: ไม่มีข้อมูล`); continue; }
       for (let i = 1; i < done.length; i++)
         if (done[i].openTime - done[i - 1].openTime !== ms)
           console.log(`  ⚠ ${name}: ช่องว่างที่ ${new Date(done[i - 1].openTime).toISOString()} → ${new Date(done[i].openTime).toISOString()}`);
