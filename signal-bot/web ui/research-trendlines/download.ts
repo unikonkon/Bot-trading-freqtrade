@@ -6,6 +6,7 @@
  *   npm run web:tl:download -- tl-20260928-holdout --symbols holdout --asof-from tl-20260928
  *     ชุดเหรียญที่ไม่เคยใช้เลือกค่า (HOLDOUT_SYMBOLS) ตัดเวลาเดียวกับ snapshot หลัก
  *   npm run web:tl:download -- tl-20260928-holdout2 --symbols holdout2 --asof-from tl-20260928
+ *   npm run web:tl:download -- tl-20260928-holdout4 --symbols holdout4 --asof-from tl-20260928 --tf 1d
  *
  * snapshot ตรึงเวลา `asOf` ไว้ใน manifest.json ทุกไฟล์ในชุดจึงจบที่แท่งปิดแท่งเดียวกัน
  * และรัน walk-forward ซ้ำได้ผลเท่าเดิมโดยไม่เรียก Binance อีก
@@ -37,6 +38,11 @@ export const HOLDOUT_SYMBOLS = [
 export const HOLDOUT2_SYMBOLS = [
   "IOTAUSDT", "ONTUSDT", "QTUMUSDT", "ZILUSDT", "BATUSDT", "ENJUSDT", "CHZUSDT", "COMPUSDT",
   "SNXUSDT", "CRVUSDT", "KAVAUSDT", "RUNEUSDT", "EGLDUSDT", "ICXUSDT", "ZRXUSDT",
+];
+/** ชุดตรวจ 4: ยืนยันค่าที่ลงทะเบียนไว้ใน rsi-wf.ts (PRESET) ครั้งเดียว — ห้ามใช้เลือกค่า · ไม่ซ้ำกับชุดก่อน ๆ */
+export const HOLDOUT4_SYMBOLS = [
+  "ARBUSDT", "OPUSDT", "APTUSDT", "SUIUSDT", "LDOUSDT", "IMXUSDT", "GALAUSDT", "APEUSDT", "FETUSDT",
+  "STXUSDT", "KSMUSDT", "ARUSDT", "FLOWUSDT", "MINAUSDT", "ROSEUSDT", "CFXUSDT", "TRBUSDT", "GMXUSDT",
 ];
 /** จุดเริ่มข้อมูลต่อ timeframe (เหรียญที่ลิสต์ทีหลังเริ่มที่แท่งแรกของมันเอง) */
 export const RANGES: Record<string, { from: number; ms: number }> = {
@@ -77,7 +83,9 @@ async function main() {
   const snapshot = argv.find((a, i) => !a.startsWith("--") && !argv[i - 1]?.startsWith("--"))
     ?? `tl-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}`;
   const symbolsArg = flag("symbols");
-  const symbols = symbolsArg === "holdout" ? HOLDOUT_SYMBOLS : symbolsArg === "holdout2" ? HOLDOUT2_SYMBOLS : symbolsArg ? symbolsArg.split(",") : SYMBOLS;
+  const named: Record<string, string[]> = { holdout: HOLDOUT_SYMBOLS, holdout2: HOLDOUT2_SYMBOLS, holdout4: HOLDOUT4_SYMBOLS };
+  const symbols = symbolsArg ? named[symbolsArg] ?? symbolsArg.split(",") : SYMBOLS;
+  const tfArg = flag("tf")?.split(",");
   const asOfFrom = flag("asof-from");
   const dir = path.join(DATA_DIR, snapshot);
   mkdirSync(dir, { recursive: true });
@@ -92,6 +100,7 @@ async function main() {
   writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
   for (const [interval, { from, ms }] of Object.entries(RANGES)) {
+    if (tfArg && !tfArg.includes(interval)) continue;
     // แท่งสุดท้าย = แท่งที่ปิดครบก่อน asOf
     const to = Math.floor(manifest.asOf / ms) * ms - 1;
     for (const symbol of symbols) {
