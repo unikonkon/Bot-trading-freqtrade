@@ -2,20 +2,29 @@
 // สูตรที่นิยมบน 1m (จากตาราง "สูตรที่ใช้กันมากในแต่ละ TF") + TP 2R / SL 1R + ตารางสรุป ▲ Long · ▼ Short · ⇅ รวม
 //
 // ═══ 1m · สูตรในไฟล์นี้ ═══════════════════════════════════════════════════════════════════════
-//    ① EMA 9/21 + VWAP scalp (ค่าตั้งต้น)
-//       Long : EMA9 > EMA21 · ราคาปิดเหนือ VWAP ของวัน · low ย่อแตะ EMA21 · ปิดกลับเหนือ EMA9 เป็นแท่งเขียว
-//       SL   : low ต่ำสุด 5 แท่ง · TP 2R
-//    ② Liquidity sweep ของ high/low 1 ชม.ล่าสุด
+//    ① Liquidity sweep ของ high/low 1 ชม.ล่าสุด (ค่าตั้งต้น)
 //       Long : low แทงหลุด low ต่ำสุดของ 60 นาทีก่อนหน้า (กวาด stop) แล้วปิดกลับเหนือระดับนั้นเป็นแท่งเขียว
-//       SL   : low ของแท่งที่กวาด · TP 2R
+//    ② EMA 9/21 + VWAP scalp
+//       Long : EMA9 > EMA21 · ราคาปิดเหนือ VWAP ของวัน · low ย่อแตะ EMA21 · ปิดกลับเหนือ EMA9 เป็นแท่งเขียว
 //    Short = กลับด้าน · ตัวกรอง: 15m ราคาเทียบ EMA50 · order flow / footprint ทำใน Pine ไม่ได้ จึงไม่ได้ใส่
+//    SL (ค่าตั้งต้น) = ราคาเข้า ∓ 12 × ATR(14) · TP = 2 × ระยะเดียวกัน (RR 2:1) · เลือก SL โครงสร้างของสูตรได้
+//    ออกไม้ 3 แบบ: TP/SL คงที่ (ค่าตั้งต้น) · TP/SL + ป้ายตรงข้ามกลับทิศ · ตามป้ายอย่างเดียว (แบบ buysell-rsi.pine)
 //
-// ═══ 1m · วิเคราะห์ ════════════════════════════════════════════════════════════════════════════
-//    ระดับหลักฐาน: ❌ อ่อนมาก · คนที่กำไรใน 1m ส่วนใหญ่ใช้ order flow หรือได้ค่าธรรมเนียม maker/rebate ไม่ใช่ indicator
-//    SL ของ BTC บน 1m ~0.1–0.2% แต่ต้นทุนไป-กลับ 0.25% → c ≈ 1.2–2.5 R → ต้องชนะ 75–100%+ = เป็นไปไม่ได้
-//      แม้ใช้ Futures maker 0.02%/ขา (ต้นทุน ~0.09%) c ≈ 0.45–0.9 R → ต้องชนะ 48–63% ซึ่ง scalp ด้วย indicator ทำไม่ถึง
-//    ไฟล์นี้จึงปิดตัวกรองต้นทุน (ต้นทุนสูงสุด = 0) เพื่อให้เห็นผลจริงหลังค่าธรรมเนียม ถ้าเปิด 0.25 R จะแทบไม่มีไม้เลย
-//    ใช้ 1m เพื่อหาจุดเข้าที่ดีขึ้นของสัญญาณจาก TF ใหญ่ ไม่ควรใช้เป็นระบบเทรดหลัก
+// ═══ 1m · ทำไมรุ่นก่อนไม่มีเทรด ═════════════════════════════════════════════════════════════════
+//    SL โครงสร้างของ 1m แคบ 0.1–0.2% ของราคา แต่ fee ไป-กลับ + slippage = 0.25% → ต้นทุน 1.2–2.5 R ต่อไม้
+//    ตัวกรองต้นทุน 0.25 R จึงข้ามแทบทุกสัญญาณ (ตารางขึ้น "ข้าม 379") · รุ่นนี้ขยาย SL เป็น 12 ATR (≈ 0.7–1%)
+//    ต้นทุนเหลือ ≈ 0.25–0.35 R และปิดตัวกรองต้นทุนของ 1m ไว้ จึงมีเทรดราว 1 ไม้ต่อวันต่อเหรียญ
+//
+// ═══ 1m · ผลทดสอบ (2026-09-30 · replica TypeScript ของไฟล์นี้ · ไม่ใช่ตัวเลขจาก TradingView) ═════════════════
+//    ข้อมูล Binance Spot 1m · 1 มี.ค. – 28 ก.ย. 2026 · 15 เหรียญหลัก (เลือกค่าบน 60% แรก ตรวจบน 40% หลัง) + 15 เหรียญ holdout
+//    ก่อนต้นทุน สัญญาณทุกแบบได้ใกล้ 0 (ชนะ 31–37% ที่ RR 2) → ไม่มี edge · ขาดทุนมาจากค่าธรรมเนียมทั้งหมด
+//    ลองแล้ว 150 แบบแบบ rsi.pine (5 แหล่งป้าย รวมเส้นเทรนด์ LuxAlgo และ RSI ตัด 50 × 7 วิธีออก × 3 ตัวกรอง): ติดลบในช่วงเลือกทุกแบบ
+//      แม้ fee 0.02 · แบบ rsi.pine ตรง ๆ (เส้นเทรนด์ + TP 8 / SL 3 ATR) = −492% ต่อเหรียญในช่วงเลือก (32,022 ไม้)
+//    ยิ่ง SL กว้างยิ่งเทรดน้อยและขาดทุนน้อยลงทุกช่วงทุก fee (2 → 4 → 6 → 8 → 12 ATR) · Sweep ขาดทุนน้อยกว่า EMA+VWAP ทุกแถว
+//    ค่าตั้งต้น (Sweep · SL 12 ATR · RR 2 · 15m · เสี่ยง 1%) ทุนกลางต่อเหรียญ เลือก / ตรวจ / holdout:
+//      fee 0.10: −25% / −14% / −31% (−0.17 ถึง −0.28 R/ไม้) · fee 0.05: −16% / −5% / −13% · fee 0.02: −9% / −1% / +1%
+//      รุ่นก่อน (SL โครงสร้าง ไม่กรองต้นทุน) ที่ fee 0.10: −67% / −49% / −81% (−1.8 ถึง −3.0 R/ไม้)
+//    สรุป: ขาดทุนน้อยลงมาก แต่ยังไม่มีค่าไหนที่กำไรได้จริงบน 1m · ใกล้เสมอตัวเฉพาะเมื่อ fee ≈ 0.02 (Futures limit order)
 //
 // ═══ RR 2:1 และการคุมความเสี่ยง (เหมือนกันทุกไฟล์ใน lib/tf-playbook/) ═══════════════════════════
 //    SL  = จุดตามสูตร (ด้านล่าง) · ใกล้กว่า 0.5 × ATR ถูกขยายออก · ไกลกว่า "SL ไกลสุด" = ไม่เข้าไม้
@@ -45,7 +54,15 @@ indicator('TF Playbook 1m [RR 2:1] — EMA 9/21 + VWAP scalp · Liquidity sweep'
 //-----------------------------------------------------------------------------{
 A1 = 'EMA 9/21 + VWAP scalp'
 B1 = 'Liquidity sweep high/low 1 ชม.'
-setupIn = input.string(A1, 'สูตร', options = [A1, B1], group = 'สูตร 1m', tooltip = 'กฎเต็มอยู่หัวไฟล์')
+setupIn = input.string(B1, 'สูตร', options = [A1, B1], group = 'สูตร 1m', tooltip = 'กฎเต็มอยู่หัวไฟล์\nค่าตั้งต้น = Sweep (ขาดทุนน้อยกว่า EMA+VWAP ทุกช่วงทดสอบ)')
+SL_ATR = 'ATR × k (กว้าง)'
+SL_STR = 'โครงสร้างของสูตร (แคบ)'
+EX_RR  = 'TP / SL คงที่ (RR)'
+EX_REV = 'TP / SL + ป้ายตรงข้ามกลับทิศ'
+EX_SIG = 'ตามป้ายอย่างเดียว (แบบ rsi.pine)'
+slModeIn = input.string(SL_ATR, 'SL', options = [SL_ATR, SL_STR], group = 'สูตร 1m', inline = 'sl', tooltip = 'ATR × k: SL = ราคาเข้า ∓ k × ATR(14) · TP = RR × ระยะเดียวกัน\nโครงสร้าง: SL ที่ low/high ของสูตร (0.1–0.2% ของราคา) → ค่าธรรมเนียมเกิน 1R ต่อไม้')
+slAtrK   = input.float(12.0, 'k', minval = 1, maxval = 50, step = 1, group = 'สูตร 1m', inline = 'sl', tooltip = 'ผลทดสอบ: ยิ่งกว้างยิ่งเทรดน้อยและขาดทุนน้อยลง (8 → 12) · ไม่ได้ทำให้สัญญาณแม่นขึ้น')
+exitIn   = input.string(EX_RR, 'ออกไม้', options = [EX_RR, EX_REV, EX_SIG], group = 'สูตร 1m', tooltip = 'TP / SL คงที่: ถือจนโดน TP หรือ SL (RR 2:1)\nTP / SL + กลับทิศ: ป้ายตรงข้ามปิดไม้แล้วเปิดฝั่งใหม่ด้วย\nตามป้ายอย่างเดียว: ไม่มี TP/SL · ถือจนป้ายตรงข้าม (เหมือน buysell-rsi.pine แบบไม่มีกฎออก) · 1R = ระยะ SL ที่ตั้งไว้ ใช้คิดขนาดไม้เท่านั้น')
 
 F_HTF  = 'TF ใหญ่ (ราคาเทียบ EMA)'
 F_E200 = 'EMA200 ของกราฟ'
@@ -59,8 +76,8 @@ rrIn      = input.float(2.0, 'RR · TP = RR × ระยะ SL', minval = 0.5, m
 riskIn    = input.float(1.0, 'เสี่ยงต่อไม้ (% ของทุน)', minval = 0.1, maxval = 10, step = 0.1, group = 'RR & คุมความเสี่ยง')
 maxLevIn  = input.float(2.0, 'ขนาดไม้สูงสุด (× ทุน)', minval = 0.1, maxval = 20, step = 0.5, group = 'RR & คุมความเสี่ยง', tooltip = 'Spot ใส่ 1 · ชนเพดาน = ไม้นั้นเสี่ยงน้อยกว่าที่ตั้ง')
 minSlAtr  = input.float(0.5, 'SL ใกล้สุด (× ATR)', minval = 0.1, maxval = 10, step = 0.1, group = 'RR & คุมความเสี่ยง')
-maxSlAtr  = input.float(4.0, 'SL ไกลสุด (× ATR) · เกิน = ข้าม', minval = 0.5, maxval = 20, step = 0.5, group = 'RR & คุมความเสี่ยง')
-maxCostR  = input.float(0, 'ต้นทุนสูงสุด (× R) · เกิน = ข้าม · 0 = ไม่กรอง', minval = 0, maxval = 5, step = 0.05, group = 'RR & คุมความเสี่ยง', tooltip = 'ต้นทุน = fee ไป-กลับ + slippage คิดเป็นกี่ R · 0.25 R → ต้องชนะ ≥ 41.7% · 0.5 R → ≥ 50%')
+maxSlAtr  = input.float(4.0, 'SL ไกลสุด (× ATR) · เกิน = ข้าม (เฉพาะ SL โครงสร้าง)', minval = 0.5, maxval = 20, step = 0.5, group = 'RR & คุมความเสี่ยง')
+maxCostR  = input.float(0, 'ต้นทุนสูงสุด (× R) · เกิน = ข้าม · 0 = ไม่กรอง', minval = 0, maxval = 5, step = 0.05, group = 'RR & คุมความเสี่ยง', tooltip = 'ต้นทุน = fee ไป-กลับ + slippage คิดเป็นกี่ R · 0.25 R → ต้องชนะ ≥ 41.7% · 0.5 R → ≥ 50%\n1m ปิดไว้ (0): SL 12 ATR ของ BTC ≈ 0.7–1% → ต้นทุน ≈ 0.25–0.35 R ถ้าเปิด 0.25 ไม้ส่วนใหญ่จะถูกข้ามจนไม่มีเทรด')
 dayStopR  = input.float(3.0, 'หยุดเข้าไม้ในวัน (UTC) เมื่อขาดทุนถึง (R) · 0 = ไม่ใช้', minval = 0, maxval = 50, step = 0.5, group = 'RR & คุมความเสี่ยง')
 sameBarIn = input.bool(true, 'แท่งแตะทั้ง TP และ SL: ดู TF ย่อย', group = 'RR & คุมความเสี่ยง', tooltip = 'ปิด = นับเป็น SL ทุกครั้ง (ระวังสุด)')
 
@@ -125,11 +142,12 @@ bS = high > prevHi and close < prevHi and close < open
 
 rawL      = setupId == 1 ? aL : bL
 rawS      = setupId == 1 ? aS : bS
-slStructL = setupId == 1 ? swLo : low
-slStructS = setupId == 1 ? swHi : high
+useAtrSl  = slModeIn == SL_ATR
+slStructL = useAtrSl ? close - slAtrK * atrV : setupId == 1 ? swLo : low
+slStructS = useAtrSl ? close + slAtrK * atrV : setupId == 1 ? swHi : high
 setupName = setupId == 1 ? A1 : B1
 setupShort = setupId == 1 ? 'EMA+VWAP' : 'Sweep 1h'
-entryTxt  = setupId == 1 ? 'EMA9 > EMA21 · เหนือ VWAP · ย่อแตะ EMA21 แล้วปิดเหนือ EMA9 · SL low 5 แท่ง' : 'กวาด low 60 นาทีแล้วปิดกลับเข้ามา · SL low แท่งกวาด'
+entryTxt  = (setupId == 1 ? 'EMA9 > EMA21 · เหนือ VWAP · ย่อแตะ EMA21 แล้วปิดเหนือ EMA9' : 'กวาด low 60 นาทีแล้วปิดกลับเข้ามา') + ' · SL ' + (useAtrSl ? str.tostring(slAtrK) + ' × ATR' : setupId == 1 ? 'low 5 แท่ง' : 'low แท่งกวาด') + ' · ' + exitIn
 
 plot(showSetup and setupId == 1 ? e9 : na, 'EMA fast', color.new(color.orange, 20))
 plot(showSetup and setupId == 1 ? e21 : na, 'EMA slow', color.new(color.blue, 20))
@@ -147,6 +165,8 @@ if inWindow and na(windowStartT)
 
 sigL = barstate.isconfirmed and inWindow and not na(atrV) and rawL and okL
 sigS = barstate.isconfirmed and inWindow and not na(atrV) and rawS and okS and not sigL
+revL = barstate.isconfirmed and inWindow and rawL
+revS = barstate.isconfirmed and inWindow and rawS and not rawL
 
 //-----------------------------------------------------------------------------}
 //Engine — ถือทีละไม้ · TP/SL ทำงานแท่งถัดไป · ผล R หลังต้นทุน · ทุนทบต้นตามขนาดไม้
@@ -159,6 +179,7 @@ type Stats
     int   wins    = 0
     int   nTp     = 0
     int   nSl     = 0
+    int   nSig    = 0
     float sumR    = 0.
     float grossW  = 0.
     float grossL  = 0.
@@ -196,12 +217,13 @@ var Stats stB = Stats.new()
 var Pos   pos = Pos.new()
 var Guard g   = Guard.new()
 
-// kind: 1 TP · −1 SL · 2 จบช่วง backtest
+// kind: 1 TP · −1 SL · 2 จบช่วง backtest · 3 ป้ายตรงข้าม
 method record(Stats s, float r, float pnlFrac, float costR, int kind) =>
     s.n       := s.n + 1
     s.wins    := s.wins + (r > 0 ? 1 : 0)
     s.nTp     := s.nTp + (kind == 1 ? 1 : 0)
     s.nSl     := s.nSl + (kind == -1 ? 1 : 0)
+    s.nSig    := s.nSig + (kind == 3 ? 1 : 0)
     s.sumR    := s.sumR + r
     s.grossW  := s.grossW + math.max(r, 0)
     s.grossL  := s.grossL + math.max(-r, 0)
@@ -253,7 +275,7 @@ resolveLtf(int side, float sl, float tp) =>
 checkExit() =>
     int   hit = 0
     float px  = na
-    if pos.side != 0 and bar_index > pos.bar0
+    if pos.side != 0 and bar_index > pos.bar0 and not na(pos.sl)
         int   s       = pos.side
         float adverse = s == 1 ? low : high
         float favor   = s == 1 ? high : low
@@ -294,7 +316,7 @@ openPos(int side, float slStruct) =>
     if dayStopR > 0 and g.dayR <= -dayStopR
         code    := 3
         g.skDay := g.skDay + 1
-    else if dist > maxSlAtr * atrV
+    else if not useAtrSl and dist > maxSlAtr * atrV
         code     := 1
         g.skWide := g.skWide + 1
     else if maxCostR > 0 and cR > maxCostR
@@ -303,13 +325,13 @@ openPos(int side, float slStruct) =>
     else
         pos.side  := side
         pos.entry := close
-        pos.sl    := close - side * dist
-        pos.tp    := close + side * rrIn * dist
+        pos.sl    := exitIn == EX_SIG ? na : close - side * dist
+        pos.tp    := exitIn == EX_SIG ? na : close + side * rrIn * dist
         pos.risk  := risk
         pos.size  := math.min(riskIn / 100 / risk, maxLevIn)
         pos.costR := cR
         pos.bar0  := bar_index
-        if showZones
+        if showZones and not na(pos.sl)
             pos.zTp := box.new(bar_index, math.max(close, pos.tp), bar_index + 1, math.min(close, pos.tp), border_color = color.new(buyCss, 60), bgcolor = color.new(buyCss, 85))
             pos.zSl := box.new(bar_index, math.max(close, pos.sl), bar_index + 1, math.min(close, pos.sl), border_color = color.new(sellCss, 60), bgcolor = color.new(sellCss, 85))
         else
@@ -327,6 +349,10 @@ int xHit = barstate.isconfirmed ? checkExit() : 0
 
 int opened  = 0
 int skipped = 0
+int xSig    = 0
+if exitIn != EX_RR and pos.side != 0 and ((pos.side == 1 and revS) or (pos.side == -1 and revL))
+    xSig := pos.side
+    closeAt(close, 3)
 if pos.side == 0 and (sigL or sigS)
     int side = sigL ? 1 : -1
     int code = openPos(side, side == 1 ? slStructL : slStructS)
@@ -386,6 +412,7 @@ plotshape(showSkip and skipped == 1, 'Long skipped', shape.xcross, location.belo
 plotshape(showSkip and skipped == -1, 'Short skipped', shape.xcross, location.abovebar, color.new(color.gray, 30), size = size.tiny)
 plotshape(xHit == 1 ? g.xPx : na, 'TP hit', shape.circle, location.absolute, buyCss, size = size.tiny)
 plotshape(xHit == -1 ? g.xPx : na, 'SL hit', shape.circle, location.absolute, sellCss, size = size.tiny)
+plotshape(xSig != 0, 'Signal exit', shape.diamond, location.abovebar, color.new(color.orange, 20), size = size.tiny)
 plot(trendDir, 'Trend filter (1 / -1)', display = display.data_window)
 
 //-----------------------------------------------------------------------------}
@@ -448,7 +475,7 @@ if showTable and barstate.islast
     // จำนวนไม้
     nL = stL.n + (pos.side == 1 ? 1 : 0)
     nS = stS.n + (pos.side == -1 ? 1 : 0)
-    row3(t, 3, 'เทรด', str.tostring(nL), str.tostring(nS), str.tostring(nL + nS), muted, muted, muted, 'ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่\nTP / SL: Long ' + str.tostring(stL.nTp) + ' / ' + str.tostring(stL.nSl) + ' · Short ' + str.tostring(stS.nTp) + ' / ' + str.tostring(stS.nSl))
+    row3(t, 3, 'เทรด', str.tostring(nL), str.tostring(nS), str.tostring(nL + nS), muted, muted, muted, 'ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่\nTP / SL / ตามป้าย: Long ' + str.tostring(stL.nTp) + ' / ' + str.tostring(stL.nSl) + ' / ' + str.tostring(stL.nSig) + ' · Short ' + str.tostring(stS.nTp) + ' / ' + str.tostring(stS.nSl) + ' / ' + str.tostring(stS.nSig))
 
     // ชนะเทียบเส้นคุ้มทุน
     row3(t, 4, 'ชนะ', fmtNum(stL.wr(), '0', '%'), fmtNum(stS.wr(), '0', '%'), fmtNum(stB.wr(), '0', '%'), wrColor(stL), wrColor(stS), wrColor(stB), 'ไม้ที่ได้ R > 0 หลังหักต้นทุน · เขียว = เกินเส้นคุ้มทุน · แดง = ต่ำกว่า')
@@ -478,7 +505,7 @@ if showTable and barstate.islast
     // สถานะตอนนี้ + ไม้ที่ข้าม
     string status = pos.side == 1 ? '▲ ถือ Long' : pos.side == -1 ? '▼ ถือ Short' : '○ ว่าง · รอสัญญาณ'
     if pos.side != 0
-        status += ' · SL ' + str.tostring(pos.sl, format.mintick) + ' · TP ' + str.tostring(pos.tp, format.mintick) + ' · ' + fmtR(pos.openR(close))
+        status += (na(pos.sl) ? ' · ถือจนป้ายตรงข้าม' : ' · SL ' + str.tostring(pos.sl, format.mintick) + ' · TP ' + str.tostring(pos.tp, format.mintick)) + ' · ' + fmtR(pos.openR(close))
     if dayStopR > 0 and g.dayR <= -dayStopR
         status += ' · ⛔ หยุดวันนี้'
     skipTip = 'สัญญาณที่ไม่ได้เข้า (x สีเทา): SL ไกลเกิน ' + str.tostring(g.skWide) + ' · ต้นทุนเกิน ' + str.tostring(g.skFee) + ' · หยุดรายวัน ' + str.tostring(g.skDay) + '\nแท่งแตะทั้ง TP และ SL ' + str.tostring(g.amb) + ' ครั้ง (ตัดสินไม่ได้ → นับ SL ' + str.tostring(g.ambSl) + ')\nเข้าเมื่อ: ' + entryTxt
@@ -492,10 +519,13 @@ alertcondition(opened == 1, 'Long entry', 'LONG {{ticker}} ({{interval}}) @ {{cl
 alertcondition(opened == -1, 'Short entry', 'SHORT {{ticker}} ({{interval}}) @ {{close}}')
 alertcondition(xHit == 1, 'TP', 'TP {{ticker}} ({{interval}})')
 alertcondition(xHit == -1, 'SL', 'SL {{ticker}} ({{interval}})')
+alertcondition(xSig != 0, 'Signal exit', 'ปิดตามป้ายตรงข้าม {{ticker}} ({{interval}}) @ {{close}}')
 
 // ข้อความเข้าไม้บอก SL / TP / ขนาดไม้ ใช้วางคำสั่งที่ exchange ได้ทันที
 if opened != 0
-    alert((opened == 1 ? '🟢 LONG ' : '🔴 SHORT ') + syminfo.ticker + ' (' + timeframe.period + ') ' + setupShort + ' @ ' + str.tostring(pos.entry, format.mintick) + ' | SL ' + str.tostring(pos.sl, format.mintick) + ' · TP ' + str.tostring(pos.tp, format.mintick) + ' · ขนาด ' + str.tostring(pos.size, '0.00') + '× ทุน (เสี่ยง ' + str.tostring(riskIn) + '%)', alert.freq_once_per_bar_close)
+    alert((opened == 1 ? '🟢 LONG ' : '🔴 SHORT ') + syminfo.ticker + ' (' + timeframe.period + ') ' + setupShort + ' @ ' + str.tostring(pos.entry, format.mintick) + (na(pos.sl) ? ' | ถือจนป้ายตรงข้าม' : ' | SL ' + str.tostring(pos.sl, format.mintick) + ' · TP ' + str.tostring(pos.tp, format.mintick)) + ' · ขนาด ' + str.tostring(pos.size, '0.00') + '× ทุน (เสี่ยง ' + str.tostring(riskIn) + '%)', alert.freq_once_per_bar_close)
+if xSig != 0
+    alert('🔁 ปิด' + (xSig == 1 ? ' Long ' : ' Short ') + 'ตามป้ายตรงข้าม ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
 if xHit != 0
     alert((xHit == 1 ? '🎯 TP ' : '🛑 SL ') + (g.xSide == 1 ? 'Long ' : 'Short ') + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(g.xPx, format.mintick), alert.freq_once_per_bar_close)
 
