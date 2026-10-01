@@ -1,0 +1,865 @@
+// This work is licensed under a Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+// © LuxAlgo — ต้นฉบับ "Trendlines with Breaks [LuxAlgo]"
+// ฉบับ Elliott Wave (กรอง + เข้าแทน): ต่อยอดจาก "buysell-rsi.pine" + Elliott Wave S1 (จบคลื่น 2 → คลื่น 3) จาก lib/elliott-wave/
+//
+// ═══ ไฟล์นี้: กรอง + เข้าแทน ═══════════════════════════════════════════════════════════════════
+//    ป้าย TL ที่สวนทิศคลื่น S1 ไม่เปิดไม้ (กากบาทเทา) · ช่วงว่างเข้าตามสัญญาณ EW (ป้ายม่วง "EW")
+//    จำนวนเทรด ≥ ฐาน − 10 ทุกกราฟ (งบในตั้งค่า) · ทดสอบ: ต่ำสุดที่เจอ = ฐาน − 10 (ทิศคลื่นค้าง) / ฐาน + 0 (ทิศคลื่นสด ค่าตั้งต้น)
+//
+// ═══ ผลทดสอบเทียบฐาน (ค่าตั้งต้น: ทิศคลื่นสด · ZigZag ATR 3 · สัญญาณ EW Pivot) ═══════════════════════════
+//    ตัวเลข = median ต่อเหรียญของ (ผลรวม % ไฟล์นี้ − ผลรวม % ฐาน) · หัก fee 0.10%/ขา · แหล่งป้ายเส้นเทรนด์ · Exit Auto
+//    ชุดหลัก / ตรวจ1 / ตรวจ2 / ตรวจ3 / ตรวจ5 (data-test/trendlines · 15–18 เหรียญ/ชุด · 2019→2026 · สำเนา JS ของไฟล์นี้)
+//      15m −7.8 · 30m −17.3 (ชุดหลักเท่านั้น)
+//      1h  −34 / −36 / −31 / −50 / −46     ← แย่กว่าฐานทุกชุด
+//      4h  −44 / −82 / −38 / −35 / −20     ← แย่กว่าฐานทุกชุด
+//      1d  −19 / +25 / +13 / +1 / +10      ← ดีกว่าฐาน 4 จาก 5 ชุด (เหรียญที่ดีขึ้น 6–10 จาก 15–18)
+//    ทิศคลื่นค้าง (ลองแล้ว) แย่กว่านี้มาก: 4h −205 · 1d −128 (ชุดหลัก)
+//    สรุป: TF ต่ำกว่า 1D ไม่แนะนำ · 1D ดีขึ้นเล็กน้อยแต่ไม่ทุกชุด ควรทดสอบต่อบนเหรียญที่จะเทรด
+//
+// ═══ ส่วนที่เหมือน buysell-rsi.pine ทุกอย่าง ═════════════════════════════════════════════════════
+//    แหล่งป้าย (เส้นเทรนด์ ค่าตั้งต้น / RSI) · กฎสลับ BUY/SELL · เข้าที่ราคาปิดแท่งสัญญาณ · กฎออก EMA200 Auto/Manual
+//    ไม้ TL ที่ไม่ได้ถูกข้าม = ไม้เดียวกับไฟล์ rsi ทุกอย่าง (จุดเข้า กฎออก ผล) ยกเว้นโหมด "EW กำหนด TP/SL"
+//    แถว "ฐาน" ในตาราง = ผลของ buysell-rsi.pine บนกราฟเดียวกัน (แหล่งป้าย/กฎออก/ช่วงเดียวกัน) ใช้ตรวจจำนวนเทรด
+//
+// ═══ Elliott S1 (ตรงกับ EW1 Wave3 ค่าตั้งต้น) ═══════════════════════════════════════════════════
+//    ZigZag ATR: ราคาปิดย้อนเกิน 3 × ATR จากยอด/ก้นล่าสุด → ยืนยันยอด/ก้น (หรือโหมด Pivot)
+//    รูป S1 = 0-1-2 ที่คลื่น 2 ย่อ 38.2–88.6% ของคลื่น 1 และไม่หลุดจุด 0 → ทิศคลื่น = ทิศคลื่น 1
+//    ระดับคลื่น: SL = จุด 0 (กฎ invalidation) · เป้า = คลื่น 2 + 1.618 × คลื่น 1
+//    ทิศคลื่น (ใช้กรอง / กำหนดระดับ):
+//      สด  = มีผลจนเกิดยอด/ก้นใหม่ที่ไม่ใช่รูป S1 หรือราคาปิดหลุดจุด 0
+//      ค้าง = มีผลจนราคาปิดหลุดจุด 0 หรือเกิดรูป S1 ฝั่งตรงข้าม
+//    สัญญาณ EW (โหมดกรอง / เพิ่มไม้): Pivot = เข้าที่แท่งยืนยันก้น/ยอดคลื่น 2 · Break = รอราคาปิดเลยยอดคลื่น 1
+//    ทุกการตัดสินใช้ยอด/ก้นที่ยืนยันแล้ว ณ แท่งที่ปิด → ไม่ repaint · เลขคลื่น 0-1-2 ที่วาดย้อนเป็นภาพประกอบ
+//
+// ═══ 3 โหมด (ไฟล์นี้ตั้งค่าตั้งต้นเป็น กรอง + เข้าแทน · เปลี่ยนได้ในกลุ่ม Elliott Wave) ═══════════════════════
+//    กรอง + เข้าแทน     BUY ที่สวนทิศคลื่นขาลง (SELL ที่สวนขาขึ้น) = ไม่เปิดไม้ แต่ยังปิดไม้ฝั่งตรงข้ามตามเดิม
+//                       ช่วงที่ไม่มีไม้ถือ เข้าตามสัญญาณ EW แทน (SL จุด 0 · TP เป้า Fib · ป้าย TL ถัดไปปิดได้)
+//                       งบ: ข้ามได้เมื่อ (ข้าม − เพิ่ม) ≤ 10 เท่านั้น → จำนวนเทรด ≥ ฐาน − 10 เสมอ
+//    TL ครบ + เพิ่มไม้ EW  ป้าย TL ทุกจุดเหมือนฐาน + ไม้ EW เมื่อไม่มีไม้ถือทั้งสองฝั่ง → จำนวนเทรด ≥ ฐาน เสมอ
+//    EW กำหนด TP/SL     จุดเข้า = ฐานทุกไม้ (จำนวนเทรดเท่าฐาน) · ไม้ที่ตรงทิศคลื่นใช้ SL = จุด 0
+//                       "SL อย่างเดียว" คง TP/Trail ของ EMA200 · "SL + TP" ใช้เป้า Fib แทน และไม่ใช้ Trail
+//    ป้าย TL ที่มาถึงตอนถือไม้ EW ฝั่งเดียวกัน → ปิดไม้ EW แล้วเปิดไม้ TL (ไม้ TL จึงเหมือนฐานทุกไม้)
+
+//@version=6
+indicator('Trendlines with Breaks [LuxAlgo] — Bot BUY/SELL + Elliott Wave (กรอง + เข้าแทน)', 'TL Bot EW Filter', overlay = true, max_bars_back = 2000, max_lines_count = 500, max_labels_count = 500)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+length     = input.int(14, 'Swing Detection Lookback', minval = 2, maxval = 200, tooltip = 'trendLength ของบอท (ค่าตั้งต้น 14) · ค่าในงานวิจัยทดสอบที่ 14')
+mult       = input.float(1.0, 'Slope', minval = 0.01, maxval = 20, step = 0.1, tooltip = 'trendMult ของบอท (ค่าตั้งต้น 1.0)')
+calcMethod = input.string('Atr', 'Slope Calculation Method', options = ['Atr', 'Stdev'], tooltip = 'บอทใช้ Atr เป็นค่าตั้งต้น และไม่มีโหมด Linreg')
+
+srcMode    = input.string('เส้นเทรนด์', 'Signal source', options = ['เส้นเทรนด์', 'RSI'], group = 'Signal source', tooltip = 'แหล่งป้าย BUY/SELL (เหมือน buysell-rsi.pine) · ผลทดสอบในหัวไฟล์ใช้เส้นเทรนด์')
+rsiMode    = input.string('ตัด 50 ± h', 'RSI mode', options = ['ตัด 50 ± h', 'กลับตัว', 'แบบแอป'], group = 'Signal source', tooltip = 'ตัด 50 ± h: ตัดขึ้น 50+h = BUY · ตัดลง 50−h = SELL\nกลับตัว: ตัดขึ้น Low = BUY · ตัดลง High = SELL\nแบบแอป: RSI < Low = BUY · RSI > High = SELL')
+rsiLen     = input.int(14, 'RSI length', minval = 2, maxval = 200, group = 'Signal source', inline = 'r1')
+rsiH       = input.float(0.0, 'h', minval = 0, maxval = 40, step = 1, group = 'Signal source', inline = 'r1')
+rsiLo      = input.float(30.0, 'Low', minval = 1, maxval = 99, step = 1, group = 'Signal source', inline = 'r2')
+rsiHi      = input.float(70.0, 'High', minval = 1, maxval = 99, step = 1, group = 'Signal source', inline = 'r2')
+
+G_EW       = 'Elliott Wave (S1)'
+MODE_FLT   = 'กรอง + เข้าแทน'
+MODE_ADD   = 'TL ครบ + เพิ่มไม้ EW'
+MODE_LVL   = 'EW กำหนด TP/SL'
+ewMode     = input.string('กรอง + เข้าแทน', 'EW mode', options = [MODE_FLT, MODE_ADD, MODE_LVL], group = G_EW, tooltip = 'ดูหัวไฟล์ · จำนวนเทรด: กรอง ≥ ฐาน − 10 · เพิ่มไม้ ≥ ฐาน · กำหนด TP/SL = ฐาน')
+budget     = input.int(10, 'กรอง: ลดได้สูงสุด (ไม้)', minval = 0, maxval = 1000, group = G_EW, tooltip = 'ข้ามป้าย TL ได้เมื่อ (ข้าม − ไม้ EW ที่เพิ่ม) ไม่เกินค่านี้ → จำนวนเทรด ≥ ฐาน − ค่านี้')
+biasMode   = input.string('สด', 'ทิศคลื่น', options = ['สด', 'ค้าง'], group = G_EW, tooltip = 'สด = หมดผลเมื่อเกิดยอด/ก้นใหม่ที่ไม่ใช่รูป S1\nค้าง = มีผลจนราคาปิดหลุดจุดเริ่มคลื่น 1')
+lvlMode    = input.string('SL อย่างเดียว', 'กำหนด TP/SL: ใช้', options = ['SL อย่างเดียว', 'SL + TP'], group = G_EW, tooltip = 'SL อย่างเดียว = SL ที่จุด 0 · TP/Trail ตาม EMA200 เดิม\nSL + TP = SL จุด 0 + TP เป้า Fib · ไม่ใช้ Trail')
+zzMode     = input.string('ATR', 'ZigZag', options = ['ATR', 'Pivot'], group = G_EW, inline = 'zz')
+atrRev     = input.float(3.0, 'ATR ×', minval = 0.5, maxval = 20, step = 0.5, group = G_EW, inline = 'zz')
+pivLen     = input.int(8, 'Pivot', minval = 2, maxval = 50, group = G_EW, inline = 'zz', tooltip = 'ATR = ราคาปิดย้อนเกิน X × ATR(14) · Pivot = ยอด/ก้นของ N แท่งซ้าย-ขวา')
+trigMode   = input.string('Pivot', 'สัญญาณ EW', options = ['Pivot', 'Break'], group = G_EW, tooltip = 'Pivot = เข้าที่แท่งยืนยันจุดจบคลื่น 2\nBreak = รอราคาปิดเลยยอดคลื่น 1')
+w2Min      = input.float(0.382, 'คลื่น 2 ย่อ', minval = 0, maxval = 1, step = 0.01, group = G_EW, inline = 'w2')
+w2Max      = input.float(0.886, '–', minval = 0, maxval = 0.999, step = 0.01, group = G_EW, inline = 'w2')
+tpFib      = input.float(1.618, 'เป้า = คลื่น 2 + × คลื่น 1', minval = 0.1, maxval = 10, step = 0.1, group = G_EW)
+
+startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest', tooltip = 'เริ่มสถานะว่างที่นี่ ป้าย BUY/SELL มีเฉพาะในช่วงนี้')
+endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง)')
+feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest', tooltip = 'ค่าธรรมเนียม/ขา (ค่าตั้งต้น 0.10 เท่ากับเว็บ)')
+
+exitMode   = input.string('Auto (ตาม TF)', 'Exit preset', options = ['Auto (ตาม TF)', 'Manual', 'ตามป้ายอย่างเดียว'], group = 'Exit by EMA trend', tooltip = 'Auto = ค่าจากงานวิจัยตาม TF ของกราฟ (ดู buysell-enhanced.pine)\nManual = ใช้ช่องด้านล่าง · 0 = ไม่ใช้ส่วนนั้น\nตามป้ายอย่างเดียว = ไม่มีกฎออก')
+trendLen   = input.int(200, 'Trend EMA length', minval = 2, maxval = 1000, group = 'Exit by EMA trend', tooltip = 'ราคาปิด ณ แท่งเข้าเทียบ EMA นี้ แยกไม้ตาม/สวนเทรนด์ · งานวิจัยใช้ 200')
+slipInput  = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = 'Exit by EMA trend', tooltip = 'หักจากราคา fill ของ SL (คำสั่ง stop) · TP เป็น limit ไม่หัก · TS ออกที่ราคาปิดไม่หัก')
+
+lwTp       = input.float(0.0, 'Long ตามเทรนด์ · TP', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lw')
+lwSl       = input.float(0.0, 'SL', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lw')
+lwTs       = input.float(6.0, 'Trail', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lw')
+lcTp       = input.float(0.0, 'Long สวนเทรนด์ · TP', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lc')
+lcSl       = input.float(3.0, 'SL', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lc')
+lcTs       = input.float(0.0, 'Trail', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'lc')
+swTp       = input.float(8.0, 'Short ตามเทรนด์ · TP', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sw')
+swSl       = input.float(3.0, 'SL', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sw')
+swTs       = input.float(0.0, 'Trail', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sw')
+scTp       = input.float(5.0, 'Short สวนเทรนด์ · TP', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sc')
+scSl       = input.float(2.0, 'SL', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sc')
+scTs       = input.float(0.0, 'Trail', minval = 0, maxval = 50, step = 0.5, group = 'Manual (× ATR · 0 = ไม่ใช้)', inline = 'sc', tooltip = 'ค่าตั้งต้นของ Manual = ค่า Auto ของ TF 4h')
+
+showTable  = input.bool(true, 'Show P/L table', group = 'Table')
+showDetail = input.bool(false, 'Show Drawdown', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+
+upCss      = input.color(color.teal, 'Up Trendline Color', group = 'Style')
+dnCss      = input.color(color.red, 'Down Trendline Color', group = 'Style')
+showLines  = input.bool(true, 'Show trendlines', group = 'Style')
+showEma    = input.bool(true, 'Show trend EMA', group = 'Style')
+showLevels = input.bool(true, 'Show TP / SL / TS levels', group = 'Style')
+showZZ     = input.bool(true, 'Show ZigZag', group = 'Style', inline = 'zz')
+zzCss      = input.color(color.new(color.gray, 30), '', group = 'Style', inline = 'zz')
+showWaves  = input.bool(true, 'Show wave 0-1-2 at EW trades', group = 'Style', inline = 'wv')
+waveCss    = input.color(#2962FF, '', group = 'Style', inline = 'wv')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'sig')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'sig')
+ewCss      = input.color(#7E57C2, 'EW', group = 'Style', inline = 'sig')
+
+isFlt = ewMode == MODE_FLT
+isAdd = ewMode == MODE_ADD
+isLvl = ewMode == MODE_LVL
+
+//-----------------------------------------------------------------------------}
+//Pivots — กฎเดียวกับ pivotEvents(): สูง/ต่ำกว่าเพื่อนบ้านทั้งสองข้างแบบเข้มงวด
+//-----------------------------------------------------------------------------{
+pivotHighAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = high[len]
+        bool ok = true
+        for j = 1 to len
+            if cand <= high[len + j] or cand <= high[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+pivotLowAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = low[len]
+        bool ok = true
+        for j = 1 to len
+            if cand >= low[len + j] or cand >= low[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+//-----------------------------------------------------------------------------}
+//Trendlines & breaks — trendlinesWithBreaks() (เหมือน legacy)
+//-----------------------------------------------------------------------------{
+var float upper   = 0.
+var float lower   = 0.
+var float slopePh = 0.
+var float slopePl = 0.
+var int   upos    = 0
+var int   dnos    = 0
+var bool  hasPh   = false
+var bool  hasPl   = false
+
+atrV  = ta.atr(length)
+stdV  = ta.stdev(close, length)
+slope = (calcMethod == 'Stdev' ? nz(stdV) : nz(atrV)) / length * mult
+
+ph   = pivotHighAt(length)
+pl   = pivotLowAt(length)
+isPh = not na(ph)
+isPl = not na(pl)
+
+if isPh
+    upper   := ph
+    slopePh := slope
+    hasPh   := true
+else
+    upper := upper - slopePh
+
+if isPl
+    lower   := pl
+    slopePl := slope
+    hasPl   := true
+else
+    lower := lower + slopePl
+
+prevUpos = upos
+prevDnos = dnos
+upos := isPh ? 0 : close > upper ? 1 : upos
+dnos := isPl ? 0 : close < lower ? 1 : dnos
+
+// SELL ทับ BUY ถ้าแท่งเดียวทะลุทั้งสองเส้น · ตัดสินเมื่อปิดแท่งเท่านั้น
+rawSig = not barstate.isconfirmed ? 0 : dnos > prevDnos ? -1 : upos > prevUpos ? 1 : 0
+
+//-----------------------------------------------------------------------------}
+//Signals — alternateSignals(): BUY/SELL สลับกันเสมอ (เหมือน legacy)
+//-----------------------------------------------------------------------------{
+var int altState = 0
+int streamSig = 0
+if altState == 0 and rawSig == 1
+    streamSig := 1
+    altState  := 1
+else if altState == 1 and rawSig == -1
+    streamSig := -1
+    altState  := 0
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+
+//-----------------------------------------------------------------------------}
+//Signals จาก RSI — เหมือน buysell-rsi.pine
+//-----------------------------------------------------------------------------{
+rsiV    = ta.rsi(close, rsiLen)
+isCross = rsiMode == 'ตัด 50 ± h'
+buyLv   = isCross ? 50 + rsiH : rsiLo
+sellLv  = isCross ? 50 - rsiH : rsiHi
+bool rBuy  = rsiMode == 'แบบแอป' ? rsiV < rsiLo : rsiV > buyLv and rsiV[1] <= buyLv
+bool rSell = rsiMode == 'แบบแอป' ? rsiV > rsiHi : rsiV < sellLv and rsiV[1] >= sellLv
+rsiRaw  = not barstate.isconfirmed or na(rsiV) or na(rsiV[1]) ? 0 : rSell ? -1 : rBuy ? 1 : 0
+
+var int altR = 0
+int streamR = 0
+if altR == 0 and rsiRaw == 1
+    streamR := 1
+    altR    := 1
+else if altR == 1 and rsiRaw == -1
+    streamR := -1
+    altR    := 0
+
+// sig = ป้าย TL ของแหล่งที่เลือก (เท่ากับป้ายของ buysell-rsi.pine) · 1 BUY · −1 SELL เฉพาะในช่วง backtest
+useRsi  = srcMode == 'RSI'
+int sig = inWindow ? (useRsi ? streamR : streamSig) : 0
+srcName = useRsi ? 'RSI' : 'TL'
+
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
+//-----------------------------------------------------------------------------}
+//Trend EMA — เหมือน lib/indicators.ts `ema()`: ค่าแรกที่แท่ง length − 1 = SMA แล้วค่อยเป็น EMA
+//-----------------------------------------------------------------------------{
+emaSeed = ta.sma(close, trendLen)
+var float emaT = na
+alphaT  = 2.0 / (trendLen + 1)
+emaT := na(emaT) ? emaSeed : close * alphaT + emaT * (1 - alphaT)
+
+trendDir = na(emaT) ? 0 : close > emaT ? 1 : -1
+
+tfSec   = timeframe.in_seconds()
+autoGrp = tfSec < 3600 ? 0 : tfSec < 14400 ? 1 : tfSec < 86400 ? 2 : 3
+
+exitProfile(int side, bool withTrend) =>
+    float tp = 0.
+    float sl = 0.
+    float ts = 0.
+    if exitMode == 'Manual'
+        tp := side == 1 ? (withTrend ? lwTp : lcTp) : (withTrend ? swTp : scTp)
+        sl := side == 1 ? (withTrend ? lwSl : lcSl) : (withTrend ? swSl : scSl)
+        ts := side == 1 ? (withTrend ? lwTs : lcTs) : (withTrend ? swTs : scTs)
+    else if exitMode == 'Auto (ตาม TF)'
+        if side == 1
+            if autoGrp >= 2
+                ts := withTrend ? 6. : 0.
+                sl := withTrend ? 0. : 3.
+        else
+            bool wide = withTrend or autoGrp == 0 or autoGrp == 3
+            tp := wide ? 8. : 5.
+            sl := wide ? 3. : 2.
+    [tp, sl, ts]
+
+profileTxt(int side, bool withTrend) =>
+    [tp, sl, ts] = exitProfile(side, withTrend)
+    string s = (tp > 0 ? 'TP ' + str.tostring(tp) + ' ' : '') + (sl > 0 ? 'SL ' + str.tostring(sl) + ' ' : '') + (ts > 0 ? 'Trail ' + str.tostring(ts) + ' ' : '')
+    s == '' ? 'ตามป้าย' : s + '× ATR'
+
+//-----------------------------------------------------------------------------}
+//Elliott Wave — ZigZag + รูป S1 (0-1-2)
+//-----------------------------------------------------------------------------{
+ewAtr = ta.atr(14)
+zPh   = ta.pivothigh(high, pivLen, pivLen)
+zPl   = ta.pivotlow(low, pivLen, pivLen)
+
+var array<float> zP  = array.new<float>()   // ราคายอด/ก้น
+var array<int>   zB  = array.new<int>()     // bar_index
+var array<int>   zT  = array.new<int>()     // 1 ยอด · −1 ก้น
+var array<line>  zLn = array.new<line>()
+
+// เพิ่มยอด/ก้น · ชนิดเดียวกับจุดล่าสุด = เก็บอันที่สุดกว่า · คืน true เมื่อรายการเปลี่ยน
+addPivot(int t, float p, int b) =>
+    int  n  = zT.size()
+    bool ch = false
+    if n > 0 and zT.get(n - 1) == t
+        if t * (p - zP.get(n - 1)) > 0
+            zP.set(n - 1, p)
+            zB.set(n - 1, b)
+            ch := true
+            if showZZ and zLn.size() > 0
+                zLn.last().set_xy2(b, p)
+    else
+        if showZZ and n > 0
+            zLn.push(line.new(zB.get(n - 1), zP.get(n - 1), b, p, color = zzCss, width = 1))
+            if zLn.size() > 2
+                zLn.shift()
+        zP.push(p)
+        zB.push(b)
+        zT.push(t)
+        ch := true
+        if zT.size() > 8
+            zP.shift()
+            zB.shift()
+            zT.shift()
+    ch
+
+bool zCh = false
+
+if barstate.isconfirmed and zzMode == 'Pivot'
+    bool hasH = not na(zPh)
+    bool hasL = not na(zPl)
+    int  pIdx = bar_index - pivLen
+    bool lowFirst = zT.size() > 0 and zT.last() == 1
+    if hasL and (lowFirst or not hasH)
+        bool c1 = addPivot(-1, zPl, pIdx)
+        zCh := zCh or c1
+    if hasH
+        bool c2 = addPivot(1, zPh, pIdx)
+        zCh := zCh or c2
+    if hasL and hasH and not lowFirst
+        bool c3 = addPivot(-1, zPl, pIdx)
+        zCh := zCh or c3
+
+// ATR: aDir = 1 กำลังหายอด (cP สูงสุด · oP ต่ำสุดหลัง cP) · −1 กลับกัน · ราคาปิดย้อนเกิน X × ATR → ยืนยัน cP
+var int   aDir = 0
+var float cP   = na
+var int   cB   = na
+var float oP   = na
+var int   oB   = na
+if barstate.isconfirmed and zzMode == 'ATR' and not na(ewAtr)
+    if aDir == 0
+        aDir := 1
+        cP   := high
+        cB   := bar_index
+        oP   := low
+        oB   := bar_index
+    else
+        float ext = aDir == 1 ? high : low
+        float opp = aDir == 1 ? low : high
+        if aDir * (ext - cP) > 0
+            cP := ext
+            cB := bar_index
+            oP := opp
+            oB := bar_index
+        else
+            if aDir * (opp - oP) < 0
+                oP := opp
+                oB := bar_index
+            if aDir * (close - cP) <= -atrRev * ewAtr
+                bool c4 = addPivot(aDir, cP, cB)
+                zCh := zCh or c4
+                float qP = na
+                int   qB = na
+                int   back = math.min(bar_index - oB, 1999)
+                for i = 0 to back
+                    float hv = aDir == 1 ? high[i] : low[i]
+                    if na(qP) or aDir * (hv - qP) > 0
+                        qP := hv
+                        qB := bar_index - i
+                aDir := -aDir
+                cP   := oP
+                cB   := oB
+                oP   := qP
+                oB   := qB
+
+pv(int k) => zP.get(zP.size() - 1 - k)
+pt(int k) => zT.get(zT.size() - 1 - k)
+pbx(int k) => zB.get(zB.size() - 1 - k)
+
+// รูป S1: จุด 2 = จุดล่าสุด · คืน [ทิศ, ยอดคลื่น 1, จุด 0 (SL), เป้า Fib] · ทิศ 0 = ไม่มีรูป
+detectS1() =>
+    int   d   = 0
+    float trg = na
+    float sl  = na
+    float tp  = na
+    if zP.size() >= 3
+        int   e  = -pt(0)
+        float a0 = e * pv(2)
+        float a1 = e * pv(1)
+        float a2 = e * pv(0)
+        float w1 = a1 - a0
+        if w1 > 0 and a2 > a0
+            float r2 = (a1 - a2) / w1
+            if r2 >= w2Min and r2 <= w2Max
+                d   := e
+                trg := e * a1
+                sl  := e * a0
+                tp  := e * (a2 + tpFib * w1)
+    [d, trg, sl, tp]
+
+// จุด 0-1-2 ของรูป S1 ล่าสุด (เก็บไว้ตอนเจอรูป · ใช้วาดเลขคลื่นตอนเข้า)
+var array<float> s1P = array.new<float>(3, na)
+var array<int>   s1B = array.new<int>(3, 0)
+var array<int>   s1T = array.new<int>(3, 0)
+
+drawWaves() =>
+    for k = 0 to 2
+        if not na(s1P.get(k))
+            label.new(s1B.get(k), s1P.get(k), str.tostring(k), style = s1T.get(k) == 1 ? label.style_label_down : label.style_label_up, color = color.new(color.white, 100), textcolor = waveCss, size = size.small)
+
+// ewBias = ทิศคลื่น (1 ขึ้น · −1 ลง · 0 ไม่มี) · ewInv = จุด 0 · ewTp = เป้า Fib
+// pDir/pTrig/pSl/pTp = สัญญาณ EW ที่รอเข้า (ใช้ครั้งเดียว)
+var int   ewBias = 0
+var float ewInv  = na
+var float ewTp   = na
+var int   pDir   = 0
+var float pTrig  = na
+var float pSl    = na
+var float pTp    = na
+string armMsg = ''
+if zCh
+    [d, trg, sl0, tpE] = detectS1()
+    if d != 0
+        pDir   := d
+        pTrig  := trigMode == 'Pivot' ? na : trg
+        pSl    := sl0
+        pTp    := tpE
+        ewBias := d
+        ewInv  := sl0
+        ewTp   := tpE
+        for k = 0 to 2
+            s1P.set(k, pv(2 - k))
+            s1B.set(k, pbx(2 - k))
+            s1T.set(k, pt(2 - k))
+        if trigMode == 'Break' and inWindow and not isLvl
+            armMsg := '⏳ รอ EW ' + (d == 1 ? 'BUY ' : 'SELL ') + syminfo.ticker + ' (' + timeframe.period + ') | ราคาปิด' + (d == 1 ? 'เหนือ ' : 'ใต้ ') + str.tostring(trg, format.mintick) + ' · SL ' + str.tostring(sl0, format.mintick)
+    else
+        pDir := 0
+        if biasMode == 'สด'
+            ewBias := 0
+if barstate.isconfirmed and ewBias != 0 and ewBias * (close - ewInv) <= 0
+    ewBias := 0
+
+int ewSig = 0
+if barstate.isconfirmed and pDir != 0
+    if pDir * (close - pSl) <= 0
+        pDir := 0
+    else if na(pTrig) or pDir * (close - pTrig) > 0
+        if pDir * (pTp - close) > 0
+            ewSig := pDir
+        pDir := 0
+
+//-----------------------------------------------------------------------------}
+//Books — บัญชีหลัก (TL + EW) และบัญชีฐาน (= buysell-rsi.pine) · บวก % ไม่ทบต้น
+//-----------------------------------------------------------------------------{
+type Book
+    int   side               // 1 = Long, −1 = Short (บัญชีรวมไม่ใช้)
+    int   grp   = 0          // 0 = หลัก · 1 = ฐาน
+    int   src   = 0          // ไม้ที่ถืออยู่: 0 = ป้าย TL · 1 = สัญญาณ EW
+    bool  lvl   = false      // ไม้ TL ที่ใช้ระดับคลื่น (โหมดกำหนด TP/SL)
+    bool  inPos = false
+    float entry = na
+    bool  withT = false
+    float tp    = na
+    float sl    = na
+    float trail = 0.
+    float peakC = na
+    float xPx   = na
+    int   n     = 0
+    int   wins  = 0
+    int   nTp   = 0
+    int   nSl   = 0
+    int   nTs   = 0
+    float sum   = 0.
+    float peak  = 0.
+    float dd    = 0.
+
+method record(Book b, float pnl, bool win) =>
+    b.n    := b.n + 1
+    b.sum  := b.sum + pnl
+    b.wins := b.wins + (win ? 1 : 0)
+    b.peak := math.max(b.peak, b.sum)
+    b.dd   := math.max(b.dd, b.peak - b.sum)
+
+method pnlAt(Book b, float px) =>
+    b.inPos ? b.side * (px - b.entry) / b.entry * 100 - 2 * feeInput : 0.
+
+method priceWin(Book b, float px) =>
+    b.inPos and b.side * (px - b.entry) > 0
+
+var Book bookL = Book.new(side = 1)
+var Book bookS = Book.new(side = -1)
+var Book bookB = Book.new(side = 0)
+var Book baseL = Book.new(side = 1, grp = 1)
+var Book baseS = Book.new(side = -1, grp = 1)
+var Book baseB = Book.new(side = 0, grp = 1)
+
+// สถิติแยก: [จำนวน, ชนะ, ผลรวม %] ของไม้ EW และไม้ TL ที่ใช้ระดับคลื่น · cnt = [ข้าม, เพิ่ม]
+var array<float> ewSt = array.from(0., 0., 0.)
+var array<float> lvSt = array.from(0., 0., 0.)
+var array<int>   cnt  = array.from(0, 0)
+
+addSt(array<float> a, float pnl, bool win) =>
+    a.set(0, a.get(0) + 1)
+    a.set(1, a.get(1) + (win ? 1 : 0))
+    a.set(2, a.get(2) + pnl)
+
+closeBookAt(Book b, float px) =>
+    if b.inPos
+        float pnl = b.pnlAt(px)
+        bool  win = b.priceWin(px)
+        b.record(pnl, win)
+        if b.grp == 0
+            bookB.record(pnl, win)
+            if b.src == 1
+                addSt(ewSt, pnl, win)
+            else if b.lvl
+                addSt(lvSt, pnl, win)
+        else
+            baseB.record(pnl, win)
+        b.inPos := false
+
+closeBook(Book b) =>
+    closeBookAt(b, close)
+
+// เปิดไม้ตามกฎออก EMA200 (เหมือน buysell-rsi.pine)
+openProfile(Book b) =>
+    bool withTrend = trendDir == b.side
+    [tpM, slM, tsM] = exitProfile(b.side, withTrend)
+    b.inPos := true
+    b.src   := 0
+    b.lvl   := false
+    b.entry := close
+    b.withT := withTrend
+    b.tp    := tpM > 0 ? close + b.side * tpM * atrV : na
+    b.sl    := slM > 0 ? close - b.side * slM * atrV : na
+    b.trail := tsM
+    b.peakC := close
+
+// บัญชีฐาน: เหมือน openBook() ของ buysell-rsi.pine
+openBase(Book b) =>
+    if not b.inPos
+        openProfile(b)
+
+// บัญชีหลัก: ป้าย TL · ถือไม้ EW ฝั่งเดียวกันอยู่ = ปิดก่อน · โหมดกำหนด TP/SL ใช้ระดับคลื่นเมื่อตรงทิศ
+openTL(Book b) =>
+    if b.inPos
+        closeBook(b)
+    openProfile(b)
+    if isLvl and ewBias == b.side and b.side * (close - ewInv) > 0
+        b.lvl := true
+        b.sl  := ewInv
+        if lvlMode == 'SL + TP'
+            b.trail := 0.
+            b.tp    := b.side * (ewTp - close) > 0 ? ewTp : b.tp
+
+// บัญชีหลัก: สัญญาณ EW · SL จุด 0 · TP เป้า Fib
+openEW(Book b, float sl, float tp) =>
+    b.inPos := true
+    b.src   := 1
+    b.lvl   := false
+    b.entry := close
+    b.withT := trendDir == b.side
+    b.tp    := tp
+    b.sl    := sl
+    b.trail := 0.
+    b.peakC := close
+
+exitOrders(Book b) =>
+    int hit = 0
+    if b.inPos
+        float slip    = slipInput / 100
+        float adverse = b.side == 1 ? low : high
+        float favor   = b.side == 1 ? high : low
+        float px      = na
+        if not na(b.sl) and b.side * (open - b.sl) <= 0
+            hit := -1
+            px  := open * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (open - b.tp) >= 0
+            hit := 1
+            px  := open
+        else if not na(b.sl) and b.side * (adverse - b.sl) <= 0
+            hit := -1
+            px  := b.sl * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (favor - b.tp) >= 0
+            hit := 1
+            px  := b.tp
+        if hit != 0
+            closeBookAt(b, px)
+            b.xPx := px
+            if hit == 1
+                b.nTp := b.nTp + 1
+            else
+                b.nSl := b.nSl + 1
+    hit
+
+exitTrail(Book b) =>
+    int hit = 0
+    if b.inPos and b.trail > 0
+        b.peakC := b.side == 1 ? math.max(b.peakC, close) : math.min(b.peakC, close)
+        if b.side * (close - b.peakC) < -b.trail * atrV
+            hit := 2
+            closeBookAt(b, close)
+            b.xPx  := close
+            b.nTs  := b.nTs + 1
+    hit
+
+// ลำดับในแท่ง: คำสั่ง TP/SL → Trail ที่ราคาปิด → ป้าย TL / สัญญาณ EW ที่ราคาปิด
+int xL = barstate.isconfirmed ? exitOrders(bookL) : 0
+int xS = barstate.isconfirmed ? exitOrders(bookS) : 0
+if barstate.isconfirmed and xL == 0
+    xL := exitTrail(bookL)
+if barstate.isconfirmed and xS == 0
+    xS := exitTrail(bookS)
+
+int tlOpen = 0    // 1 = BUY เปิด Long · −1 = SELL เปิด Short
+int tlSkip = 0    // 1 = BUY ถูกข้าม · −1 = SELL ถูกข้าม
+int ewOpen = 0    // 1 = EW เปิด Long · −1 = EW เปิด Short
+// ข้ามได้เมื่อสวนทิศคลื่น และ (ข้าม + 1 − เพิ่ม) ≤ งบ
+canSkip(int side) => isFlt and ewBias == -side and cnt.get(0) + 1 - cnt.get(1) <= budget
+
+if sig == 1
+    closeBook(bookS)
+    if canSkip(1)
+        cnt.set(0, cnt.get(0) + 1)
+        tlSkip := 1
+    else
+        openTL(bookL)
+        tlOpen := 1
+else if sig == -1
+    closeBook(bookL)
+    if canSkip(-1)
+        cnt.set(0, cnt.get(0) + 1)
+        tlSkip := -1
+    else
+        openTL(bookS)
+        tlOpen := -1
+else if ewSig != 0 and inWindow and not isLvl and not bookL.inPos and not bookS.inPos
+    openEW(ewSig == 1 ? bookL : bookS, pSl, pTp)
+    cnt.set(1, cnt.get(1) + 1)
+    ewOpen := ewSig
+
+// บัญชีฐาน (= buysell-rsi.pine)
+int bxL = barstate.isconfirmed ? exitOrders(baseL) : 0
+int bxS = barstate.isconfirmed ? exitOrders(baseS) : 0
+if barstate.isconfirmed and bxL == 0
+    bxL := exitTrail(baseL)
+if barstate.isconfirmed and bxS == 0
+    bxS := exitTrail(baseS)
+if sig == 1
+    closeBook(baseS)
+    openBase(baseL)
+else if sig == -1
+    closeBook(baseL)
+    openBase(baseS)
+
+if lastWindowBar and barstate.isconfirmed
+    closeBook(bookL)
+    closeBook(bookS)
+    closeBook(baseL)
+    closeBook(baseS)
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง (ใช้หากำไร/ขาดทุนรายช่วง)
+//-----------------------------------------------------------------------------{
+eqL = bookL.sum + bookL.pnlAt(close)
+eqS = bookS.sum + bookS.pnlAt(close)
+
+var array<int>   eqTime = array.new<int>()
+var array<float> eqValL = array.new<float>()
+var array<float> eqValS = array.new<float>()
+if barstate.isconfirmed
+    eqTime.push(time_close)
+    eqValL.push(eqL)
+    eqValS.push(eqS)
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//-----------------------------------------------------------------------------}
+//Plots
+//-----------------------------------------------------------------------------{
+plot(showLines and hasPh ? upper : na, 'Upper (down-trendline)', color = isPh ? na : upCss)
+plot(showLines and hasPl ? lower : na, 'Lower (up-trendline)', color = isPl ? na : dnCss)
+plot(showEma ? emaT : na, 'Trend EMA', color = color.new(color.gray, 20), linewidth = 2)
+
+plotshape(tlOpen == 1, 'BUY', shape.labelup, location.belowbar, buyCss, text = 'BUY', textcolor = color.white, size = size.small)
+plotshape(tlOpen == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text = 'SELL', textcolor = color.white, size = size.small)
+plotshape(tlSkip == 1, 'BUY ข้าม (สวนคลื่น)', shape.xcross, location.belowbar, color.new(color.gray, 20), size = size.tiny)
+plotshape(tlSkip == -1, 'SELL ข้าม (สวนคลื่น)', shape.xcross, location.abovebar, color.new(color.gray, 20), size = size.tiny)
+plotshape(ewOpen == 1, 'EW BUY', shape.labelup, location.belowbar, ewCss, text = 'EW', textcolor = color.white, size = size.small)
+plotshape(ewOpen == -1, 'EW SELL', shape.labeldown, location.abovebar, ewCss, text = 'EW', textcolor = color.white, size = size.small)
+if showWaves and (ewOpen != 0 or (tlOpen == 1 and bookL.lvl) or (tlOpen == -1 and bookS.lvl))
+    drawWaves()
+
+trailLvl(Book b) => b.inPos and b.trail > 0 ? b.peakC - b.side * b.trail * atrV : na
+plot(showLevels and bookL.inPos ? bookL.tp : na, 'Long TP level', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookL.inPos ? bookL.sl : na, 'Long SL level', color = color.new(sellCss, 40), style = plot.style_linebr)
+plot(showLevels ? trailLvl(bookL) : na, 'Long Trail level', color = color.new(color.orange, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.tp : na, 'Short TP level', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.sl : na, 'Short SL level', color = color.new(sellCss, 40), style = plot.style_linebr)
+plot(showLevels ? trailLvl(bookS) : na, 'Short Trail level', color = color.new(color.orange, 40), style = plot.style_linebr)
+
+plotshape(xL == 1, 'Long TP', shape.labeldown, location.abovebar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xL == -1, 'Long SL', shape.labeldown, location.abovebar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+plotshape(xL == 2, 'Long TS', shape.labeldown, location.abovebar, color.new(color.orange, 35), text = 'TS', textcolor = color.white, size = size.tiny)
+plotshape(xS == 1, 'Short TP', shape.labelup, location.belowbar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xS == -1, 'Short SL', shape.labelup, location.belowbar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+plotshape(xS == 2, 'Short TS', shape.labelup, location.belowbar, color.new(color.orange, 35), text = 'TS', textcolor = color.white, size = size.tiny)
+
+plot(sig, 'TL signal (1 BUY / -1 SELL)', display = display.data_window)
+plot(ewBias, 'Wave bias (1 up / -1 down)', display = display.data_window)
+plot(trendDir, 'Trend (1 up / -1 down)', display = display.data_window)
+
+//-----------------------------------------------------------------------------}
+//ตารางกำไร/ขาดทุน: แถว = ช่วงเวลา · คอลัมน์ = แบบการเทรด
+//-----------------------------------------------------------------------------{
+fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+levelTxt(Book b) => (b.src == 1 ? ' (EW)' : b.lvl ? ' (ระดับคลื่น)' : b.withT ? ' (ตามเทรนด์)' : ' (สวนเทรนด์)') + (na(b.tp) ? '' : ' · TP ' + str.tostring(b.tp, format.mintick)) + (na(b.sl) ? '' : ' · SL ' + str.tostring(b.sl, format.mintick)) + (b.trail > 0 ? ' · TS ' + str.tostring(trailLvl(b), format.mintick) : '')
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+xTxt(int a, int b, int c) => 'TP ' + str.tostring(a) + ' · SL ' + str.tostring(b) + ' · TS ' + str.tostring(c)
+stTxt(array<float> a) => str.tostring(a.get(0), '0') + ' ไม้ · win ' + (a.get(0) > 0 ? str.tostring(a.get(1) * 100 / a.get(0), '0') + '%' : '—') + ' · ' + fmtPct(a.get(2))
+
+if showTable and barstate.islast
+    tPos  = tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right
+    tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+    bg    = color.new(#131722, 10)
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    var table t = table.new(tPos, 4, 17, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 16)
+    presetTxt = exitMode == 'Manual' ? 'Manual' : exitMode == 'ตามป้ายอย่างเดียว' ? 'ตามป้าย' : autoGrp == 0 ? 'Auto <1h' : autoGrp == 1 ? 'Auto 1h' : autoGrp == 2 ? 'Auto 4h' : 'Auto 1D'
+
+    table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period + ' · ' + srcName + ' + EW · ' + presetTxt, text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'EW mode: ' + ewMode + '\nZigZag ' + (zzMode == 'ATR' ? 'ATR ×' + str.tostring(atrRev) : 'Pivot ' + str.tostring(pivLen)) + ' · สัญญาณ EW ' + trigMode + ' · ทิศคลื่น ' + biasMode + '\nLong ตามเทรนด์: ' + profileTxt(1, true) + ' · สวนเทรนด์: ' + profileTxt(1, false) + '\nShort ตามเทรนด์: ' + profileTxt(-1, true) + ' · สวนเทรนด์: ' + profileTxt(-1, false))
+    table.merge_cells(t, 0, 0, 2, 0)
+    table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลเป็นผลรวม % ต่อไม้ (ไม่ทบต้น) · ไม่รวม funding')
+    table.cell(t, 0, 1, ewMode, text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+
+    names = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '1 ปี')
+    spans = array.from(1, 7, 30, 90, 365)
+    int row = 2
+    for i = 0 to 4
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            idx  = lastAtOrBefore(eqTime, nowT - spanMs)
+            chgL = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+            chgS = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+            chgB = chgL + chgS
+            table.cell(t, 0, row, names.get(i), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด')
+            table.cell(t, 1, row, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 2, row, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 3, row, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
+            row += 1
+
+    eqB      = eqL + eqS
+    days     = math.floor(totalMs / DAY_MS)
+    allLabel = 'ทั้งหมด · ' + (days >= 1 ? str.tostring(days) + ' วัน' : str.tostring(math.floor(totalMs / 3600000)) + ' ชม.')
+    allTip   = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)'
+    table.cell(t, 0, row, allLabel, text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band, tooltip = allTip)
+    table.cell(t, 1, row, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, row, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, row, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    row += 1
+
+    nL = bookL.n + (bookL.inPos ? 1 : 0)
+    nS = bookS.n + (bookS.inPos ? 1 : 0)
+    table.cell(t, 0, row, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่ (ไม้ TL + ไม้ EW)')
+    table.cell(t, 1, row, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    table.cell(t, 0, row, 'ปิดก่อนป้าย', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ไม้ที่ปิดด้วย TP / SL / TS ก่อนถึงป้ายตรงข้าม นับรวมอยู่ในแถวเทรดแล้ว')
+    table.cell(t, 1, row, xTxt(bookL.nTp, bookL.nSl, bookL.nTs), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, xTxt(bookS.nTp, bookS.nSl, bookS.nTs), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, xTxt(bookL.nTp + bookS.nTp, bookL.nSl + bookS.nSl, bookL.nTs + bookS.nTs), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    openL = bookL.pnlAt(close)
+    openS = bookS.pnlAt(close)
+    winL  = bookL.wins + (bookL.priceWin(close) ? 1 : 0)
+    winS  = bookS.wins + (bookS.priceWin(close) ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ชนะ = ราคาออกดีกว่าราคาเข้า · ไม่หักค่าธรรมเนียม · ไม้ที่ถืออยู่เทียบกับราคาล่าสุด')
+    table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    // สถานะ: ไม้ที่ถืออยู่ + ทิศคลื่นตอนนี้
+    status = bookL.inPos ? '▲ ถือ Long' + levelTxt(bookL) + ' · เข้า ' + str.tostring(bookL.entry, format.mintick) + ' · ' + fmtPct(openL) : bookS.inPos ? '▼ ถือ Short' + levelTxt(bookS) + ' · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) : '○ ว่าง · รอป้ายถัดไป'
+    waveTxt = ewBias == 1 ? '🌊 คลื่นขาขึ้น (จุด 0 ' + str.tostring(ewInv, format.mintick) + ')' : ewBias == -1 ? '🌊 คลื่นขาลง (จุด 0 ' + str.tostring(ewInv, format.mintick) + ')' : '🌊 ไม่มีทิศคลื่น'
+    pendTxt = pDir != 0 and not na(pTrig) and not isLvl ? ' · ⏳ รอ EW ' + (pDir == 1 ? 'BUY เหนือ ' : 'SELL ใต้ ') + str.tostring(pTrig, format.mintick) : ''
+    table.cell(t, 0, row, status + '\n' + waveTxt + pendTxt, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+
+    // ฐาน = buysell-rsi.pine บนกราฟเดียวกัน
+    bEqL = baseL.sum + baseL.pnlAt(close)
+    bEqS = baseS.sum + baseS.pnlAt(close)
+    bNL  = baseL.n + (baseL.inPos ? 1 : 0)
+    bNS  = baseS.n + (baseS.inPos ? 1 : 0)
+    diff = nL + nS - bNL - bNS
+    bTip = 'ฐาน = buysell-rsi.pine (แหล่งป้าย ' + srcName + ' · กฎออก ' + presetTxt + ' · ช่วงเดียวกัน) ไม่มี Elliott Wave'
+    table.cell(t, 0, row, 'ฐาน (ไม่มี EW)', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = bTip)
+    table.cell(t, 1, row, fmtPct(bEqL), text_color = pnlColor(bEqL), text_size = tSize, text_halign = text.align_right, tooltip = bTip)
+    table.cell(t, 2, row, fmtPct(bEqS), text_color = pnlColor(bEqS), text_size = tSize, text_halign = text.align_right, tooltip = bTip)
+    table.cell(t, 3, row, fmtPct(bEqL + bEqS), text_color = pnlColor(bEqL + bEqS), text_size = tSize, text_halign = text.align_right, tooltip = bTip)
+    row += 1
+    dTip = 'ต่าง = เทรดไฟล์นี้ − เทรดฐาน · ' + (isFlt ? 'กรอง: ไม่ต่ำกว่า −' + str.tostring(budget) : isAdd ? 'เพิ่มไม้: ไม่ต่ำกว่า 0' : 'กำหนด TP/SL: เท่ากับ 0')
+    table.cell(t, 0, row, 'ฐาน: เทรด · ต่าง', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = dTip)
+    table.cell(t, 1, row, str.tostring(bNL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(bNS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(bNL + bNS) + ' · ' + (diff > 0 ? '+' : '') + str.tostring(diff), text_color = diff < -budget ? sellCss : diff >= 0 ? buyCss : color.orange, text_size = tSize, text_halign = text.align_right, tooltip = dTip)
+    row += 1
+
+    // ผลส่วนของ Elliott (ไม้ที่ปิดแล้ว)
+    ewInfo = isLvl ? 'ไม้ TL ที่ใช้ระดับคลื่น: ' + stTxt(lvSt) : (isFlt ? 'ข้ามป้าย TL ' + str.tostring(cnt.get(0)) + ' · ' : '') + 'ไม้ EW: ' + stTxt(ewSt)
+    table.cell(t, 0, row, 'EW · ' + ewInfo, text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'นับเฉพาะไม้ที่ปิดแล้ว · ผลรวม % หัก fee')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+
+    if showDetail
+        ddL = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
+        ddS = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, row, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ลดลงมากสุดจากจุดสูงสุดของผลรวม %')
+        table.cell(t, 1, row, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+//-----------------------------------------------------------------------------}
+//Alerts
+//-----------------------------------------------------------------------------{
+alertcondition(tlOpen == 1 or ewOpen == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | Long เข้า @ {{close}}')
+alertcondition(tlOpen == -1 or ewOpen == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | Short เข้า @ {{close}}')
+alertcondition(xL == 1 or xS == 1, 'TP', 'TP {{ticker}} ({{interval}}) | ปิดทำกำไรก่อนป้าย')
+alertcondition(xL == -1 or xS == -1, 'SL', 'SL {{ticker}} ({{interval}}) | ปิดตัดขาดทุนก่อนป้าย')
+alertcondition(xL == 2 or xS == 2, 'TS', 'TS {{ticker}} ({{interval}}) | ปิดด้วย trailing ที่ราคาปิด @ {{close}}')
+
+exitName(int x) => x == 1 ? '🎯 TP' : x == -1 ? '🛑 SL' : '📉 TS'
+if sig == 1
+    alert((tlOpen == 1 ? '🟢 BUY [' + srcName + '] ' : '⚪ BUY [' + srcName + '] ข้าม (สวนคลื่นขาลง) ') + syminfo.ticker + ' (' + timeframe.period + ') | Short ปิด' + (tlOpen == 1 ? ' / Long เข้า' : '') + ' @ ' + str.tostring(close, format.mintick) + (tlOpen == 1 ? levelTxt(bookL) : ''), alert.freq_once_per_bar_close)
+if sig == -1
+    alert((tlOpen == -1 ? '🔴 SELL [' + srcName + '] ' : '⚪ SELL [' + srcName + '] ข้าม (สวนคลื่นขาขึ้น) ') + syminfo.ticker + ' (' + timeframe.period + ') | Long ปิด' + (tlOpen == -1 ? ' / Short เข้า' : '') + ' @ ' + str.tostring(close, format.mintick) + (tlOpen == -1 ? levelTxt(bookS) : ''), alert.freq_once_per_bar_close)
+if ewOpen == 1
+    alert('🟣 EW BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | จบคลื่น 2 → Long เข้า @ ' + str.tostring(close, format.mintick) + levelTxt(bookL), alert.freq_once_per_bar_close)
+if ewOpen == -1
+    alert('🟣 EW SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | จบคลื่น 2 → Short เข้า @ ' + str.tostring(close, format.mintick) + levelTxt(bookS), alert.freq_once_per_bar_close)
+if xL != 0
+    alert(exitName(xL) + ' Long ' + syminfo.ticker + ' (' + timeframe.period + ') | ปิด Long ก่อนป้าย @ ' + str.tostring(bookL.xPx, format.mintick), alert.freq_once_per_bar_close)
+if xS != 0
+    alert(exitName(xS) + ' Short ' + syminfo.ticker + ' (' + timeframe.period + ') | ปิด Short ก่อนป้าย @ ' + str.tostring(bookS.xPx, format.mintick), alert.freq_once_per_bar_close)
+if armMsg != ''
+    alert(armMsg, alert.freq_once_per_bar_close)
+
+//-----------------------------------------------------------------------------}
