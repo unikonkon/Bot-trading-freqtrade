@@ -1,0 +1,739 @@
+// Martingale ×2 · สูงสุด 3 ไม้ · ทุน 1000 USDT — indicator สำหรับ backtest บน TradingView
+// ค่าตั้งต้น = ป้ายและกฎออกเหมือน "Trendlines with Breaks [LuxAlgo] buysell-rsi.pine" + ขนาดไม้แบบ Martingale 250 → 500 → 1000
+//
+// ═══ หลักการ Martingale ที่ใช้ ════════════════════════════════════════════════════════════════
+//    รอบหนึ่งมีได้สูงสุด 3 ไม้: ไม้แรก × 1 → × 2 → × 4 (ทบ × 2 ทุกครั้งที่แพ้)
+//    ชนะ (กำไรหลังหัก fee > 0) → กลับไปไม้แรก · แพ้ครบ 3 ไม้ = "แพ้ครบรอบ" แล้วเริ่มรอบใหม่
+//    ขนาดไม้ = มูลค่าที่ซื้อ/ขาย (USDT) ไม่ใช้ leverage · ไม้ใหญ่กว่าเงินที่มีจะถูกลดเหลือเท่าเงินที่มี
+//    เงินไม่พอไม้แรกของรอบใหม่ = หมดทุน หยุดเทรด
+//    แต่ละคอลัมน์เป็นบัญชีแยก ทุน 1000 เท่ากัน: Long (BUY เท่านั้น) · Short (SELL เท่านั้น) · สองฝั่ง (บัญชีเดียวถือทีละไม้)
+//
+// ═══ ทำไมฉบับแรก (Donchian · ไม้แรก 10) ได้กำไรน้อยกว่า rsi.pine มาก ═══════════════════════════════
+//    1. หน่วยไม่เท่ากัน: ตาราง rsi.pine = ผลรวม % ต่อไม้ ไม่ทบ = เหมือนลงไม้ละ 1000 (เต็มทุน) ทุกไม้
+//       ฉบับแรกลงไม้แรก 10 = 1% ของทุน → ถึง % ต่อไม้จะเท่ากัน กำไรเป็น USDT ก็เล็กลงราว 25–100 เท่า
+//    2. ป้ายและกฎออกคนละชุด: ฉบับแรก = Donchian 20 + EMA200 · TP/SL 3 ATR (ที่ 30m ทดสอบแล้วขาดทุน)
+//       rsi.pine = เส้นเทรนด์ + กฎสลับ BUY/SELL + ปิดเมื่อป้ายตรงข้าม + TP/SL/Trail ตาม EMA200 (Auto ตาม TF)
+//       (30m: Long ถือจนถึง SELL · Short TP 8 / SL 3 × ATR) → ไม้ชนะวิ่งยาว ไม้แพ้ถูกตัดที่ป้ายตรงข้าม
+//
+// ═══ สิ่งที่แก้ ════════════════════════════════════════════════════════════════════════════
+//    • ชุดตั้งค่า "เหมือน rsi.pine" (ค่าตั้งต้น): pivot · เส้นเทรนด์ · จุดทะลุ · กฎสลับ · EMA200 แบบเริ่มด้วย SMA
+//      · กฎออก Auto ตาม TF · ลำดับในแท่ง (TP/SL → Trail → ป้าย) เหมือน rsi.pine ทุกจุด
+//      → มุมมอง "% ต่อไม้ (เดิม)" ได้ไม้ชุดเดียวกับตาราง rsi.pine (ผลรวม % · เทรด · ปิดก่อนป้าย · Win rate จากราคา)
+//    • ไม้แรก 250 USDT → 250 / 500 / 1000 · ไม้ 3 = เต็มทุนพอดี จึงไม่ต้องใช้ leverage
+//    • แถว "เทียบ: rsi.pine ไม้ละ 1000" = ผลรวม % ของ rsi.pine × ทุน / 100 ไว้เทียบเป็น USDT ตรงๆ
+//    • ชุดเดิม (Donchian + EMA200 · TP/SL 3 ATR) ยังเลือกได้ที่ "ชุดตั้งค่า"
+//
+// ═══ ผลทดสอบ (สคริปต์จำลอง rsi.pine + Martingale · fee 0.10%/ขา · SL slippage 0.05% · ทุน 1000) ═══════════
+//    BTCUSDT 30m · 274 วันล่าสุด (ช่วงเดียวกับกราฟที่ใช้ตรวจ) · 210 ไม้ · win rate หลังหัก fee 30%
+//      rsi.pine ผลรวม +17.4% (= +174 USDT ถ้าลงไม้ละ 1000)
+//      Martingale ไม้แรก 250: +162 USDT · แพ้ครบรอบ 28 ครั้ง · เงินต่ำสุด 926 · ไม้คงที่ 250: +43
+//      Martingale ไม้แรก 10:  +6.7 USDT (ฉบับแรกถ้าใช้ป้าย rsi.pine)
+//    ทุกเหรียญ (median ต่อเหรียญ · ชุดหลัก / ชุดตรวจ 1 / 2 / 3 · Martingale ไม้แรก 250 · % ของทุน):
+//      30m 274 วัน  rsi.pine −4.5% / −34% / −89% / −104% → MG −12% / −22% / −34% / −49% · บวก 1–3 เหรียญจาก 15–18
+//                   Drawdown median 28–65% · แย่สุด 87% → BTC 30m เป็นข้อยกเว้น ไม่ใช่ปกติของ 30m
+//      1h ทั้งช่วง  MG +22% / +14% / −27% / −11% / −57% (ชุดตรวจ 5) · Drawdown median 45–78%
+//      4h ทั้งช่วง  MG +291% / +331% / +146% / +269% / +45% · บวก 10–16 จาก 15–18 · Drawdown median 23–60% · แย่สุด 98%
+//      1D ทั้งช่วง  MG +274% / +400% / +182% / +115% / +43% · Drawdown median 35–57% · บางเหรียญเหลือเงิน < 50
+//      15m ขาดทุนทุกชุด (MG −26% ถึง −50%)
+//    ข้อสรุป:
+//    • ไม้แรก 250 ได้กำไร USDT ใกล้ rsi.pine (ไม้ละ 1000) แต่ขาดทุนก็โตตามเท่ากัน · Martingale ไม่สร้างความได้เปรียบเพิ่ม
+//      MG 250 ได้ผลใกล้เคียงไม้คงที่ ~440 (ขนาดไม้เฉลี่ยใกล้กัน) · ที่ดูดีกว่าไม้คงที่ 250 เพราะลงเงินเฉลี่ยมากกว่า
+//    • ป้าย rsi.pine ได้กำไรชัดที่ 4h / 1D · 30m / 1h บวกเฉพาะบางเหรียญบางช่วง · 15m ขาดทุน
+//    • Drawdown 50–90% เกิดขึ้นได้จริงในบางเหรียญ · ลดไม้แรก (เช่น 100) = กำไรและ Drawdown ลดตามสัดส่วน
+//    • ข้อมูลทุกชุดเคยใช้ในงานวิจัยก่อนหน้าแล้ว ผลนี้เป็นผลประกอบ ไม่ใช่ข้อพิสูจน์ · ผลย้อนหลังไม่รับประกันอนาคต
+//
+// ═══ ตาราง ═════════════════════════════════════════════════════════════════════════════════
+//    มุมมอง "เงิน Martingale" (ค่าตั้งต้น): กำไร USDT รายช่วง 1 วัน → 1 ปี + ทั้งหมด พร้อม % ของทุน · ยอดเงิน
+//      เทรด · % ชนะ · ไม้ใหญ่สุด · แพ้ติดกันสูงสุด · แพ้ครบรอบ · Drawdown · เงินต่ำสุด · ไม้ที่ถือ / ไม้ถัดไป
+//      "เทียบ: ไม้คงที่" = ไม้ชุดเดียวกัน ลงขนาดไม้แรกทุกไม้ไม่ทบ · "เทียบ: rsi.pine ไม้ละ 1000" = ผลรวม % × ทุน
+//      "เทียบ: <แหล่งอื่น>" = อีกแหล่งป้าย กฎออกและการทบชุดเดียวกัน
+//    มุมมอง "% ต่อไม้ (เดิม)": แบบตาราง rsi.pine — ผลรวม % ต่อไม้ (หัก fee · ไม่ทบ) · เทรดนับไม้ที่ถืออยู่ · Win rate จากราคา
+//    ไม้ที่ยังถืออยู่คิดที่ราคาปิดล่าสุดในแถวกำไร
+//
+// ═══ ใช้งานจริง ═══════════════════════════════════════════════════════════════════════════
+//    • ป้าย BUY/SELL บนกราฟและแจ้งเตือน = ไม้ที่บัญชีที่เลือก ("บัญชีของป้าย/แจ้งเตือน") เปิดจริง
+//      ข้อความบอกขนาดไม้ USDT · ไม้ที่เท่าไรของรอบ · ราคา TP/SL ให้วางคำสั่งที่ exchange ตอนเข้า
+//    • ตัดสินที่ราคาปิดแท่ง · TP/SL เริ่มทำงานแท่งถัดไป · แท่งเดียวแตะทั้งคู่นับ SL · ราคาเปิดกระโดดข้าม = fill ที่ราคาเปิด
+//    • Trail ตัดสินที่ราคาปิด → ใช้แจ้งเตือน TS ปิดไม้ · ป้ายตรงข้ามปิดไม้ที่ราคาปิด (ชุด rsi.pine)
+//    • Short ต้องใช้ Futures และไม่รวม funding · แพ้ครบรอบติดกันหลายรอบเกิดขึ้นได้จริง
+
+//@version=6
+indicator('Martingale ×2 · 3 ไม้ [Trendlines rsi.pine / Donchian] backtest', 'MG x2', overlay = true, max_bars_back = 500, max_labels_count = 500)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+PRESET_RSI = 'เหมือน rsi.pine (เส้นเทรนด์ · กฎออก Auto)'
+PRESET_DC  = 'Donchian + EMA200 · TP/SL 3 ATR (ฉบับแรก)'
+PRESET_OWN = 'กำหนดเอง (ใช้ช่องด้านล่าง)'
+SRC_TLB = 'เส้นเทรนด์ (rsi.pine)'
+SRC_DC  = 'Donchian Breakout'
+SRC_R2  = 'RSI(2) ย่อตัว'
+SRC_ST  = 'Supertrend'
+SRC_TL  = 'เส้นเทรนด์ LuxAlgo ต้นฉบับ'
+EX_AUTO = 'Auto ตาม TF + ป้ายตรงข้าม (rsi.pine)'
+EX_FIX  = 'TP/SL × ATR คงที่'
+
+preset   = input.string(PRESET_RSI, 'ชุดตั้งค่า', options = [PRESET_RSI, PRESET_DC, PRESET_OWN], group = 'สัญญาณ', tooltip = 'เหมือน rsi.pine: ป้าย กฎสลับ และกฎออกเหมือน buysell-rsi.pine ทุกจุด (ค่าตั้งต้น)\nDonchian: ชุดของฉบับแรก (Donchian 20 + กรอง EMA200 · TP 3 / SL 3 × ATR)\nกำหนดเอง: ใช้ช่อง แหล่งป้าย / กรองเทรนด์ / กฎออก ด้านล่าง')
+srcIn    = input.string(SRC_TLB, 'แหล่งป้าย (กำหนดเอง)', options = [SRC_TLB, SRC_DC, SRC_R2, SRC_ST, SRC_TL], group = 'สัญญาณ', tooltip = 'ใช้เมื่อชุดตั้งค่า = กำหนดเอง\nเส้นเทรนด์ (rsi.pine): กฎ close > upper ของบอท + กฎสลับ\nDonchian: ราคาปิดทะลุจุดสูง/ต่ำสุด N แท่งก่อนหน้า\nRSI(2) ย่อตัว: RSI(2) < Low = BUY · > High = SELL\nSupertrend: เปลี่ยนทิศ = ป้าย\nเส้นเทรนด์ LuxAlgo ต้นฉบับ: จุด B ของ indicator ต้นฉบับ')
+useTrendIn = input.bool(false, 'กรองเทรนด์ด้วย EMA (กำหนดเอง)', group = 'สัญญาณ', tooltip = 'ใช้เมื่อชุดตั้งค่า = กำหนดเอง · BUY เฉพาะราคาปิด > EMA · SELL เฉพาะราคาปิด < EMA')
+exitIn   = input.string(EX_AUTO, 'กฎออก (กำหนดเอง)', options = [EX_AUTO, EX_FIX], group = 'สัญญาณ', tooltip = 'ใช้เมื่อชุดตั้งค่า = กำหนดเอง\nAuto: ป้ายผ่านกฎสลับ · ป้ายตรงข้ามปิดไม้ · TP/SL/Trail ตาม EMA200 และ TF (ตาราง Auto ของ rsi.pine)\nTP/SL คงที่: ออกที่ TP/SL × ATR เท่านั้น ถือไม้อยู่ไม่รับป้ายใหม่')
+othMode  = input.string(SRC_DC, 'แหล่งเทียบ (แถวในตาราง)', options = [SRC_TLB, SRC_DC, SRC_R2, SRC_ST, SRC_TL], group = 'สัญญาณ', tooltip = 'คำนวณด้วยกรองเทรนด์ กฎออก และการทบชุดเดียวกัน แสดงในแถว "เทียบ" เท่านั้น')
+emaLen   = input.int(200, 'Trend EMA ยาว', minval = 2, maxval = 1000, group = 'สัญญาณ', tooltip = 'ใช้ทั้งกรองเทรนด์และแยกไม้ตาม/สวนเทรนด์ของกฎออก Auto · เริ่มด้วย SMA เหมือน rsi.pine')
+
+tlLen    = input.int(14, 'เส้นเทรนด์ Lookback', minval = 2, maxval = 200, group = 'ค่าของแต่ละแหล่ง', inline = 'tl', tooltip = 'ใช้กับเส้นเทรนด์ทั้งสองแบบ · ATR ของ slope และกฎออก = ATR(ค่านี้) เหมือน rsi.pine')
+tlMult   = input.float(1.0, 'Slope', minval = 0.01, maxval = 20, step = 0.1, group = 'ค่าของแต่ละแหล่ง', inline = 'tl')
+dcLen    = input.int(20, 'Donchian ยาว', minval = 2, maxval = 500, group = 'ค่าของแต่ละแหล่ง')
+r2Len    = input.int(2, 'RSI ยาว', minval = 2, maxval = 50, group = 'ค่าของแต่ละแหล่ง', inline = 'r2')
+r2Lo     = input.float(10, 'Low', minval = 1, maxval = 50, group = 'ค่าของแต่ละแหล่ง', inline = 'r2')
+r2Hi     = input.float(90, 'High', minval = 50, maxval = 99, group = 'ค่าของแต่ละแหล่ง', inline = 'r2')
+stFac    = input.float(3.0, 'Supertrend Factor', minval = 0.5, maxval = 20, step = 0.5, group = 'ค่าของแต่ละแหล่ง', inline = 'st')
+stLen    = input.int(10, 'ATR', minval = 1, maxval = 200, group = 'ค่าของแต่ละแหล่ง', inline = 'st')
+
+tpAtr    = input.float(3.0, 'TP × ATR', minval = 0.1, maxval = 50, step = 0.5, group = 'กฎออก TP/SL คงที่', inline = 'x')
+slAtr    = input.float(3.0, 'SL × ATR', minval = 0.1, maxval = 50, step = 0.5, group = 'กฎออก TP/SL คงที่', inline = 'x', tooltip = 'ใช้กับกฎออก "TP/SL × ATR คงที่" (ชุด Donchian)')
+slipIn   = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = 'กฎออก TP/SL คงที่', tooltip = 'หักจากราคา fill ของ SL (คำสั่ง stop) ทุกกฎออก · TP เป็น limit ไม่หัก · งานวิจัยใช้ 0.05')
+
+capital  = input.float(1000, 'ทุนเริ่มต้น (USDT)', minval = 1, group = 'Martingale (เงินทุน)', tooltip = 'ทุนของแต่ละคอลัมน์ (Long / Short / สองฝั่ง แยกบัญชีกัน)')
+baseMode = input.string('USDT คงที่', 'ไม้แรกของรอบ', options = ['USDT คงที่', '% ของเงิน'], group = 'Martingale (เงินทุน)', tooltip = 'USDT คงที่: ไม้แรกเท่าเดิมตลอด\n% ของเงิน: ไม้แรก = % ของยอดเงินตอนเริ่มรอบ (ล็อกไว้ทั้งรอบ)')
+baseUsd  = input.float(250, 'ไม้แรก USDT', minval = 0.01, group = 'Martingale (เงินทุน)', inline = 'b', tooltip = '250 → 500 → 1000 = ไม้ 3 เต็มทุน 1000 พอดี · กำไรขนาดใกล้ตาราง rsi.pine (ไม้ละ 1000)\nลดเหลือ 100 / 10 = กำไรและ Drawdown ลดตามสัดส่วน')
+basePct  = input.float(25.0, 'ไม้แรก %', minval = 0.01, maxval = 100, step = 0.5, group = 'Martingale (เงินทุน)', inline = 'b')
+mgMult   = input.float(2.0, 'ทบ × เมื่อแพ้', minval = 1, maxval = 10, step = 0.1, group = 'Martingale (เงินทุน)', inline = 'm')
+mgMax    = input.int(3, 'ไม้สูงสุดต่อรอบ', minval = 1, maxval = 10, group = 'Martingale (เงินทุน)', inline = 'm', tooltip = 'แพ้ครบจำนวนนี้ = แพ้ครบรอบ แล้วเริ่มไม้แรกใหม่')
+fixedIn  = input.float(0, 'ไม้คงที่ (แถวเทียบ · 0 = เท่าไม้แรก)', minval = 0, group = 'Martingale (เงินทุน)', tooltip = 'แถว "เทียบ: ไม้คงที่" = ไม้ชุดเดียวกัน ลงไม้ละเท่านี้ทุกไม้ไม่ทบ · 0 = เท่าไม้แรก USDT')
+alertSel = input.string('สองฝั่ง', 'บัญชีของป้าย/แจ้งเตือน', options = ['สองฝั่ง', 'Long', 'Short'], group = 'Martingale (เงินทุน)', tooltip = 'ป้าย BUY/SELL บนกราฟ เส้น TP/SL และแจ้งเตือน ตามไม้ของบัญชีนี้')
+
+startTime = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest', tooltip = 'เริ่มบัญชีด้วยทุนเต็มที่นี่')
+endTime   = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง) · ไม้ค้างปิดที่ราคาปิดแท่งนี้')
+feeInput  = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest', tooltip = 'ค่าธรรมเนียม/ขา คิดจากมูลค่าไม้ตอนเข้าและตอนออก (ค่าตั้งต้น 0.10 เท่า rsi.pine)')
+
+tableView  = input.string('เงิน Martingale', 'มุมมองตาราง', options = ['เงิน Martingale', '% ต่อไม้ (เดิม)'], group = 'Table')
+showTable  = input.bool(true, 'Show table', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Small', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+
+showLines  = input.bool(true, 'Show trendlines', group = 'Style', inline = 's0')
+showEma    = input.bool(true, 'Show trend EMA', group = 'Style', inline = 's0')
+showDc     = input.bool(true, 'Show Donchian', group = 'Style', inline = 's1')
+showLevels = input.bool(true, 'Show TP / SL / TS', group = 'Style', inline = 's1')
+upCss      = input.color(color.teal, 'Up Trendline', group = 'Style', inline = 'tlc')
+dnCss      = input.color(color.red, 'Down Trendline', group = 'Style', inline = 'tlc')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'sig')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'sig')
+
+FEE = feeInput / 100
+
+// ค่าที่ใช้จริงตามชุดตั้งค่า
+srcMode  = preset == PRESET_RSI ? SRC_TLB : preset == PRESET_DC ? SRC_DC : srcIn
+useTrend = preset == PRESET_RSI ? false : preset == PRESET_DC ? true : useTrendIn
+exitAuto = preset == PRESET_RSI ? true : preset == PRESET_DC ? false : exitIn == EX_AUTO
+fixedCmp = fixedIn > 0 ? fixedIn : baseUsd
+
+//-----------------------------------------------------------------------------}
+//Signals — ตัดสินที่ราคาปิดแท่ง
+//-----------------------------------------------------------------------------{
+atrV = ta.atr(tlLen)
+
+// Trend EMA — เหมือน rsi.pine: ค่าแรก = SMA แล้วค่อยเป็น EMA · ทิศ 1 ขึ้น · −1 ลง · 0 ยังไม่พร้อม
+emaSeed = ta.sma(close, emaLen)
+var float emaT = na
+emaT := na(emaT) ? emaSeed : close * (2.0 / (emaLen + 1)) + emaT * (1 - 2.0 / (emaLen + 1))
+trendDir = na(emaT) ? 0 : close > emaT ? 1 : -1
+
+// เส้นเทรนด์ (rsi.pine): pivot แบบเข้มงวดทั้งสองข้าง · ทะลุเมื่อราคาปิดเกินเส้น (close > upper / close < lower)
+pivotHighAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = high[len]
+        bool ok = true
+        for j = 1 to len
+            if cand <= high[len + j] or cand <= high[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+pivotLowAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = low[len]
+        bool ok = true
+        for j = 1 to len
+            if cand >= low[len + j] or cand >= low[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+slope = nz(atrV) / tlLen * tlMult
+ph    = pivotHighAt(tlLen)
+pl    = pivotLowAt(tlLen)
+isPh  = not na(ph)
+isPl  = not na(pl)
+var float upper   = 0.
+var float lower   = 0.
+var float slopePh = 0.
+var float slopePl = 0.
+var int   upos    = 0
+var int   dnos    = 0
+var bool  hasPh   = false
+var bool  hasPl   = false
+if isPh
+    upper   := ph
+    slopePh := slope
+    hasPh   := true
+else
+    upper := upper - slopePh
+if isPl
+    lower   := pl
+    slopePl := slope
+    hasPl   := true
+else
+    lower := lower + slopePl
+prevUpos = upos
+prevDnos = dnos
+upos := isPh ? 0 : close > upper ? 1 : upos
+dnos := isPl ? 0 : close < lower ? 1 : dnos
+tlbBuy  = upos > prevUpos
+tlbSell = dnos > prevDnos
+
+// เส้นเทรนด์ LuxAlgo ต้นฉบับ: ทะลุ upper − slope × length ขึ้น · ทะลุ lower + slope × length ลง
+tlPh = ta.pivothigh(tlLen, tlLen)
+tlPl = ta.pivotlow(tlLen, tlLen)
+var float tlUpper = 0.
+var float tlLower = 0.
+var float tlSPh   = 0.
+var float tlSPl   = 0.
+var int   tlUpos  = 0
+var int   tlDnos  = 0
+tlSPh   := not na(tlPh) ? slope : tlSPh
+tlSPl   := not na(tlPl) ? slope : tlSPl
+tlUpper := not na(tlPh) ? tlPh : tlUpper - tlSPh
+tlLower := not na(tlPl) ? tlPl : tlLower + tlSPl
+prevUp  = tlUpos
+prevDn  = tlDnos
+tlUpos := not na(tlPh) ? 0 : close > tlUpper - tlSPh * tlLen ? 1 : tlUpos
+tlDnos := not na(tlPl) ? 0 : close < tlLower + tlSPl * tlLen ? 1 : tlDnos
+tlBuy  = tlUpos > prevUp
+tlSell = tlDnos > prevDn
+
+// Donchian: ราคาปิดทะลุจุดสูง/ต่ำสุดของ dcLen แท่งก่อนหน้า (ไม่รวมแท่งนี้)
+dcHi   = ta.highest(high, dcLen)[1]
+dcLo   = ta.lowest(low, dcLen)[1]
+dcBuy  = close > dcHi
+dcSell = close < dcLo
+
+// RSI(2) ย่อตัว (Connors)
+r2V    = ta.rsi(close, r2Len)
+r2Buy  = r2V < r2Lo
+r2Sell = r2V > r2Hi
+
+// Supertrend: direction < 0 = ขาขึ้น
+[stLine, stDir] = ta.supertrend(stFac, stLen)
+stBuy  = stDir < 0 and stDir[1] > 0
+stSell = stDir > 0 and stDir[1] < 0
+
+pick(string m, bool tlb, bool dc, bool r2, bool st, bool tl) => m == SRC_TLB ? tlb : m == SRC_DC ? dc : m == SRC_R2 ? r2 : m == SRC_ST ? st : tl
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+upOk = not useTrend or trendDir == 1
+dnOk = not useTrend or trendDir == -1
+
+// ป้ายดิบที่ราคาปิดแท่ง: 1 BUY · −1 SELL (SELL ทับ BUY ถ้าเกิดพร้อมกัน เหมือน rsi.pine)
+rawOf(string m) =>
+    bool b = barstate.isconfirmed and upOk and pick(m, tlbBuy, dcBuy, r2Buy, stBuy, tlBuy)
+    bool s = barstate.isconfirmed and dnOk and pick(m, tlbSell, dcSell, r2Sell, stSell, tlSell)
+    s ? -1 : b ? 1 : 0
+
+// กฎสลับ BUY → SELL → BUY (เหมือน alternateSignals ของ rsi.pine) · ใช้กับกฎออก Auto · var แยกตามที่เรียก
+alternate(int raw) =>
+    var int st = 0
+    int out = 0
+    if st == 0 and raw == 1
+        out := 1
+        st  := 1
+    else if st == 1 and raw == -1
+        out := -1
+        st  := 0
+    out
+
+rawM = rawOf(srcMode)
+rawO = rawOf(othMode)
+altM = alternate(rawM)
+altO = alternate(rawO)
+// sig: 1 BUY · −1 SELL · 0 ไม่มี (เฉพาะในช่วง backtest)
+int sigM = not inWindow ? 0 : exitAuto ? altM : rawM
+int sigO = not inWindow ? 0 : exitAuto ? altO : rawO
+
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
+// กฎออก Auto ของ rsi.pine: กลุ่ม TF 0 = ต่ำกว่า 1h · 1 = 1h ถึง < 4h · 2 = 4h ถึง < 1D · 3 = 1D ขึ้นไป
+tfSec   = timeframe.in_seconds()
+autoGrp = tfSec < 3600 ? 0 : tfSec < 14400 ? 1 : tfSec < 86400 ? 2 : 3
+
+// [TP, SL, Trail] × ATR ของไม้ใหม่ (0 = ไม่ใช้) ตามฝั่ง และตาม/สวนเทรนด์ ณ แท่งเข้า
+exitProfile(int side, bool withTrend) =>
+    float tp = 0.
+    float sl = 0.
+    float ts = 0.
+    if not exitAuto
+        tp := tpAtr
+        sl := slAtr
+    else if side == 1
+        if autoGrp >= 2
+            ts := withTrend ? 6. : 0.
+            sl := withTrend ? 0. : 3.
+    else
+        bool wide = withTrend or autoGrp == 0 or autoGrp == 3
+        tp := wide ? 8. : 5.
+        sl := wide ? 3. : 2.
+    [tp, sl, ts]
+
+profileTxt(int side, bool withTrend) =>
+    [tp, sl, ts] = exitProfile(side, withTrend)
+    string s = (tp > 0 ? 'TP ' + str.tostring(tp) + ' ' : '') + (sl > 0 ? 'SL ' + str.tostring(sl) + ' ' : '') + (ts > 0 ? 'Trail ' + str.tostring(ts) + ' ' : '')
+    s == '' ? 'ตามป้าย' : s + '× ATR'
+
+//-----------------------------------------------------------------------------}
+//Books — บัญชี Martingale แยกตามคอลัมน์ (เงินจริงเป็น USDT)
+//-----------------------------------------------------------------------------{
+type Book
+    int   side               // 1 = Long · −1 = Short · 0 = สองฝั่ง
+    float eq                 // เงินหลังปิดไม้ล่าสุด (USDT)
+    float peak
+    float minEq
+    int   pos      = 0       // ไม้ที่ถืออยู่: 1 Long · −1 Short · 0 ว่าง
+    float entry    = na
+    float tp       = na
+    float sl       = na
+    float trail    = 0.      // Trail × ATR ที่ราคาปิด · 0 = ไม่ใช้
+    float peakC    = na      // ราคาปิดที่ดีที่สุดตั้งแต่เข้า
+    bool  withT    = false
+    float stake    = 0.      // ขนาดไม้ที่ถืออยู่ (USDT)
+    int   lvl      = 1       // ไม้ที่เท่าไรของรอบ (ไม้ที่ถืออยู่ หรือไม้ถัดไปถ้าว่าง)
+    float seqBase  = na      // ไม้แรกของรอบนี้ (ล็อกตอนเริ่มรอบ)
+    int   n        = 0
+    int   wins     = 0       // ชนะหลังหัก fee (ใช้ตัดสินการทบ)
+    int   pwins    = 0       // ชนะจากราคา ไม่หัก fee (แบบ rsi.pine)
+    int   nTp      = 0
+    int   nSl      = 0
+    int   nTs      = 0
+    int   full     = 0       // แพ้ครบรอบ
+    int   streak   = 0
+    int   maxStreak = 0
+    float maxStake = 0.
+    float ddPct    = 0.      // Drawdown สูงสุด % จากยอดเงินสูงสุด
+    float ddUsd    = 0.
+    float fixedSum = 0.      // ผลถ้าลงไม้คงที่ทุกไม้
+    float pctSum   = 0.      // ผลรวม % ต่อไม้ (หัก 2 × fee แบบ rsi.pine)
+    float pctPeak  = 0.
+    float pctDd    = 0.
+    bool  ruined   = false
+    int   openBar  = -1      // bar_index ที่เปิดไม้ล่าสุด
+    int   exitBar  = -1      // bar_index ที่ปิดไม้ล่าสุด
+    int   exitHow  = 0       // 1 TP · −1 SL · 3 TS · 0 ป้ายตรงข้าม · 2 จบช่วง
+    float exitPx   = na
+    float exitPnl  = na
+    bool  exitFull = false   // ไม้ที่ปิดล่าสุดทำให้แพ้ครบรอบ
+
+newBook(int side) => Book.new(side = side, eq = capital, peak = capital, minEq = capital)
+
+var Book bookL = newBook(1)
+var Book bookS = newBook(-1)
+var Book bookB = newBook(0)
+var Book othL  = newBook(1)
+var Book othS  = newBook(-1)
+var Book othB  = newBook(0)
+
+// กำไรสุทธิ USDT ของไม้ขนาด stake ที่ได้ผลตอบแทนราคา r (fee ขาเข้าจาก stake · ขาออกจากมูลค่าตอนออก)
+netPnl(float stake, float r) => stake * r - stake * FEE - stake * (1 + r) * FEE
+
+// ไม้แรกของรอบตามโหมด
+method baseStake(Book b) => baseMode == '% ของเงิน' ? b.eq * basePct / 100 : baseUsd
+
+// ขนาดไม้ถัดไป (ไม้ที่ lvl ของรอบ) — ไม่เกินเงินที่มี
+method nextStake(Book b) =>
+    float base = b.lvl == 1 or na(b.seqBase) ? b.baseStake() : b.seqBase
+    math.min(base * math.pow(mgMult, b.lvl - 1), b.eq)
+
+// ผลตอบแทนราคาของไม้ที่ถืออยู่ถ้าปิดที่ px
+method retAt(Book b, float px) => b.pos != 0 ? b.pos * (px - b.entry) / b.entry : 0.
+
+// เงินรวมไม้ที่ถืออยู่ / ผลรวม % รวมไม้ที่ถืออยู่ (คิดที่ราคาปิดล่าสุด)
+method mtm(Book b) => b.eq + (b.pos != 0 ? netPnl(b.stake, b.retAt(close)) : 0.)
+method mtmPct(Book b) => b.pctSum + (b.pos != 0 ? b.retAt(close) * 100 - 2 * feeInput : 0.)
+
+// เปิดไม้ที่ราคาปิดแท่งสัญญาณ · กฎออกกำหนดครั้งเดียวตอนเข้า · TP/SL เริ่มทำงานแท่งถัดไป
+method openTrade(Book b, int dir) =>
+    bool fixOk = exitAuto or not na(atrV)
+    if b.pos == 0 and not b.ruined and fixOk
+        if b.lvl == 1 or na(b.seqBase)
+            b.seqBase := b.baseStake()
+        float st = math.min(b.seqBase * math.pow(mgMult, b.lvl - 1), b.eq)
+        b.ruined := b.eq <= 0 or (b.lvl == 1 and b.eq < b.seqBase)
+        if not b.ruined
+            bool withTrend = trendDir == dir
+            [tpM, slM, tsM] = exitProfile(dir, withTrend)
+            b.pos      := dir
+            b.entry    := close
+            b.stake    := st
+            b.withT    := withTrend
+            b.tp       := tpM > 0 and not na(atrV) ? close + dir * tpM * atrV : na
+            b.sl       := slM > 0 and not na(atrV) ? close - dir * slM * atrV : na
+            b.trail    := tsM
+            b.peakC    := close
+            b.maxStake := math.max(b.maxStake, st)
+            b.openBar  := bar_index
+    b.pos
+
+method closeTrade(Book b, float px, int how) =>
+    if b.pos != 0
+        float r   = b.retAt(px)
+        float pnl = netPnl(b.stake, r)
+        b.eq       := b.eq + pnl
+        b.n        := b.n + 1
+        b.pwins    := b.pwins + (r > 0 ? 1 : 0)
+        b.fixedSum := b.fixedSum + netPnl(fixedCmp, r)
+        b.pctSum   := b.pctSum + r * 100 - 2 * feeInput
+        b.pctPeak  := math.max(b.pctPeak, b.pctSum)
+        b.pctDd    := math.max(b.pctDd, b.pctPeak - b.pctSum)
+        b.exitFull := false
+        if pnl > 0
+            b.wins   := b.wins + 1
+            b.streak := 0
+            b.lvl    := 1
+        else
+            b.streak    := b.streak + 1
+            b.maxStreak := math.max(b.maxStreak, b.streak)
+            b.lvl       := b.lvl + 1
+            if b.lvl > mgMax
+                b.full     := b.full + 1
+                b.lvl      := 1
+                b.exitFull := true
+        b.nTp     := b.nTp + (how == 1 ? 1 : 0)
+        b.nSl     := b.nSl + (how == -1 ? 1 : 0)
+        b.nTs     := b.nTs + (how == 3 ? 1 : 0)
+        b.peak    := math.max(b.peak, b.eq)
+        b.ddUsd   := math.max(b.ddUsd, b.peak - b.eq)
+        b.ddPct   := math.max(b.ddPct, (b.peak - b.eq) / b.peak * 100)
+        b.minEq   := math.min(b.minEq, b.eq)
+        b.exitBar := bar_index
+        b.exitHow := how
+        b.exitPx  := px
+        b.exitPnl := pnl
+        b.pos     := 0
+    b.pos
+
+// คำสั่ง TP/SL ที่ค้างจากแท่งก่อน: ราคาเปิดกระโดดข้ามก่อน แล้วค่อยดูสูง/ต่ำ · แตะทั้งคู่ในแท่งเดียวนับ SL
+// ไม่โดน → Trail ที่ราคาปิด (ราคาปิดห่างจากราคาปิดที่ดีที่สุดเกิน Trail × ATR ล่าสุด)
+method checkExit(Book b) =>
+    if b.pos != 0 and b.openBar != bar_index
+        float slip    = slipIn / 100
+        float adverse = b.pos == 1 ? low : high
+        float favor   = b.pos == 1 ? high : low
+        if not na(b.sl) and b.pos * (open - b.sl) <= 0
+            b.closeTrade(open * (1 - b.pos * slip), -1)
+        else if not na(b.tp) and b.pos * (open - b.tp) >= 0
+            b.closeTrade(open, 1)
+        else if not na(b.sl) and b.pos * (adverse - b.sl) <= 0
+            b.closeTrade(b.sl * (1 - b.pos * slip), -1)
+        else if not na(b.tp) and b.pos * (favor - b.tp) >= 0
+            b.closeTrade(b.tp, 1)
+        else if b.trail > 0
+            b.peakC := b.pos == 1 ? math.max(b.peakC, close) : math.min(b.peakC, close)
+            if b.pos * (close - b.peakC) < -b.trail * atrV
+                b.closeTrade(close, 3)
+    b.pos
+
+// ลำดับในแท่ง (เหมือน rsi.pine): TP/SL → Trail → ป้ายที่ราคาปิด
+// กฎออก Auto: ป้ายตรงข้ามปิดไม้ (Long book ปิดที่ SELL · Short book ปิดที่ BUY · สองฝั่งปิดแล้วกลับฝั่ง)
+// TP/SL คงที่: ถือไม้อยู่ไม่รับป้ายใหม่
+method step(Book b, int sig) =>
+    if barstate.isconfirmed
+        b.checkExit()
+        if exitAuto and b.pos != 0 and sig == -b.pos
+            b.closeTrade(close, 0)
+        if b.pos == 0 and sig != 0 and (b.side == 0 or b.side == sig)
+            b.openTrade(sig)
+        if lastWindowBar
+            b.closeTrade(close, 2)
+    b.pos
+
+bookL.step(sigM)
+bookS.step(sigM)
+bookB.step(sigM)
+othL.step(sigO)
+othS.step(sigO)
+othB.step(sigO)
+
+Book ab = alertSel == 'Long' ? bookL : alertSel == 'Short' ? bookS : bookB
+entered = ab.openBar == bar_index
+exited  = ab.exitBar == bar_index and ab.exitHow != 2
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง (ใช้หากำไรรายช่วง)
+//-----------------------------------------------------------------------------{
+var array<int>   eqTime = array.new<int>()
+var array<float> eqL    = array.new<float>()
+var array<float> eqS    = array.new<float>()
+var array<float> eqB    = array.new<float>()
+var array<float> pcL    = array.new<float>()
+var array<float> pcS    = array.new<float>()
+var array<float> pcB    = array.new<float>()
+if barstate.isconfirmed and inWindow
+    eqTime.push(time_close)
+    eqL.push(bookL.mtm())
+    eqS.push(bookS.mtm())
+    eqB.push(bookB.mtm())
+    pcL.push(bookL.mtmPct())
+    pcS.push(bookS.mtmPct())
+    pcB.push(bookB.mtmPct())
+
+// ดัชนีสุดท้ายที่ค่า ≤ t · −1 = ไม่มี
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//-----------------------------------------------------------------------------}
+//Plots
+//-----------------------------------------------------------------------------{
+useTlb = srcMode == SRC_TLB
+useDc  = srcMode == SRC_DC or othMode == SRC_DC
+plot(showLines and useTlb and hasPh ? upper : na, 'Upper (down-trendline)', color = isPh ? na : upCss)
+plot(showLines and useTlb and hasPl ? lower : na, 'Lower (up-trendline)', color = isPl ? na : dnCss)
+plot(showEma ? emaT : na, 'Trend EMA', color = color.new(color.gray, 20), linewidth = 2)
+plot(showDc and useDc ? dcHi : na, 'Donchian High', color = color.new(buyCss, 60))
+plot(showDc and useDc ? dcLo : na, 'Donchian Low', color = color.new(sellCss, 60))
+trailLvl(Book b) => b.pos != 0 and b.trail > 0 ? b.peakC - b.pos * b.trail * atrV : na
+plot(showLevels and ab.pos != 0 ? ab.tp : na, 'TP level', color = color.new(buyCss, 30), style = plot.style_linebr)
+plot(showLevels and ab.pos != 0 ? ab.sl : na, 'SL level', color = color.new(sellCss, 30), style = plot.style_linebr)
+plot(showLevels ? trailLvl(ab) : na, 'Trail level', color = color.new(color.orange, 30), style = plot.style_linebr)
+
+fmtNum(float x) => str.tostring(x, '#,##0.##')
+lvlTxt(Book b) => 'ไม้ ' + str.tostring(b.lvl) + '/' + str.tostring(mgMax)
+levelTxt(Book b) => (na(b.tp) ? '' : ' · TP ' + str.tostring(b.tp, format.mintick)) + (na(b.sl) ? '' : ' · SL ' + str.tostring(b.sl, format.mintick)) + (b.trail > 0 ? ' · Trail ' + str.tostring(b.trail) + ' ATR' : '') + (na(b.tp) and na(b.sl) and b.trail == 0 ? ' · ออกตามป้าย' : '')
+
+if entered
+    bool isBuy = ab.pos == 1
+    label.new(bar_index, isBuy ? low : high, (isBuy ? 'BUY ' : 'SELL ') + fmtNum(ab.stake) + '\n' + str.tostring(ab.lvl) + '/' + str.tostring(mgMax), color = isBuy ? buyCss : sellCss, textcolor = color.white, style = isBuy ? label.style_label_up : label.style_label_down, size = size.small, yloc = isBuy ? yloc.belowbar : yloc.abovebar, tooltip = (isBuy ? 'Long ' : 'Short ') + fmtNum(ab.stake) + ' USDT · ' + lvlTxt(ab) + ' ของรอบ\nเข้า ' + str.tostring(ab.entry, format.mintick) + levelTxt(ab))
+
+exitTp = exited and ab.exitHow == 1
+exitSl = exited and ab.exitHow == -1
+exitTs = exited and ab.exitHow == 3
+plotshape(exitTp ? ab.exitPx : na, 'TP', shape.xcross, location.absolute, buyCss, size = size.tiny, text = 'TP', textcolor = buyCss)
+plotshape(exitSl ? ab.exitPx : na, 'SL', shape.xcross, location.absolute, sellCss, size = size.tiny, text = 'SL', textcolor = sellCss)
+plotshape(exitTs ? ab.exitPx : na, 'TS', shape.xcross, location.absolute, color.orange, size = size.tiny, text = 'TS', textcolor = color.orange)
+plot(ab.mtm(), 'ยอดเงิน (บัญชีป้าย)', display = display.data_window)
+plot(ab.pos != 0 ? ab.stake : ab.nextStake(), 'ไม้ที่ถือ / ไม้ถัดไป', display = display.data_window)
+plot(sigM, 'Signal (1 BUY / -1 SELL)', display = display.data_window)
+
+//-----------------------------------------------------------------------------}
+//ตาราง
+//-----------------------------------------------------------------------------{
+sgn(float x) => x > 0 ? '+' : ''
+fmtUsd(float x) => sgn(x) + str.tostring(x, '#,##0.00')
+fmtPct(float x) => sgn(x) + str.tostring(x, '0.00') + '%'
+fmtUsdPct(float x) => fmtUsd(x) + ' (' + sgn(x) + str.tostring(x / capital * 100, '0.0') + '%)'
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+nowTxt(Book b) => b.ruined ? 'หมดทุน' : b.pos != 0 ? (b.pos == 1 ? '▲ ถือ ' : '▼ ถือ ') + fmtNum(b.stake) + ' · ' + lvlTxt(b) : 'ถัดไป ' + fmtNum(b.nextStake()) + ' · ' + lvlTxt(b)
+winTxt(Book b) => str.tostring(b.n) + ' · ' + (b.n > 0 ? str.tostring(b.wins * 100.0 / b.n, '0.0') + '%' : '—')
+fullTxt(Book b) => str.tostring(b.full) + (b.full > 0 ? ' ครั้ง' : '')
+// แบบ rsi.pine: เทรดนับไม้ที่ถืออยู่ · ชนะจากราคา (ไม้ที่ถืออยู่เทียบราคาล่าสุด)
+nAll(Book b) => b.n + (b.pos != 0 ? 1 : 0)
+pwinAll(Book b) => b.pwins + (b.pos != 0 and b.retAt(close) > 0 ? 1 : 0)
+pwrTxt(Book b) => nAll(b) > 0 ? str.tostring(pwinAll(b) * 100.0 / nAll(b), '0.0') + '%' : '—'
+
+TSIZE = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+var table t = table.new(tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right, 4, 28, bgcolor = color.new(#131722, 10), frame_color = color.new(color.white, 85), frame_width = 1)
+cellL(int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, 0, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_left, tooltip = tip, bgcolor = bgc)
+cellR(int col, int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, col, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_right, tooltip = tip, bgcolor = bgc)
+
+if showTable and barstate.islast
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    money = tableView == 'เงิน Martingale'
+    table.clear(t, 0, 0, 3, 27)
+
+    seqTxt = baseMode == '% ของเงิน' ? str.tostring(basePct) + '%' : fmtNum(baseUsd)
+    if mgMax >= 2 and baseMode != '% ของเงิน'
+        for i = 2 to mgMax
+            seqTxt += '→' + fmtNum(baseUsd * math.pow(mgMult, i - 1))
+    exitTxt = exitAuto ? (autoGrp == 0 ? 'Auto <1h' : autoGrp == 1 ? 'Auto 1h' : autoGrp == 2 ? 'Auto 4h' : 'Auto 1D') : 'TP ' + str.tostring(tpAtr) + '/SL ' + str.tostring(slAtr)
+    headTip = 'ป้าย: ' + srcMode + (useTrend ? ' · กรอง EMA' + str.tostring(emaLen) : '') + (exitAuto ? ' · กฎสลับ + ป้ายตรงข้ามปิดไม้' : '') + '\nLong ตามเทรนด์: ' + profileTxt(1, true) + ' · สวนเทรนด์: ' + profileTxt(1, false) + '\nShort ตามเทรนด์: ' + profileTxt(-1, true) + ' · สวนเทรนด์: ' + profileTxt(-1, false) + '\nMartingale: ไม้แรก ' + seqTxt + ' · ×' + str.tostring(mgMult) + ' เมื่อแพ้ · สูงสุด ' + str.tostring(mgMax) + ' ไม้/รอบ · ทุน ' + fmtNum(capital) + ' ต่อคอลัมน์'
+    cellL(0, syminfo.ticker + ' · ' + timeframe.period + ' · ' + srcMode + ' · ' + exitTxt + ' · ' + (money ? 'MG ' + seqTxt : '% ต่อไม้'), tip = headTip)
+    table.merge_cells(t, 0, 0, 2, 0)
+    cellR(3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', muted, 'ค่าธรรมเนียมต่อขา · ไม่รวม funding')
+    cellL(1, 'ช่วง', muted)
+    cellR(1, 1, '▲ Long', muted, 'บัญชีที่รับเฉพาะ BUY' + (exitAuto ? ' · SELL ปิด' : ''))
+    cellR(2, 1, '▼ Short', muted, 'บัญชีที่รับเฉพาะ SELL (Futures)' + (exitAuto ? ' · BUY ปิด' : ''))
+    cellR(3, 1, '⇅ สองฝั่ง', muted, exitAuto ? 'บัญชีเดียวรับทั้ง BUY และ SELL (ปิดแล้วกลับฝั่ง) · ไม้ชุดเดียวกับ Long + Short' : 'บัญชีเดียวรับป้ายแรกที่มาตอนว่าง (ถือได้ทีละไม้) · ไม่ใช่ผลรวม Long + Short')
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+    names   = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '6 เดือน', '1 ปี')
+    spans   = array.from(1, 7, 30, 90, 180, 365)
+    curL = money ? bookL.mtm() : bookL.mtmPct()
+    curS = money ? bookS.mtm() : bookS.mtmPct()
+    curB = money ? bookB.mtm() : bookB.mtmPct()
+    base0 = money ? capital : 0.
+    int row = 2
+    for i = 0 to 5
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            idx  = lastAtOrBefore(eqTime, nowT - spanMs)
+            chgL = curL - (idx >= 0 ? (money ? eqL.get(idx) : pcL.get(idx)) : base0)
+            chgS = curS - (idx >= 0 ? (money ? eqS.get(idx) : pcS.get(idx)) : base0)
+            chgB = curB - (idx >= 0 ? (money ? eqB.get(idx) : pcB.get(idx)) : base0)
+            cellL(row, names.get(i), tip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด' + (money ? ' · USDT (% ของทุน)' : ''))
+            cellR(1, row, money ? fmtUsdPct(chgL) : fmtPct(chgL), pnlColor(chgL))
+            cellR(2, row, money ? fmtUsdPct(chgS) : fmtPct(chgS), pnlColor(chgS))
+            cellR(3, row, money ? fmtUsdPct(chgB) : fmtPct(chgB), pnlColor(chgB))
+            row += 1
+
+    days     = math.floor(totalMs / DAY_MS)
+    allLabel = 'ทั้งหมด · ' + (days >= 1 ? str.tostring(days) + ' วัน' : str.tostring(math.floor(totalMs / 3600000)) + ' ชม.')
+    allTip   = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)'
+    allL = curL - base0
+    allS = curS - base0
+    allB = curB - base0
+    cellL(row, allLabel, tip = allTip, bgc = band)
+    cellR(1, row, money ? fmtUsdPct(allL) : fmtPct(allL), pnlColor(allL), bgc = band)
+    cellR(2, row, money ? fmtUsdPct(allS) : fmtPct(allS), pnlColor(allS), bgc = band)
+    cellR(3, row, money ? fmtUsdPct(allB) : fmtPct(allB), pnlColor(allB), bgc = band)
+    row += 1
+
+    if money
+        cellL(row, 'ยอดเงิน', tip = 'ทุน + กำไร/ขาดทุน (ไม้ที่ถืออยู่คิดที่ราคาปิดล่าสุด)')
+        cellR(1, row, fmtNum(curL))
+        cellR(2, row, fmtNum(curS))
+        cellR(3, row, fmtNum(curB))
+        row += 1
+        cellL(row, 'เทรด · % ชนะ', muted, 'ไม้ที่ปิดแล้ว · ชนะ = กำไรหลังหัก fee > 0 (ตัวเดียวกับที่ใช้ตัดสินว่าจะทบหรือไม่)')
+        cellR(1, row, winTxt(bookL), muted)
+        cellR(2, row, winTxt(bookS), muted)
+        cellR(3, row, winTxt(bookB), muted)
+        row += 1
+        cellL(row, 'ไม้ใหญ่สุด', muted, 'ขนาดไม้ (USDT) ที่ใหญ่ที่สุดที่เคยเปิด')
+        cellR(1, row, fmtNum(bookL.maxStake), muted)
+        cellR(2, row, fmtNum(bookS.maxStake), muted)
+        cellR(3, row, fmtNum(bookB.maxStake), muted)
+        row += 1
+        cellL(row, 'แพ้ติดกันสูงสุด', muted, 'จำนวนไม้ที่แพ้ติดกันมากที่สุด (นับข้ามรอบ)')
+        cellR(1, row, str.tostring(bookL.maxStreak), muted)
+        cellR(2, row, str.tostring(bookS.maxStreak), muted)
+        cellR(3, row, str.tostring(bookB.maxStreak), muted)
+        row += 1
+        cellL(row, 'แพ้ครบรอบ', muted, 'จำนวนครั้งที่แพ้ครบ ' + str.tostring(mgMax) + ' ไม้แล้วต้องเริ่มรอบใหม่ (ไม้ ' + seqTxt + ')')
+        cellR(1, row, fullTxt(bookL), bookL.full > 0 ? sellCss : muted)
+        cellR(2, row, fullTxt(bookS), bookS.full > 0 ? sellCss : muted)
+        cellR(3, row, fullTxt(bookB), bookB.full > 0 ? sellCss : muted)
+        row += 1
+        cellL(row, 'Drawdown', muted, 'ลดลงมากสุดจากยอดเงินสูงสุด (นับที่ไม้ปิด) · USDT ในวงเล็บ')
+        cellR(1, row, str.tostring(bookL.ddPct, '0.0') + '% (' + fmtNum(bookL.ddUsd) + ')', muted)
+        cellR(2, row, str.tostring(bookS.ddPct, '0.0') + '% (' + fmtNum(bookS.ddUsd) + ')', muted)
+        cellR(3, row, str.tostring(bookB.ddPct, '0.0') + '% (' + fmtNum(bookB.ddUsd) + ')', muted)
+        row += 1
+        cellL(row, 'เงินต่ำสุด', muted, 'ยอดเงินต่ำสุดหลังปิดไม้')
+        cellR(1, row, fmtNum(bookL.minEq), bookL.minEq < capital ? sellCss : muted)
+        cellR(2, row, fmtNum(bookS.minEq), bookS.minEq < capital ? sellCss : muted)
+        cellR(3, row, fmtNum(bookB.minEq), bookB.minEq < capital ? sellCss : muted)
+        row += 1
+        cellL(row, 'ไม้ตอนนี้', tip = 'ถือ = ขนาดไม้ที่ถืออยู่ · ถัดไป = ขนาดไม้ที่จะเปิดเมื่อมีป้าย · ไม้ที่เท่าไรของรอบ')
+        cellR(1, row, nowTxt(bookL), bookL.pos != 0 ? pnlColor(netPnl(bookL.stake, bookL.retAt(close))) : color.white)
+        cellR(2, row, nowTxt(bookS), bookS.pos != 0 ? pnlColor(netPnl(bookS.stake, bookS.retAt(close))) : color.white)
+        cellR(3, row, nowTxt(bookB), bookB.pos != 0 ? pnlColor(netPnl(bookB.stake, bookB.retAt(close))) : color.white)
+        row += 1
+        fixTip = 'ไม้ชุดเดียวกันทุกไม้ แต่ลงไม้ละ ' + fmtNum(fixedCmp) + ' USDT ไม่ทบ (ไม้ที่ถืออยู่ยังไม่นับ)'
+        cellL(row, 'เทียบ: ไม้คงที่ ' + fmtNum(fixedCmp), muted, fixTip)
+        cellR(1, row, fmtUsdPct(bookL.fixedSum), pnlColor(bookL.fixedSum), fixTip)
+        cellR(2, row, fmtUsdPct(bookS.fixedSum), pnlColor(bookS.fixedSum), fixTip)
+        cellR(3, row, fmtUsdPct(bookB.fixedSum), pnlColor(bookB.fixedSum), fixTip)
+        row += 1
+        // ผลรวม % ต่อไม้ × ทุน = ตาราง rsi.pine เป็น USDT (ไม้ละเต็มทุน ไม่ทบ · ไม่หยุดเมื่อเงินไม่พอ)
+        rTip = 'ผลรวม % ต่อไม้ของไม้ชุดเดียวกัน × ' + fmtNum(capital) + ' / 100 = ตาราง rsi.pine คิดเป็น USDT (ลงไม้ละ ' + fmtNum(capital) + ' ทุกไม้ ไม่ทบ)' + (preset == PRESET_RSI ? '' : '\nชุดตั้งค่าไม่ใช่ "เหมือน rsi.pine" → ไม้ไม่ตรงกับ rsi.pine')
+        rL = bookL.mtmPct() * capital / 100
+        rS = bookS.mtmPct() * capital / 100
+        rB = bookB.mtmPct() * capital / 100
+        cellL(row, 'เทียบ: rsi.pine ไม้ละ ' + fmtNum(capital), muted, rTip)
+        cellR(1, row, fmtUsdPct(rL), pnlColor(rL), rTip)
+        cellR(2, row, fmtUsdPct(rS), pnlColor(rS), rTip)
+        cellR(3, row, fmtUsdPct(rB), pnlColor(rB), rTip)
+        row += 1
+    else
+        cellL(row, 'เทรด', muted, 'ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่ (แบบ rsi.pine)')
+        cellR(1, row, str.tostring(nAll(bookL)), muted)
+        cellR(2, row, str.tostring(nAll(bookS)), muted)
+        cellR(3, row, str.tostring(nAll(bookB)), muted)
+        row += 1
+        cellL(row, 'ปิดก่อนป้าย', muted, 'ไม้ที่ปิดด้วย TP / SL / TS ก่อนถึงป้ายตรงข้าม (นับรวมในแถวเทรดแล้ว)')
+        cellR(1, row, 'TP ' + str.tostring(bookL.nTp) + ' · SL ' + str.tostring(bookL.nSl) + ' · TS ' + str.tostring(bookL.nTs), muted)
+        cellR(2, row, 'TP ' + str.tostring(bookS.nTp) + ' · SL ' + str.tostring(bookS.nSl) + ' · TS ' + str.tostring(bookS.nTs), muted)
+        cellR(3, row, 'TP ' + str.tostring(bookB.nTp) + ' · SL ' + str.tostring(bookB.nSl) + ' · TS ' + str.tostring(bookB.nTs), muted)
+        row += 1
+        cellL(row, 'Win rate', tip = 'ชนะ = ราคาขายสูงกว่าราคาซื้อ (Short กลับกัน) · ไม่หัก fee · ไม้ที่ถืออยู่เทียบราคาล่าสุด (แบบ rsi.pine)')
+        cellR(1, row, pwrTxt(bookL))
+        cellR(2, row, pwrTxt(bookS))
+        cellR(3, row, pwrTxt(bookB))
+        row += 1
+        cellL(row, 'Drawdown', muted, 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (นับที่ไม้ปิด)')
+        cellR(1, row, str.tostring(bookL.pctDd, '0.00') + '%', muted)
+        cellR(2, row, str.tostring(bookS.pctDd, '0.00') + '%', muted)
+        cellR(3, row, str.tostring(bookB.pctDd, '0.00') + '%', muted)
+        row += 1
+
+    // เทียบ: อีกแหล่งป้าย กฎออกและการทบชุดเดียวกัน
+    oTip = 'ผลของ ' + othMode + ' ช่วงเดียวกัน กรองเทรนด์ กฎออก และ' + (money ? 'การทบ' : 'การคิด %') + 'ชุดเดียวกัน\nป้ายและแจ้งเตือนใช้แหล่งที่เลือกเท่านั้น'
+    oL = money ? othL.mtm() - capital : othL.mtmPct()
+    oS = money ? othS.mtm() - capital : othS.mtmPct()
+    oB = money ? othB.mtm() - capital : othB.mtmPct()
+    cellL(row, 'เทียบ: ' + othMode, muted, oTip)
+    cellR(1, row, money ? fmtUsdPct(oL) : fmtPct(oL), pnlColor(oL), oTip)
+    cellR(2, row, money ? fmtUsdPct(oS) : fmtPct(oS), pnlColor(oS), oTip)
+    cellR(3, row, money ? fmtUsdPct(oB) : fmtPct(oB), pnlColor(oB), oTip)
+    row += 1
+    cellL(row, '  เทรด · % ชนะ' + (money ? ' · แพ้ครบรอบ' : ''), muted, oTip)
+    cellR(1, row, (money ? winTxt(othL) + ' · ' + str.tostring(othL.full) : str.tostring(nAll(othL)) + ' · ' + pwrTxt(othL)), muted)
+    cellR(2, row, (money ? winTxt(othS) + ' · ' + str.tostring(othS.full) : str.tostring(nAll(othS)) + ' · ' + pwrTxt(othS)), muted)
+    cellR(3, row, (money ? winTxt(othB) + ' · ' + str.tostring(othB.full) : str.tostring(nAll(othB)) + ' · ' + pwrTxt(othB)), muted)
+    row += 1
+
+    // สถานะของบัญชีที่ใช้ป้าย/แจ้งเตือน
+    abName = alertSel == 'Long' ? '▲ Long' : alertSel == 'Short' ? '▼ Short' : '⇅ สองฝั่ง'
+    abPnl  = ab.pos != 0 ? netPnl(ab.stake, ab.retAt(close)) : 0.
+    status = ab.ruined ? abName + ': หมดทุน · หยุดเทรด' : ab.pos != 0 ? abName + ': ถือ ' + (ab.pos == 1 ? 'Long ' : 'Short ') + fmtNum(ab.stake) + ' USDT (' + lvlTxt(ab) + (ab.withT ? ' · ตามเทรนด์' : ' · สวนเทรนด์') + ') · เข้า ' + str.tostring(ab.entry, format.mintick) + levelTxt(ab) + ' · ' + fmtUsd(abPnl) : abName + ': ว่าง · ไม้ถัดไป ' + fmtNum(ab.nextStake()) + ' USDT (' + lvlTxt(ab) + ')'
+    cellL(row, status, ab.pos != 0 ? pnlColor(abPnl) : muted, 'บัญชีที่ใช้วาดป้ายและส่งแจ้งเตือน (ตั้งที่ "บัญชีของป้าย/แจ้งเตือน")')
+    table.merge_cells(t, 0, row, 3, row)
+
+//-----------------------------------------------------------------------------}
+//Alerts — ตามไม้ของบัญชีที่เลือก
+//-----------------------------------------------------------------------------{
+alertcondition(entered and ab.pos == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) | เปิด Long ตามไม้ Martingale @ {{close}}')
+alertcondition(entered and ab.pos == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) | เปิด Short ตามไม้ Martingale @ {{close}}')
+alertcondition(exitTp, 'TP', 'TP {{ticker}} ({{interval}}) | ปิดทำกำไร')
+alertcondition(exitSl, 'SL', 'SL {{ticker}} ({{interval}}) | ปิดตัดขาดทุน')
+alertcondition(exitTs, 'TS', 'TS {{ticker}} ({{interval}}) | ปิดด้วย trailing ที่ราคาปิด @ {{close}}')
+
+exitName(int x) => x == 1 ? '🎯 TP ' : x == -1 ? '🛑 SL ' : x == 3 ? '📉 TS ' : '🔁 ปิดตามป้าย '
+if exited
+    string nxt = ab.exitFull ? 'แพ้ครบรอบ → เริ่มรอบใหม่ ' : 'ไม้ถัดไป '
+    alert(exitName(ab.exitHow) + syminfo.ticker + ' (' + timeframe.period + ') | ปิด @ ' + str.tostring(ab.exitPx, format.mintick) + ' · ' + fmtUsd(ab.exitPnl) + ' USDT · ยอดเงิน ' + fmtNum(ab.eq) + ' · ' + nxt + fmtNum(ab.nextStake()) + ' USDT (' + lvlTxt(ab) + ')', alert.freq_once_per_bar_close)
+if entered
+    alert((ab.pos == 1 ? '🟢 BUY ' : '🔴 SELL ') + syminfo.ticker + ' (' + timeframe.period + ') | ' + (ab.pos == 1 ? 'Long ' : 'Short ') + fmtNum(ab.stake) + ' USDT · ' + lvlTxt(ab) + ' ของรอบ @ ' + str.tostring(ab.entry, format.mintick) + levelTxt(ab) + ' · ยอดเงิน ' + fmtNum(ab.eq), alert.freq_once_per_bar_close)
+
+//-----------------------------------------------------------------------------}
