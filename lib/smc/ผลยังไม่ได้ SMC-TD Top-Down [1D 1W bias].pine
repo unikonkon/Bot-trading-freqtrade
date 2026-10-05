@@ -1,0 +1,541 @@
+// SMC Top-Down — มองเทรนด์ 1W / 1D ก่อน แล้วหาจุดเข้าด้วย Smart Money Concepts บน 30m / 1h / 4h
+// โครงสร้าง (swing 50 / internal 5 · BOS / CHoCH · Order Block) คิดแบบเดียวกับ Smart Money Concepts [LuxAlgo] (lib/smc/)
+//
+// ═══ หลักการ ════════════════════════════════════════════════════════════════════════════════
+//    1. HTF bias (แท่ง 1D / 1W ที่ปิดแล้ว · ไม่ repaint): ขาขึ้น = เน้น Long · ขาลง = เน้น Short
+//       วิธีวัด: EMA (ราคาปิด 1D เทียบ EMA50 · 1W เทียบ EMA20) หรือโครงสร้าง SMC (ทิศของ BOS/CHoCH ล่าสุดบน 1D/1W)
+//       โหมด: 1D · 1W · 1D + 1W ต้องตรงกัน · ไม่กรอง
+//    2. จุดเข้าบน TF กราฟ (ตัดสินเมื่อปิดแท่ง): CHoCH (โครงสร้างเปลี่ยนทิศ) · BOS (เบรกตามทิศ) · ย้อนแตะ Order Block (limit)
+//       เข้าเฉพาะฝั่งที่ HTF bias อนุญาต · ตัวกรอง Premium/Discount: Long เฉพาะ OB ที่อยู่ครึ่งล่างของ swing range (Short กลับกัน)
+//    3. SL = ขอบไกลของ Order Block ของการเบรก · TP = RR × ระยะ SL · ป้ายตรงข้ามปิดไม้ · (เลือกได้) HTF bias เปลี่ยนทิศ = ปิดไม้
+//    4. ข้ามไม้ที่ต้นทุน (fee 2 ขา + slippage) เกิน 0.25 R
+//    บัญชี Long กับ Short แยกกัน ฝั่งละ 1 ไม้ · คอลัมน์ "สองฝั่ง" = Long + Short
+//
+// ═══ ผลทดสอบ (สคริปต์จำลองไฟล์นี้ · data-test/trendlines 63 เหรียญ 5 ชุด · fee 0.10%/ขา + slippage SL 0.05%) ═══
+//    ทดสอบ HTF bias 15 แบบ (1D/1W · EMA / โครงสร้าง size 2–20 · คู่ 1D+1W) × setup 5 แบบ × swing/internal × RR 2/3
+//    = 300 แบบต่อ TF → แล้วปรับกฎออก/ตัวกรอง 16 แบบ · เลือกจาก 60% แรกของชุดหลักเท่านั้น แล้วดู 40% หลัง + ชุดตรวจ 4 ชุด
+//    ตัวเลข = median ต่อเหรียญของผลรวม % ต่อไม้ (ไม่ทบ) · สองฝั่ง · ชุดหลัก ช่วงเลือก / ช่วงทดสอบ | ชุดตรวจ 1 / 2 / 3 / 5 (ทั้งช่วง)
+//      4h   ไม่กรอง HTF · CHoCH+BOS · RR 3            +262 / −18 | +283 / +252 / +336 / +165   ← HTF bias ไม่ช่วยที่ 4h
+//      1h   1D EMA50 · CHoCH · RR 3 · ปิดเมื่อ bias กลับ   +33 / +20  | +43 / +35 / +68 / +34       (ไม่กรอง: −4 / −28 | +32 / −14 / −24 / −6)
+//      30m  1D EMA50 · CHoCH · RR 2 · ปิดเมื่อ bias กลับ   +22 / +5   | +40 / +37 / +18             (ไม่กรอง: −25 / −16 | −75 / −83 / −98)
+//           + Premium/Discount
+//    • ที่ 30m / 1h การมอง 1D ก่อนเปลี่ยนจากขาดทุนเป็นกำไรทุกชุด · ที่ 4h ไม่กรองดีที่สุด (กรองแล้วเทรดครึ่งเดียว)
+//    • 1W bias และคู่ 1D+1W ได้น้อยกว่า 1D อย่างเดียวทุก TF (1W เปลี่ยนทิศช้า ตัดไม้ดีทิ้งมาก) → ค่า Auto ใช้ 1D
+//    • แยกฝั่ง: 4h/1h กำไรส่วนใหญ่จาก Long · 30m ช่วงแรก Short ทำกำไร ช่วงหลัง Long ทำกำไร · สองฝั่งนิ่งที่สุด
+//    • ข้อมูลทุกชุดเคยใช้ในงานวิจัยอื่นมาก่อน (ไม่เคยใช้กับไฟล์นี้) · ผลประกอบ ไม่ใช่ข้อพิสูจน์ · ไม่รวม funding · ผลย้อนหลังไม่รับประกันอนาคต
+//    • TF อื่น (15m · 2h · 1D) ไม่ได้ทดสอบ — Auto ใช้ค่าของกลุ่มที่ใกล้ที่สุด
+//
+// ═══ ตาราง ═══════════════════════════════════════════════════════════════════════════════
+//    ผลรวม % ต่อไม้ (ไม่ทบ) รายช่วง 1 วัน → 1 ปี + ทั้งหมด × Long / Short / สองฝั่ง · เป็นเงิน (ทุน 1000 ไม้ละเต็มทุน)
+//    เทรด · Win rate · ปิดด้วย TP/SL/ป้าย/HTF · Drawdown · เทียบ "ไม่กรอง HTF" (setup เดียวกันไม่มอง 1D/1W) · สถานะ HTF · ไม้ที่ถือ
+
+//@version=6
+indicator('SMC Top-Down [1W/1D bias → 30m/1h/4h entries] backtest', 'SMC TD', overlay = true, max_labels_count = 500, max_bars_back = 2000)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+AUTO   = 'Auto ตาม TF (ผลทดสอบ)'
+CUSTOM = 'กำหนดเอง'
+B_NONE = 'ไม่กรอง'
+B_D    = '1D'
+B_W    = '1W'
+B_DW   = '1D + 1W ตรงกัน'
+
+preset    = input.string(AUTO, 'ชุดตั้งค่า', options = [AUTO, CUSTOM], group = 'ชุดตั้งค่า', tooltip = 'Auto: 30m และต่ำกว่า = 1D EMA50 · CHoCH · RR 2 · ปิดเมื่อ bias กลับ · Premium/Discount\n1h–<4h = 1D EMA50 · CHoCH · RR 3 · ปิดเมื่อ bias กลับ\n4h ขึ้นไป = ไม่กรอง HTF · CHoCH + BOS · RR 3\nกำหนดเอง: ใช้ช่องด้านล่างทั้งหมด')
+biasIn    = input.string(B_D, 'HTF bias', options = [B_NONE, B_D, B_W, B_DW], group = 'HTF bias (กำหนดเอง)')
+methodIn  = input.string('EMA', 'วิธีวัดเทรนด์', options = ['EMA', 'โครงสร้าง SMC'], group = 'HTF bias (กำหนดเอง)', tooltip = 'EMA: ราคาปิดแท่ง HTF ที่ปิดแล้ว เทียบ EMA\nโครงสร้าง SMC: ทิศของ BOS/CHoCH ล่าสุดบน HTF')
+emaD      = input.int(50, 'EMA 1D', minval = 2, group = 'HTF bias (กำหนดเอง)', inline = 'e')
+emaW      = input.int(20, 'EMA 1W', minval = 2, group = 'HTF bias (กำหนดเอง)', inline = 'e')
+stD       = input.int(5, 'โครงสร้าง 1D size', minval = 2, group = 'HTF bias (กำหนดเอง)', inline = 's')
+stW       = input.int(2, '1W size', minval = 2, group = 'HTF bias (กำหนดเอง)', inline = 's')
+useChochIn = input.bool(true, 'CHoCH', group = 'จุดเข้า SMC (กำหนดเอง)', inline = 'su')
+useBosIn   = input.bool(false, 'BOS', group = 'จุดเข้า SMC (กำหนดเอง)', inline = 'su')
+useObIn    = input.bool(false, 'ย้อนแตะ OB', group = 'จุดเข้า SMC (กำหนดเอง)', inline = 'su')
+structIn   = input.string('Swing', 'โครงสร้างของป้าย', options = ['Swing', 'Internal'], group = 'จุดเข้า SMC (กำหนดเอง)', tooltip = 'Swing = pivot 50 แท่ง (ทดสอบแล้วดีกว่า) · Internal = pivot 5 แท่ง')
+rrIn       = input.float(3.0, 'RR (TP = RR × ระยะ SL)', minval = 0.5, maxval = 20, step = 0.5, group = 'จุดเข้า SMC (กำหนดเอง)')
+oppIn      = input.bool(true, 'ป้ายตรงข้ามปิดไม้', group = 'จุดเข้า SMC (กำหนดเอง)')
+biasCloseIn = input.bool(true, 'HTF bias กลับทิศ = ปิดไม้', group = 'จุดเข้า SMC (กำหนดเอง)')
+pdIn       = input.bool(false, 'Premium / Discount', group = 'จุดเข้า SMC (กำหนดเอง)', tooltip = 'Long เฉพาะ OB ที่อยู่ครึ่งล่างของ swing range ปัจจุบัน · Short เฉพาะครึ่งบน')
+costIn     = input.bool(true, 'ข้ามไม้ที่ต้นทุน > 0.25 R', group = 'จุดเข้า SMC (กำหนดเอง)')
+
+showMode  = input.string('สองฝั่ง', 'ป้าย/แจ้งเตือนของ', options = ['สองฝั่ง', 'Long', 'Short'], group = 'การเทรด', tooltip = 'ตารางแสดงครบทั้ง Long / Short / สองฝั่งเสมอ · ช่องนี้เลือกว่าป้ายบนกราฟและแจ้งเตือนเป็นของฝั่งไหน')
+startTime = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'การเทรด')
+endTime   = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'การเทรด')
+feeInput  = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'การเทรด')
+slipIn    = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = 'การเทรด')
+capital   = input.float(1000, 'ทุน (แถวเป็นเงิน)', minval = 1, group = 'การเทรด', tooltip = 'แถว "เป็นเงิน" = ผลรวม % × ทุน / 100 (ลงไม้ละเต็มทุน ไม่ทบ)')
+
+showTable  = input.bool(true, 'Show table', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Small', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+showStruct = input.bool(true, 'Show BOS / CHoCH', group = 'Style', inline = 'st')
+showLevels = input.bool(true, 'Show TP / SL', group = 'Style', inline = 'st')
+showBg     = input.bool(true, 'สีพื้นตาม HTF bias', group = 'Style', inline = 'st')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'c')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'c')
+
+// ค่าที่ใช้จริง (Auto ตาม TF ของกราฟ)
+tfSec   = timeframe.in_seconds()
+autoGrp = tfSec < 3600 ? 0 : tfSec < 14400 ? 1 : 2
+isAuto  = preset == AUTO
+biasMode  = isAuto ? (autoGrp == 2 ? B_NONE : B_D) : biasIn
+useEma    = isAuto ? true : methodIn == 'EMA'
+useChoch  = isAuto ? true : useChochIn
+useBos    = isAuto ? autoGrp == 2 : useBosIn
+useOb     = isAuto ? false : useObIn
+useSwing  = isAuto ? true : structIn == 'Swing'
+rr        = isAuto ? (autoGrp == 0 ? 2.0 : 3.0) : rrIn
+oppClose  = isAuto ? true : oppIn
+biasClose = isAuto ? autoGrp < 2 : biasCloseIn
+pdOn      = isAuto ? autoGrp == 0 : pdIn
+costOn    = isAuto ? true : costIn
+eD        = isAuto ? 50 : emaD
+eW        = isAuto ? 20 : emaW
+
+FEE      = feeInput / 100
+SLIP     = slipIn / 100
+MIN_RISK = costOn ? (2 * FEE + SLIP) / 0.25 : 0.
+
+//-----------------------------------------------------------------------------}
+//Structure — LuxAlgo leg logic: pivot เมื่อ leg เปลี่ยน · เบรกเมื่อราคาปิดตัดผ่าน pivot ที่ยังไม่ถูกเบรก
+//-----------------------------------------------------------------------------{
+// คืน [เบรกขึ้น (0 / 1 BOS / 2 CHoCH), เบรกลง, pivot ที่ถูกเบรกขึ้น, pivot ที่ถูกเบรกลง, ระดับ pivot high, ระดับ pivot low, ทิศเทรนด์]
+smcStruct(int size, float swHi, float swLo) =>
+    var int   legV  = 0
+    var float hiLv  = na
+    var float loLv  = na
+    var int   hiIx  = na
+    var int   loIx  = na
+    var bool  hiX   = false
+    var bool  loX   = false
+    var int   bias  = 0
+    var float prevHi = na
+    var float prevLo = na
+    float hh = ta.highest(high, size)
+    float ll = ta.lowest(low, size)
+    int prevLeg = legV
+    if bar_index >= size
+        if high[size] > hh
+            legV := 0
+        else if low[size] < ll
+            legV := 1
+    if bar_index > 0 and legV != prevLeg
+        if legV == 1
+            loLv := low[size]
+            loIx := bar_index - size
+            loX  := false
+        else
+            hiLv := high[size]
+            hiIx := bar_index - size
+            hiX  := false
+    int bullEv = 0
+    int bearEv = 0
+    int pivU = na
+    int pivD = na
+    if bar_index > 0
+        bool okHi = na(swHi) or hiLv != swHi
+        if not na(hiLv) and not na(prevHi) and close > hiLv and close[1] <= prevHi and not hiX and okHi
+            bullEv := bias == -1 ? 2 : 1
+            pivU   := hiIx
+            hiX    := true
+            bias   := 1
+        bool okLo = na(swLo) or loLv != swLo
+        if not na(loLv) and not na(prevLo) and close < loLv and close[1] >= prevLo and not loX and okLo
+            bearEv := bias == 1 ? 2 : 1
+            pivD   := loIx
+            loX    := true
+            bias   := -1
+    prevHi := hiLv
+    prevLo := loLv
+    [bullEv, bearEv, pivU, pivD, hiLv, loLv, bias]
+
+// ราคาแบบ LuxAlgo: แท่งที่ช่วงกว้าง ≥ 2 × ATR(200) สลับ high/low (กัน OB จากแท่งผันผวน)
+atr200  = ta.atr(200)
+hiVol   = (high - low) >= 2 * atr200
+parsedH = hiVol ? low : high
+parsedL = hiVol ? high : low
+var array<float> pH = array.new<float>()
+var array<float> pL = array.new<float>()
+pH.push(parsedH)
+pL.push(parsedL)
+
+[swBu, swBe, swPu, swPd, swHi, swLo, swTr] = smcStruct(50, na, na)
+[itBu, itBe, itPu, itPd, itHi, itLo, itTr] = smcStruct(5, swHi, swLo)
+bullEv = useSwing ? swBu : itBu
+bearEv = useSwing ? swBe : itBe
+pivU   = useSwing ? swPu : itPu
+pivD   = useSwing ? swPd : itPd
+
+// Order Block ของการเบรก: แท่งที่ parsed low ต่ำสุด (เบรกขึ้น) / parsed high สูงสุด (เบรกลง) ตั้งแต่ pivot ถึงแท่งก่อนหน้า
+// คืน [ขอบใกล้ราคา, ขอบไกล = SL]
+obZone(int piv, int d) =>
+    float near = na
+    float far  = na
+    if not na(piv) and piv < bar_index
+        int k = piv
+        if piv + 1 <= bar_index - 1
+            for j = piv + 1 to bar_index - 1
+                if d == 1 ? pL.get(j) < pL.get(k) : pH.get(j) > pH.get(k)
+                    k := j
+        float a = pH.get(k)
+        float b = pL.get(k)
+        near := d == 1 ? math.max(a, b) : math.min(a, b)
+        far  := d == 1 ? math.min(a, b) : math.max(a, b)
+    [near, far]
+
+//-----------------------------------------------------------------------------}
+//HTF bias — แท่ง 1D / 1W ที่ปิดแล้ว (ค่าของแท่งก่อนหน้า · lookahead เปิด = ไม่ repaint)
+//-----------------------------------------------------------------------------{
+htfDir(bool ema, int emaLen, int stSize) =>
+    float seed = ta.sma(close, emaLen)
+    var float e = na
+    e := na(e) ? seed : close * (2.0 / (emaLen + 1)) + e * (1 - 2.0 / (emaLen + 1))
+    int emaDir = na(e) ? 0 : close > e ? 1 : -1
+    [b1, b2, b3, b4, b5, b6, stDir] = smcStruct(stSize, na, na)
+    int dir = ema ? emaDir : stDir
+    dir[1]
+
+dBias = nz(request.security(syminfo.tickerid, 'D', htfDir(useEma, eD, stD), lookahead = barmerge.lookahead_on))
+wBias = nz(request.security(syminfo.tickerid, 'W', htfDir(useEma, eW, stW), lookahead = barmerge.lookahead_on))
+// 9 = ไม่กรอง (เข้าได้ทั้งสองฝั่ง) · 1 = Long เท่านั้น · −1 = Short เท่านั้น · 0 = ไม่เข้า
+int biasV = biasMode == B_NONE ? 9 : biasMode == B_D ? dBias : biasMode == B_W ? wBias : (dBias == wBias ? dBias : 0)
+allowed(int d, bool useBias) => not useBias or biasV == 9 or biasV == d
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
+//-----------------------------------------------------------------------------}
+//Sides — ฝั่งละ 1 ไม้ · ผลรวม % ต่อไม้ (หัก 2 × fee)
+//-----------------------------------------------------------------------------{
+type Side
+    int    d
+    bool   useBias
+    float  zNear  = na       // OB ที่รอราคาย้อนมาแตะ
+    float  zFar   = na
+    bool   inPos  = false
+    float  e      = na
+    float  sl     = na
+    float  tp     = na
+    int    i0     = -1
+    string tag    = ''
+    float  gE     = na       // สัญญาณของแท่งนี้
+    float  gSl    = na
+    bool   gIb    = false
+    string gTag   = ''
+    int    n      = 0
+    int    wins   = 0
+    int    nTp    = 0
+    int    nSl    = 0
+    int    nSig   = 0
+    int    nHtf   = 0
+    float  sum    = 0.
+    float  peak   = 0.
+    float  dd     = 0.
+    int    openBar = -1
+    int    exitBar = -1
+    int    exitHow = 0       // 1 TP · −1 SL · 0 ป้ายตรงข้าม · 4 HTF กลับทิศ · 2 จบช่วง
+    float  exitPx  = na
+    float  exitPct = na
+
+method record(Side s, float px, int how) =>
+    float r = s.d * (px - s.e) / s.e
+    float p = r * 100 - 2 * feeInput
+    s.n       := s.n + 1
+    s.sum     := s.sum + p
+    s.wins    := s.wins + (r > 0 ? 1 : 0)
+    s.nTp     := s.nTp + (how == 1 ? 1 : 0)
+    s.nSl     := s.nSl + (how == -1 ? 1 : 0)
+    s.nSig    := s.nSig + (how == 0 ? 1 : 0)
+    s.nHtf    := s.nHtf + (how == 4 ? 1 : 0)
+    s.peak    := math.max(s.peak, s.sum)
+    s.dd      := math.max(s.dd, s.peak - s.sum)
+    s.exitBar := bar_index
+    s.exitHow := how
+    s.exitPx  := px
+    s.exitPct := p
+    s.inPos   := false
+    s.n
+
+method closeAt(Side s, float px, int how) =>
+    if s.inPos
+        s.record(px, how)
+    s.n
+
+// TP/SL ของไม้ที่เปิดก่อนแท่งนี้: ราคาเปิดกระโดดข้ามก่อน · แท่งเดียวแตะทั้งคู่นับ SL
+method exitTpSl(Side s) =>
+    if s.inPos and s.i0 != bar_index
+        float adv = s.d == 1 ? low : high
+        float fav = s.d == 1 ? high : low
+        if s.d * (open - s.sl) <= 0
+            s.record(open * (1 - s.d * SLIP), -1)
+        else if s.d * (open - s.tp) >= 0
+            s.record(open, 1)
+        else if s.d * (adv - s.sl) <= 0
+            s.record(s.sl * (1 - s.d * SLIP), -1)
+        else if s.d * (fav - s.tp) >= 0
+            s.record(s.tp, 1)
+    s.n
+
+method clearSig(Side s) =>
+    s.gE   := na
+    s.gSl  := na
+    s.gIb  := false
+    s.gTag := ''
+    s.n
+
+// OB ที่รออยู่ (ตั้งไว้ตั้งแต่แท่งก่อน): ราคาเปิดเลยขอบไกล = ยกเลิก · แตะขอบใกล้ = limit fill
+method zoneFill(Side s) =>
+    if not na(s.zNear)
+        if s.d * (open - s.zFar) <= 0
+            s.zNear := na
+        else if s.d == 1 ? low <= s.zNear : high >= s.zNear
+            if inWindow
+                s.gE   := s.d == 1 ? math.min(open, s.zNear) : math.max(open, s.zNear)
+                s.gSl  := s.zFar
+                s.gIb  := true
+                s.gTag := 'OB'
+            s.zNear := na
+    s.n
+
+method tryEnter(Side s) =>
+    if not na(s.gE) and not s.inPos and allowed(s.d, s.useBias)
+        float risk = s.d * (s.gE - s.gSl) / s.gE
+        if risk > 0 and risk >= MIN_RISK
+            float tpx = s.gE + rr * (s.gE - s.gSl)
+            s.e   := s.gE
+            s.sl  := s.gSl
+            s.tp  := tpx
+            s.tag := s.gTag
+            s.i0  := bar_index
+            s.openBar := bar_index
+            s.inPos := true
+            // limit fill แล้วแตะ SL ในแท่งเดียวกัน = SL (ไม่รู้ลำดับราคาในแท่ง)
+            if s.gIb and s.d * ((s.d == 1 ? low : high) - s.sl) <= 0
+                s.record(s.sl * (1 - s.d * SLIP), -1)
+    s.n
+
+method mtm(Side s) => s.sum + (s.inPos ? s.d * (close - s.e) / s.e * 100 - 2 * feeInput : 0.)
+
+var Side mL = Side.new(1, true)
+var Side mS = Side.new(-1, true)
+var Side cL = Side.new(1, false)      // เทียบ: setup เดียวกัน ไม่กรอง HTF
+var Side cS = Side.new(-1, false)
+
+// เหตุการณ์โครงสร้างที่ราคาปิด: ยกเลิก OB ฝั่งตรงข้าม · ตั้ง OB ใหม่ · ป้าย CHoCH/BOS · ป้ายตรงข้ามปิดไม้
+onBreak(Side me, Side other, int ev, int piv) =>
+    if ev != 0
+        other.zNear := na
+        [near, far] = obZone(piv, me.d)
+        bool valid = not na(near)
+        if valid and pdOn
+            float mid = math.avg(swHi, swLo)
+            valid := not na(mid) and me.d * (near - mid) <= 0
+        if valid
+            if useOb
+                me.zNear := near
+                me.zFar  := far
+            bool isChoch = ev == 2
+            if inWindow and na(me.gE) and ((isChoch and useChoch) or (not isChoch and useBos))
+                me.gE   := close
+                me.gSl  := far
+                me.gIb  := false
+                me.gTag := isChoch ? 'CHoCH' : 'BOS'
+            if oppClose
+                other.closeAt(close, 0)
+    me.n
+
+stepPair(Side L, Side S) =>
+    if barstate.isconfirmed
+        L.clearSig()
+        S.clearSig()
+        L.exitTpSl()
+        S.exitTpSl()
+        L.zoneFill()
+        S.zoneFill()
+        onBreak(L, S, bullEv, pivU)
+        onBreak(S, L, bearEv, pivD)
+        if biasClose and L.useBias
+            if L.inPos and not allowed(1, true)
+                L.closeAt(close, 4)
+            if S.inPos and not allowed(-1, true)
+                S.closeAt(close, 4)
+        if not lastWindowBar
+            L.tryEnter()
+            S.tryEnter()
+        if lastWindowBar
+            L.closeAt(close, 2)
+            S.closeAt(close, 2)
+    L.n
+
+stepPair(mL, mS)
+stepPair(cL, cS)
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง (หากำไรรายช่วง)
+//-----------------------------------------------------------------------------{
+var array<int>   eqT = array.new<int>()
+var array<float> eqL = array.new<float>()
+var array<float> eqS = array.new<float>()
+if barstate.isconfirmed and inWindow
+    eqT.push(time_close)
+    eqL.push(mL.mtm())
+    eqS.push(mS.mtm())
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//-----------------------------------------------------------------------------}
+//Plots · labels · alerts
+//-----------------------------------------------------------------------------{
+showL = showMode != 'Short'
+showS = showMode != 'Long'
+bgcolor(showBg and biasMode != B_NONE ? (biasV == 1 ? color.new(buyCss, 93) : biasV == -1 ? color.new(sellCss, 93) : na) : na, title = 'HTF bias')
+plotshape(showStruct and bullEv == 2, 'CHoCH ขึ้น', shape.triangleup, location.belowbar, color.new(buyCss, 40), size = size.tiny)
+plotshape(showStruct and bearEv == 2, 'CHoCH ลง', shape.triangledown, location.abovebar, color.new(sellCss, 40), size = size.tiny)
+plotshape(showStruct and bullEv == 1, 'BOS ขึ้น', shape.circle, location.belowbar, color.new(buyCss, 60), size = size.tiny)
+plotshape(showStruct and bearEv == 1, 'BOS ลง', shape.circle, location.abovebar, color.new(sellCss, 60), size = size.tiny)
+plot(showLevels and showL and mL.inPos ? mL.tp : na, 'Long TP', color = color.new(buyCss, 30), style = plot.style_linebr)
+plot(showLevels and showL and mL.inPos ? mL.sl : na, 'Long SL', color = color.new(sellCss, 30), style = plot.style_linebr)
+plot(showLevels and showS and mS.inPos ? mS.tp : na, 'Short TP', color = color.new(buyCss, 30), style = plot.style_linebr)
+plot(showLevels and showS and mS.inPos ? mS.sl : na, 'Short SL', color = color.new(sellCss, 30), style = plot.style_linebr)
+
+biasTxt(int v) => v == 9 ? 'ไม่กรอง' : v == 1 ? '▲ ขาขึ้น' : v == -1 ? '▼ ขาลง' : '— ไม่ชัด'
+exitName(int x) => x == 1 ? 'TP' : x == -1 ? 'SL' : x == 0 ? 'ป้ายตรงข้าม' : x == 4 ? 'HTF กลับทิศ' : 'จบช่วง'
+fmtP(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+
+entryLabel(Side s) =>
+    if s.openBar == bar_index and s.inPos
+        bool up = s.d == 1
+        label.new(bar_index, up ? low : high, (up ? 'BUY ' : 'SELL ') + s.tag, color = up ? buyCss : sellCss, textcolor = color.white, style = up ? label.style_label_up : label.style_label_down, yloc = up ? yloc.belowbar : yloc.abovebar, size = size.small, tooltip = 'เข้า ' + str.tostring(s.e, format.mintick) + ' · SL ' + str.tostring(s.sl, format.mintick) + ' · TP ' + str.tostring(s.tp, format.mintick) + '\nHTF: 1W ' + biasTxt(wBias) + ' · 1D ' + biasTxt(dBias))
+    s.n
+exitLabel(Side s) =>
+    if s.exitBar == bar_index and s.exitHow != 2
+        label.new(bar_index, s.exitPx, exitName(s.exitHow) + ' ' + fmtP(s.exitPct), color = color.new(color.gray, 100), textcolor = s.exitPct > 0 ? buyCss : sellCss, style = label.style_label_left, size = size.tiny)
+    s.n
+if showL
+    entryLabel(mL)
+    exitLabel(mL)
+if showS
+    entryLabel(mS)
+    exitLabel(mS)
+
+entL = showL and mL.openBar == bar_index and mL.inPos
+entS = showS and mS.openBar == bar_index and mS.inPos
+exL  = showL and mL.exitBar == bar_index and mL.exitHow != 2
+exS  = showS and mS.exitBar == bar_index and mS.exitHow != 2
+alertcondition(entL, 'BUY', 'BUY {{ticker}} ({{interval}}) | SMC Top-Down Long @ {{close}}')
+alertcondition(entS, 'SELL', 'SELL {{ticker}} ({{interval}}) | SMC Top-Down Short @ {{close}}')
+alertcondition(exL or exS, 'EXIT', 'EXIT {{ticker}} ({{interval}}) | ปิดไม้ SMC Top-Down')
+if entL
+    alert('🟢 BUY ' + mL.tag + ' ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(mL.e, format.mintick) + ' · SL ' + str.tostring(mL.sl, format.mintick) + ' · TP ' + str.tostring(mL.tp, format.mintick) + ' · 1W ' + biasTxt(wBias) + ' · 1D ' + biasTxt(dBias), alert.freq_once_per_bar_close)
+if entS
+    alert('🔴 SELL ' + mS.tag + ' ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(mS.e, format.mintick) + ' · SL ' + str.tostring(mS.sl, format.mintick) + ' · TP ' + str.tostring(mS.tp, format.mintick) + ' · 1W ' + biasTxt(wBias) + ' · 1D ' + biasTxt(dBias), alert.freq_once_per_bar_close)
+if exL
+    alert('⏹ ปิด Long ' + syminfo.ticker + ' (' + timeframe.period + ') · ' + exitName(mL.exitHow) + ' @ ' + str.tostring(mL.exitPx, format.mintick) + ' · ' + fmtP(mL.exitPct), alert.freq_once_per_bar_close)
+if exS
+    alert('⏹ ปิด Short ' + syminfo.ticker + ' (' + timeframe.period + ') · ' + exitName(mS.exitHow) + ' @ ' + str.tostring(mS.exitPx, format.mintick) + ' · ' + fmtP(mS.exitPct), alert.freq_once_per_bar_close)
+
+//-----------------------------------------------------------------------------}
+//ตาราง
+//-----------------------------------------------------------------------------{
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+fmtU(float x) => (x > 0 ? '+' : '') + str.tostring(x, '#,##0.00')
+nAll(Side s) => s.n + (s.inPos ? 1 : 0)
+winAll(Side s) => s.wins + (s.inPos and s.d * (close - s.e) > 0 ? 1 : 0)
+wrTxt(int w, int n) => n > 0 ? str.tostring(w * 100.0 / n, '0.0') + '%' : '—'
+xt(Side s) => 'TP ' + str.tostring(s.nTp) + ' SL ' + str.tostring(s.nSl) + ' ป้าย ' + str.tostring(s.nSig) + ' HTF ' + str.tostring(s.nHtf)
+posTxt(Side s) => s.inPos ? (s.d == 1 ? '▲ ' : '▼ ') + s.tag + ' ' + fmtP(s.d * (close - s.e) / s.e * 100 - 2 * feeInput) : 'ว่าง'
+
+TSIZE = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+var table t = table.new(tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right, 4, 24, bgcolor = color.new(#131722, 10), frame_color = color.new(color.white, 85), frame_width = 1)
+cellL(int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, 0, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_left, tooltip = tip, bgcolor = bgc)
+cellR(int col, int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, col, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_right, tooltip = tip, bgcolor = bgc)
+row3(int r, string name, float a, float b, color c = na, string tip = '', bool money = false) =>
+    cellL(r, name, color.white, tip)
+    cellR(1, r, money ? fmtU(a) : fmtP(a), pnlColor(a))
+    cellR(2, r, money ? fmtU(b) : fmtP(b), pnlColor(b))
+    cellR(3, r, money ? fmtU(a + b) : fmtP(a + b), pnlColor(a + b))
+
+if showTable and barstate.islast
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    table.clear(t, 0, 0, 3, 23)
+    setupTxt = (useChoch ? 'CHoCH ' : '') + (useBos ? 'BOS ' : '') + (useOb ? 'OB ' : '') + '· RR ' + str.tostring(rr)
+    headTip = 'HTF bias: ' + biasMode + (biasMode == B_NONE ? '' : useEma ? ' · EMA (1D ' + str.tostring(eD) + ' · 1W ' + str.tostring(eW) + ')' : ' · โครงสร้าง SMC') + '\nจุดเข้า: ' + setupTxt + ' · ' + (useSwing ? 'Swing 50' : 'Internal 5') + (pdOn ? ' · Premium/Discount' : '') + '\nออก: TP/SL' + (oppClose ? ' · ป้ายตรงข้าม' : '') + (biasClose ? ' · HTF กลับทิศ' : '') + (costOn ? ' · ข้ามไม้ต้นทุน > 0.25R' : '')
+    cellL(0, syminfo.ticker + ' · ' + timeframe.period + ' · ' + (isAuto ? 'Auto' : 'กำหนดเอง') + ' · bias ' + biasMode + ' · ' + setupTxt, tip = headTip)
+    table.merge_cells(t, 0, 0, 2, 0)
+    cellR(3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', muted, 'ค่าธรรมเนียมต่อขา · ผลรวม % ต่อไม้ ไม่ทบ · ไม่รวม funding')
+    cellL(1, 'ช่วง', muted)
+    cellR(1, 1, '▲ Long', muted)
+    cellR(2, 1, '▼ Short', muted, 'ต้องใช้ Futures')
+    cellR(3, 1, '⇅ สองฝั่ง', muted, 'Long + Short')
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+    names   = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '6 เดือน', '1 ปี')
+    spans   = array.from(1, 7, 30, 90, 180, 365)
+    curL = mL.mtm()
+    curS = mS.mtm()
+    int row = 2
+    for i = 0 to 5
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            idx = lastAtOrBefore(eqT, nowT - spanMs)
+            row3(row, names.get(i), curL - (idx >= 0 ? eqL.get(idx) : 0.), curS - (idx >= 0 ? eqS.get(idx) : 0.), tip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด')
+            row += 1
+    days = math.floor(totalMs / DAY_MS)
+    cellL(row, 'ทั้งหมด · ' + str.tostring(days) + ' วัน', color.white, str.format_time(fromT, 'dd MMM yyyy', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy', 'Asia/Bangkok'), band)
+    cellR(1, row, fmtP(curL), pnlColor(curL), bgc = band)
+    cellR(2, row, fmtP(curS), pnlColor(curS), bgc = band)
+    cellR(3, row, fmtP(curL + curS), pnlColor(curL + curS), bgc = band)
+    row += 1
+    row3(row, 'เป็นเงิน (ทุน ' + str.tostring(capital, '#,##0') + ')', curL * capital / 100, curS * capital / 100, tip = 'ผลรวม % × ทุน / 100 = ลงไม้ละเต็มทุน ไม่ทบ (USDT)', money = true)
+    row += 1
+    cellL(row, 'เทรด · Win rate', muted, 'ไม้ที่ปิดแล้ว + ถืออยู่ · ชนะจากราคา ไม่หัก fee')
+    cellR(1, row, str.tostring(nAll(mL)) + ' · ' + wrTxt(winAll(mL), nAll(mL)), muted)
+    cellR(2, row, str.tostring(nAll(mS)) + ' · ' + wrTxt(winAll(mS), nAll(mS)), muted)
+    cellR(3, row, str.tostring(nAll(mL) + nAll(mS)) + ' · ' + wrTxt(winAll(mL) + winAll(mS), nAll(mL) + nAll(mS)), muted)
+    row += 1
+    cellL(row, 'ปิดด้วย', muted)
+    cellR(1, row, xt(mL), muted)
+    cellR(2, row, xt(mS), muted)
+    cellR(3, row, 'TP ' + str.tostring(mL.nTp + mS.nTp) + ' SL ' + str.tostring(mL.nSl + mS.nSl), muted)
+    row += 1
+    cellL(row, 'Drawdown', muted, 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (นับที่ไม้ปิด)')
+    cellR(1, row, str.tostring(mL.dd, '0.00') + '%', muted)
+    cellR(2, row, str.tostring(mS.dd, '0.00') + '%', muted)
+    cellR(3, row, '—', muted)
+    row += 1
+    oL = cL.mtm()
+    oS = cS.mtm()
+    oTip = 'setup และกฎออกเดียวกัน แต่ไม่มอง 1D/1W ก่อน (ใช้ดูว่า top-down ช่วยบนเหรียญ/ช่วงนี้ไหม)'
+    cellL(row, 'เทียบ: ไม่กรอง HTF', muted, oTip)
+    cellR(1, row, fmtP(oL) + ' · ' + str.tostring(nAll(cL)), pnlColor(oL), oTip)
+    cellR(2, row, fmtP(oS) + ' · ' + str.tostring(nAll(cS)), pnlColor(oS), oTip)
+    cellR(3, row, fmtP(oL + oS), pnlColor(oL + oS), oTip)
+    row += 1
+    cellL(row, 'HTF ตอนนี้: 1W ' + biasTxt(wBias) + ' · 1D ' + biasTxt(dBias) + ' → ' + (biasV == 9 ? 'เข้าได้ทั้งสองฝั่ง' : biasV == 1 ? 'เน้น Long' : biasV == -1 ? 'เน้น Short' : 'ไม่เข้า (ทิศไม่ตรงกัน)'), biasV == 1 ? buyCss : biasV == -1 ? sellCss : muted, 'วัดจากแท่ง 1D / 1W ที่ปิดแล้ว · ' + (useEma ? 'EMA' : 'โครงสร้าง SMC'))
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    cellL(row, 'ไม้ที่ถือ: Long ' + posTxt(mL) + ' · Short ' + posTxt(mS), muted)
+    table.merge_cells(t, 0, row, 3, row)
+
+//-----------------------------------------------------------------------------}

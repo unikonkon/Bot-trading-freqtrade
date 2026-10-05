@@ -1,0 +1,627 @@
+// This work is licensed under a Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0) https://creativecommons.org/licenses/by-nc-sa/4.0/
+//@version=6
+// StochRSI + MACD [30m / 1h] — ป้าย BUY/SELL จาก Stochastic RSI ร่วมกับ MACD · ตาราง P/L แบบเดียวกับ buysell-rsi.pine
+// และแถว "เทียบ rsi.pine" = ผลของ Trendlines with Breaks [LuxAlgo] buysell-rsi.pine (ค่าตั้งต้น) บนกราฟเดียวกัน ช่วงเดียวกัน
+//
+// ═══ ค่า Auto ตาม TF ═══════════════════════════════════════════════════════════════════════
+//   ต่ำกว่า 1h (ทดสอบที่ 30m) — "Combo"
+//     BUY  = StochRSI K ตัดขึ้น D จากใต้ 20 และ MACD histogram ตัดขึ้นเหนือ 0 ภายใน 5 แท่งของกันและกัน (ลำดับไหนก่อนก็ได้)
+//     SELL = K ตัดลง D จากเหนือ 80 และ histogram ตัดลงใต้ 0 ภายใน 5 แท่ง
+//     StochRSI 14/14/3/3 · MACD 24/52/18 · BUY/SELL สลับกัน (เหมือน rsi.pine) · ออกที่ป้ายตรงข้ามอย่างเดียว
+//   1h ขึ้นไป (ทดสอบที่ 1h) — "K×D + MACD เหนือ/ใต้ 0" + กรอง EMA200
+//     BUY  = K ตัดขึ้น D จากใต้ 30 ขณะ MACD line > 0 · เปิด Long เฉพาะราคาปิด > EMA200 · ปิดเมื่อมี SELL
+//     SELL = K ตัดลง D จากเหนือ 70 ขณะ MACD line < 0 · เปิด Short เฉพาะราคาปิด < EMA200 · ปิดเมื่อมี BUY
+//     StochRSI 14/14/3/3 · MACD 12/26/9 · กฎออก TP/SL = Auto ของ rsi.pine (Short ตามเทรนด์ TP 8 · SL 3 × ATR14)
+//
+// ═══ ผลทดสอบ (สำเนา TypeScript ที่ใช้ตัวจำลองเดียวกับงานวิจัย rsi.pine · fee 0.1%/ขา · slippage 0.05% ที่ SL) ═══
+//   ข้อมูล Binance spot 63 เหรียญ (30m) / 81 เหรียญ (1h) · ผลรวม % ต่อไม้ (ไม่ทบต้น) · median ต่อเหรียญ
+//   แบ่งเวลา 60/40: เลือกค่าบนช่วงแรก (DEV) เท่านั้น แล้ววัดช่วงหลัง (TEST) ครั้งเดียว · ทดสอบ 700 แบบ (6 ตระกูลป้าย × กรอง × กฎออก)
+//
+//                    DEV: rsi.pine → ไฟล์นี้ (Long / Short / 2 ฝั่ง)           TEST: rsi.pine → ไฟล์นี้ (Long / Short / 2 ฝั่ง)
+//   30m  (ม.ค. 2025–16 ม.ค. 2026 / 17 ม.ค.–ก.ย. 2026)
+//        −70 / −9 / −66  →  −16 / +46 / +29                       −38 / −22 / −46  →  −5 / +1 / −1
+//        ดีกว่า rsi.pine 53/63 เหรียญ · ไม้ 291 → 90 ต่อเหรียญ          ดีกว่า 45/63 เหรียญ · ไม้ 193 → 67 · win 30% → 40%
+//   1h   (ก.ย. 2023–4 ก.ค. 2025 / 5 ก.ค. 2025–ก.ย. 2026)
+//        +59 / +4 / +61  →  +56 / +26 / +72                       −60 / −7 / −74  →  −31 / −2 / −28
+//        ดีกว่า 33/63 เหรียญ (ใกล้เคียงกัน) · ไม้ 254 → 169             ดีกว่า 56/81 เหรียญ · ไม้ 177 → 117
+//
+//   • 30m: ชนะ rsi.pine ทุกชุดเหรียญทั้ง DEV และ TEST · กำไรมาจากเทรดน้อยลง ~3 เท่า (ค่าธรรมเนียมน้อยลง) + win rate สูงขึ้น
+//     แต่ช่วง TEST ยังประมาณเท่าทุน (−1%) ไม่ใช่กำไร
+//   • 1h: ไม่มีแบบไหนชนะ rsi.pine ครบ 4 ชุดในช่วง DEV (ช่วงขาขึ้นที่เส้นเทรนด์ทำได้ดี) · แบบนี้ดีที่สุดในชุดที่แย่ที่สุด
+//     DEV ใกล้เคียงกัน (+72 vs +61) · TEST ขาดทุนน้อยกว่ามาก (−28 vs −74) ดีกว่าทั้ง 5 ชุด · ยังขาดทุนในช่วงขาลง
+//   • ดีกว่าเป็น "ค่ากลางของหลายเหรียญ" ไม่ใช่ทุกเหรียญ: 30m ดีกว่าทั้งสองช่วง 40/63 เหรียญ · 1h 31/81 เหรียญ
+//     BTCUSDT ถึง 5 ต.ค. 2026 แย่กว่า rsi.pine (1 ปี สองฝั่ง: 30m −38% vs −10% · 1h −7% vs +8%) → ดูแถว "เทียบ rsi.pine" ของแต่ละเหรียญ
+//   • ตลาดช่วง TEST เป็นขาลง (B&H median 30m −27% · 1h −52%) · ผลย้อนหลังไม่รับประกันอนาคต · Short ไม่รวม funding
+indicator('StochRSI + MACD [30m-1h] · Backtest', 'StochRSI MACD', overlay = true, max_bars_back = 500)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+G_P = 'Preset'
+presetIn = input.string('Auto (ตาม TF)', 'ค่าที่ใช้', options = ['Auto (ตาม TF)', 'Manual'], group = G_P, tooltip = 'Auto: ต่ำกว่า 1h = Combo 20/80 · MACD 24/52/18 · ออกที่ป้าย\n1h ขึ้นไป = K×D 30/70 + MACD line · กรอง EMA200 · กฎออก rsi.pine\nManual = ใช้ช่องด้านล่างทั้งหมด')
+
+G_M = 'Manual — ป้าย'
+famIn   = input.string('Combo', 'แบบป้าย', options = ['Combo', 'K×D + MACD line', 'K×D + MACD hist', 'MACD × + StochRSI', 'StochRSI K×D', 'MACD ×'], group = G_M, tooltip = 'Combo = K×D จากโซน และ histogram ตัด 0 ภายใน N แท่งของกันและกัน\nK×D + MACD line = K×D จากโซน ขณะ MACD line อยู่ฝั่งเดียวกับ 0\nK×D + MACD hist = K×D จากโซน ขณะ histogram อยู่ฝั่งเดียวกับ 0\nMACD × + StochRSI = histogram ตัด 0 ขณะ K ยังไม่สุดทาง\nStochRSI K×D / MACD × = ตัวเดียว')
+rsiLenM = input.int(14, 'RSI length', minval = 2, group = G_M, inline = 's1')
+stLenM  = input.int(14, 'Stoch length', minval = 2, group = G_M, inline = 's1')
+kSmM    = input.int(3, 'K', minval = 1, group = G_M, inline = 's2')
+dSmM    = input.int(3, 'D', minval = 1, group = G_M, inline = 's2')
+loM     = input.float(20, 'โซนล่าง', minval = 1, maxval = 99, group = G_M, inline = 's3')
+hiM     = input.float(80, 'โซนบน', minval = 1, maxval = 99, group = G_M, inline = 's3')
+fastM   = input.int(24, 'MACD fast', minval = 1, group = G_M, inline = 'm1')
+slowM   = input.int(52, 'slow', minval = 2, group = G_M, inline = 'm1')
+sigM    = input.int(18, 'signal', minval = 1, group = G_M, inline = 'm1')
+winM    = input.int(5, 'Combo: ภายใน (แท่ง)', minval = 0, group = G_M)
+gateM   = input.string('ไม่กรอง (BUY/SELL สลับ)', 'กรองเทรนด์', options = ['ไม่กรอง (BUY/SELL สลับ)', 'EMA200'], group = G_M, tooltip = 'ไม่กรอง = BUY/SELL สลับกันแบบ rsi.pine (BUY ปิด Short แล้วเปิด Long)\nEMA200 = Long เปิดเฉพาะเหนือ EMA200 · Short เฉพาะใต้ EMA200 · ปิดด้วยป้ายตรงข้ามเสมอ')
+exitM   = input.string('ตามป้ายอย่างเดียว', 'กฎออก', options = ['ตามป้ายอย่างเดียว', 'Auto ของ rsi.pine', 'TP/SL × ATR'], group = G_M)
+tpM     = input.float(5.0, 'TP × ATR', minval = 0, step = 0.5, group = G_M, inline = 'x')
+slM     = input.float(2.0, 'SL × ATR', minval = 0, step = 0.5, group = G_M, inline = 'x')
+
+G_B = 'Backtest'
+startTime = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = G_B)
+endTime   = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = G_B)
+feeInput  = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = G_B)
+slipInput = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = G_B)
+showCmp   = input.bool(true, 'เทียบกับ rsi.pine (เส้นเทรนด์ + Auto exits)', group = G_B, tooltip = 'คำนวณ Trendlines with Breaks buysell-rsi.pine ค่าตั้งต้น (length 14 · slope 1 · Atr · Auto exits) บนกราฟเดียวกัน')
+
+showTable  = input.bool(true, 'Show P/L table', group = 'Table')
+showDetail = input.bool(false, 'Show Drawdown', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+showEma    = input.bool(true, 'Show EMA200', group = 'Style')
+showLevels = input.bool(true, 'Show TP / SL levels', group = 'Style')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'sig')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'sig')
+
+// ค่าที่ใช้จริง
+tfSec   = timeframe.in_seconds()
+autoGrp = tfSec < 3600 ? 0 : tfSec < 14400 ? 1 : tfSec < 86400 ? 2 : 3
+isAuto  = presetIn == 'Auto (ตาม TF)'
+hiTf    = autoGrp >= 1
+fam     = isAuto ? (hiTf ? 'K×D + MACD line' : 'Combo') : famIn
+rsiLen  = isAuto ? 14 : rsiLenM
+stLen   = isAuto ? 14 : stLenM
+kSm     = isAuto ? 3 : kSmM
+dSm     = isAuto ? 3 : dSmM
+zLo     = isAuto ? (hiTf ? 30. : 20.) : loM
+zHi     = isAuto ? (hiTf ? 70. : 80.) : hiM
+mFast   = isAuto ? (hiTf ? 12 : 24) : fastM
+mSlow   = isAuto ? (hiTf ? 26 : 52) : slowM
+mSig    = isAuto ? (hiTf ? 9 : 18) : sigM
+win     = isAuto ? 5 : winM
+useGate = isAuto ? hiTf : gateM == 'EMA200'
+exitSel = isAuto ? (hiTf ? 'Auto ของ rsi.pine' : 'ตามป้ายอย่างเดียว') : exitM
+
+//-----------------------------------------------------------------------------}
+//Indicators
+//-----------------------------------------------------------------------------{
+atrV = ta.atr(14)
+
+// EMA200 แบบ lib/indicators.ts `ema()` (เริ่มด้วย SMA) — ตัวเดียวกับ rsi.pine
+emaSeed = ta.sma(close, 200)
+var float emaT = na
+emaT := na(emaT) ? emaSeed : close * (2.0 / 201) + emaT * (1 - 2.0 / 201)
+trendDir = na(emaT) ? 0 : close > emaT ? 1 : -1
+
+rsi1  = ta.rsi(close, rsiLen)
+kLine = ta.sma(ta.stoch(rsi1, rsi1, rsi1, stLen), kSm)
+dLine = ta.sma(kLine, dSm)
+macdL = ta.ema(close, mFast) - ta.ema(close, mSlow)
+macdS = ta.ema(macdL, mSig)
+hist  = macdL - macdS
+
+okK  = not na(kLine) and not na(dLine) and not na(kLine[1]) and not na(dLine[1])
+okM  = not na(hist) and not na(hist[1])
+kUp  = okK and kLine > dLine and kLine[1] <= dLine[1]
+kDn  = okK and kLine < dLine and kLine[1] >= dLine[1]
+kB   = kUp and kLine[1] < zLo
+kS   = kDn and kLine[1] > zHi
+mUp  = okM and hist > 0 and hist[1] <= 0
+mDn  = okM and hist < 0 and hist[1] >= 0
+
+var int lastKB = -1000000
+var int lastKS = -1000000
+var int lastMB = -1000000
+var int lastMS = -1000000
+if kB
+    lastKB := bar_index
+if kS
+    lastKS := bar_index
+if mUp
+    lastMB := bar_index
+if mDn
+    lastMS := bar_index
+
+bool rb = false
+bool rs = false
+if fam == 'Combo'
+    rb := (mUp and bar_index - lastKB <= win) or (kB and bar_index - lastMB <= win and okM and hist > 0)
+    rs := (mDn and bar_index - lastKS <= win) or (kS and bar_index - lastMS <= win and okM and hist < 0)
+else if fam == 'K×D + MACD line'
+    rb := kB and okM and macdL > 0
+    rs := kS and okM and macdL < 0
+else if fam == 'K×D + MACD hist'
+    rb := kB and okM and hist > 0
+    rs := kS and okM and hist < 0
+else if fam == 'MACD × + StochRSI'
+    rb := mUp and okK and kLine < zHi
+    rs := mDn and okK and kLine > zLo
+else if fam == 'StochRSI K×D'
+    rb := kB
+    rs := kS
+else
+    rb := mUp
+    rs := mDn
+
+// ป้ายดิบที่ราคาปิดแท่ง (SELL ทับ BUY)
+rawSig = not barstate.isconfirmed or bar_index < 2 ? 0 : rs ? -1 : rb ? 1 : 0
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
+// สตรีมต่อฝั่ง: ไม่กรอง = BUY/SELL สลับกัน (สตรีมเดียว) · EMA200 = แต่ละฝั่งรอป้ายเข้าที่ผ่านกรอง แล้วรอป้ายตรงข้ามเพื่อปิด
+var int alt = 0
+var int stL = 0
+var int stS = 0
+int sigL = 0
+int sigS = 0
+if not useGate
+    if alt == 0 and rawSig == 1
+        sigL := 1
+        sigS := 1
+        alt  := 1
+    else if alt == 1 and rawSig == -1
+        sigL := -1
+        sigS := -1
+        alt  := 0
+else
+    if stL == 0 and rawSig == 1 and trendDir == 1
+        sigL := 1
+        stL  := 1
+    else if stL == 1 and rawSig == -1
+        sigL := -1
+        stL  := 0
+    if stS == 0 and rawSig == -1 and trendDir == -1
+        sigS := -1
+        stS  := 1
+    else if stS == 1 and rawSig == 1
+        sigS := 1
+        stS  := 0
+sigL := inWindow ? sigL : 0
+sigS := inWindow ? sigS : 0
+
+//-----------------------------------------------------------------------------}
+//rsi.pine (Trendlines with Breaks [LuxAlgo] buysell-rsi ค่าตั้งต้น) — สำหรับแถวเทียบ
+//-----------------------------------------------------------------------------{
+TL_LEN = 14
+pivotHighAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = high[len]
+        bool ok = true
+        for j = 1 to len
+            if cand <= high[len + j] or cand <= high[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+pivotLowAt(int len) =>
+    float result = na
+    if bar_index >= 2 * len
+        float cand = low[len]
+        bool ok = true
+        for j = 1 to len
+            if cand >= low[len + j] or cand >= low[len - j]
+                ok := false
+                break
+        result := ok ? cand : na
+    result
+
+var float upper   = 0.
+var float lower   = 0.
+var float slopePh = 0.
+var float slopePl = 0.
+var int   upos    = 0
+var int   dnos    = 0
+slope = nz(atrV) / TL_LEN
+ph    = pivotHighAt(TL_LEN)
+pl    = pivotLowAt(TL_LEN)
+if not na(ph)
+    upper   := ph
+    slopePh := slope
+else
+    upper := upper - slopePh
+if not na(pl)
+    lower   := pl
+    slopePl := slope
+else
+    lower := lower + slopePl
+prevUpos = upos
+prevDnos = dnos
+upos := not na(ph) ? 0 : close > upper ? 1 : upos
+dnos := not na(pl) ? 0 : close < lower ? 1 : dnos
+tlRaw = not barstate.isconfirmed ? 0 : dnos > prevDnos ? -1 : upos > prevUpos ? 1 : 0
+var int tlAlt = 0
+int tlSig = 0
+if tlAlt == 0 and tlRaw == 1
+    tlSig := 1
+    tlAlt := 1
+else if tlAlt == 1 and tlRaw == -1
+    tlSig := -1
+    tlAlt := 0
+tlSig := inWindow ? tlSig : 0
+
+//-----------------------------------------------------------------------------}
+//Exit profiles [TP, SL] × ATR ณ แท่งเข้า (0 = ไม่ใช้)
+//-----------------------------------------------------------------------------{
+// Auto ของ rsi.pine: Long < 4h ตามป้าย · Short ตามเทรนด์ TP 8 SL 3 · Short สวนเทรนด์ 1h–4h TP 5 SL 2
+rsiAuto(int side, bool withTrend) =>
+    float tp = 0.
+    float sl = 0.
+    if side == 1
+        if autoGrp >= 2
+            sl := withTrend ? 0. : 3.
+    else
+        bool wide = withTrend or autoGrp == 0 or autoGrp == 3
+        tp := wide ? 8. : 5.
+        sl := wide ? 3. : 2.
+    [tp, sl]
+
+// Long ตามเทรนด์ใน 4h+ ของ rsi.pine ใช้ Trail 6 × ATR ที่ราคาปิด
+rsiTrail(int side, bool withTrend) => side == 1 and autoGrp >= 2 and withTrend ? 6. : 0.
+
+newProfile(int side, bool withTrend) =>
+    float tp = 0.
+    float sl = 0.
+    if exitSel == 'Auto ของ rsi.pine'
+        [a, b] = rsiAuto(side, withTrend)
+        tp := a
+        sl := b
+    else if exitSel == 'TP/SL × ATR'
+        tp := tpM
+        sl := slM
+    [tp, sl]
+
+//-----------------------------------------------------------------------------}
+//Books — บัญชี Long / Short แยกกัน (ราคาปิดแท่งสัญญาณ · บวก % ไม่ทบต้น)
+//-----------------------------------------------------------------------------{
+type Book
+    int   side
+    int   grp   = 0           // 0 = ไฟล์นี้ · 1 = rsi.pine (เทียบ)
+    bool  inPos = false
+    float entry = na
+    bool  withT = false
+    float tp    = na
+    float sl    = na
+    float trail = 0.
+    float peakC = na
+    int   n     = 0
+    int   wins  = 0
+    int   nTp   = 0
+    int   nSl   = 0
+    int   nTs   = 0
+    float sum   = 0.
+    float peak  = 0.
+    float dd    = 0.
+
+method record(Book b, float pnl, bool win) =>
+    b.n    := b.n + 1
+    b.sum  := b.sum + pnl
+    b.wins := b.wins + (win ? 1 : 0)
+    b.peak := math.max(b.peak, b.sum)
+    b.dd   := math.max(b.dd, b.peak - b.sum)
+
+method pnlAt(Book b, float px) =>
+    b.inPos ? b.side * (px - b.entry) / b.entry * 100 - 2 * feeInput : 0.
+
+method priceWin(Book b, float px) =>
+    b.inPos and b.side * (px - b.entry) > 0
+
+var Book bookL = Book.new(side = 1)
+var Book bookS = Book.new(side = -1)
+var Book bookB = Book.new(side = 0)
+var Book othL  = Book.new(side = 1, grp = 1)
+var Book othS  = Book.new(side = -1, grp = 1)
+
+closeBookAt(Book b, float px) =>
+    if b.inPos
+        float pnl = b.pnlAt(px)
+        bool  isWin = b.priceWin(px)
+        b.record(pnl, isWin)
+        if b.grp == 0
+            bookB.record(pnl, isWin)
+        b.inPos := false
+
+openBook(Book b) =>
+    if not b.inPos
+        bool withTrend = trendDir == b.side
+        float tpX = 0.
+        float slX = 0.
+        float tsX = 0.
+        if b.grp == 0
+            [a, c] = newProfile(b.side, withTrend)
+            tpX := a
+            slX := c
+        else
+            [a, c] = rsiAuto(b.side, withTrend)
+            tpX := a
+            slX := c
+            tsX := rsiTrail(b.side, withTrend)
+        b.inPos := true
+        b.entry := close
+        b.withT := withTrend
+        b.tp    := tpX > 0 ? close + b.side * tpX * atrV : na
+        b.sl    := slX > 0 ? close - b.side * slX * atrV : na
+        b.trail := tsX
+        b.peakC := close
+
+// TP / SL จากแท่งก่อน: ราคาเปิดกระโดดข้ามก่อน แล้วค่อยสูง/ต่ำ · แตะทั้งคู่นับ SL · คืน 1 TP · −1 SL
+exitOrders(Book b) =>
+    int hit = 0
+    if b.inPos
+        float slip = slipInput / 100
+        float adv  = b.side == 1 ? low : high
+        float fav  = b.side == 1 ? high : low
+        float px   = na
+        if not na(b.sl) and b.side * (open - b.sl) <= 0
+            hit := -1
+            px  := open * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (open - b.tp) >= 0
+            hit := 1
+            px  := open
+        else if not na(b.sl) and b.side * (adv - b.sl) <= 0
+            hit := -1
+            px  := b.sl * (1 - b.side * slip)
+        else if not na(b.tp) and b.side * (fav - b.tp) >= 0
+            hit := 1
+            px  := b.tp
+        if hit != 0
+            closeBookAt(b, px)
+            if hit == 1
+                b.nTp := b.nTp + 1
+            else
+                b.nSl := b.nSl + 1
+    hit
+
+exitTrail(Book b) =>
+    int hit = 0
+    if b.inPos and b.trail > 0
+        b.peakC := b.side == 1 ? math.max(b.peakC, close) : math.min(b.peakC, close)
+        if b.side * (close - b.peakC) < -b.trail * atrV
+            hit := 2
+            closeBookAt(b, close)
+            b.nTs := b.nTs + 1
+    hit
+
+// ลำดับในแท่ง (เหมือน rsi.pine): TP/SL → Trail ที่ราคาปิด → ป้ายที่ราคาปิด
+int xL = barstate.isconfirmed ? exitOrders(bookL) : 0
+int xS = barstate.isconfirmed ? exitOrders(bookS) : 0
+if sigL == -1
+    closeBookAt(bookL, close)
+if sigS == 1
+    closeBookAt(bookS, close)
+if sigL == 1
+    openBook(bookL)
+if sigS == -1
+    openBook(bookS)
+
+if showCmp
+    int oxL = barstate.isconfirmed ? exitOrders(othL) : 0
+    int oxS = barstate.isconfirmed ? exitOrders(othS) : 0
+    if barstate.isconfirmed and oxL == 0
+        exitTrail(othL)
+    if barstate.isconfirmed and oxS == 0
+        exitTrail(othS)
+    if tlSig == 1
+        closeBookAt(othS, close)
+        openBook(othL)
+    else if tlSig == -1
+        closeBookAt(othL, close)
+        openBook(othS)
+
+if lastWindowBar and barstate.isconfirmed
+    closeBookAt(bookL, close)
+    closeBookAt(bookS, close)
+    closeBookAt(othL, close)
+    closeBookAt(othS, close)
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง
+//-----------------------------------------------------------------------------{
+eqL = bookL.sum + bookL.pnlAt(close)
+eqS = bookS.sum + bookS.pnlAt(close)
+oEqL = othL.sum + othL.pnlAt(close)
+oEqS = othS.sum + othS.pnlAt(close)
+
+var array<int>   eqTime = array.new<int>()
+var array<float> eqValL = array.new<float>()
+var array<float> eqValS = array.new<float>()
+var array<float> oValB  = array.new<float>()
+if barstate.isconfirmed
+    eqTime.push(time_close)
+    eqValL.push(eqL)
+    eqValS.push(eqS)
+    oValB.push(oEqL + oEqS)
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//-----------------------------------------------------------------------------}
+//Plots
+//-----------------------------------------------------------------------------{
+plot(showEma ? emaT : na, 'EMA200', color = color.new(color.gray, 20), linewidth = 2)
+plotshape(sigL == 1, 'BUY', shape.labelup, location.belowbar, buyCss, text = 'BUY', textcolor = color.white, size = size.small)
+plotshape(sigS == -1, 'SELL', shape.labeldown, location.abovebar, sellCss, text = 'SELL', textcolor = color.white, size = size.small)
+plotshape(useGate and sigL == -1, 'ปิด Long', shape.xcross, location.abovebar, color.new(sellCss, 30), size = size.tiny)
+plotshape(useGate and sigS == 1, 'ปิด Short', shape.xcross, location.belowbar, color.new(buyCss, 30), size = size.tiny)
+plotshape(rawSig == 1 and sigL != 1, 'BUY ดิบ (ไม่เข้า)', shape.circle, location.belowbar, color.new(buyCss, 70), size = size.tiny)
+plotshape(rawSig == -1 and sigS != -1, 'SELL ดิบ (ไม่เข้า)', shape.circle, location.abovebar, color.new(sellCss, 70), size = size.tiny)
+
+plot(showLevels and bookL.inPos ? bookL.tp : na, 'Long TP', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookL.inPos ? bookL.sl : na, 'Long SL', color = color.new(sellCss, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.tp : na, 'Short TP', color = color.new(buyCss, 40), style = plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.sl : na, 'Short SL', color = color.new(sellCss, 40), style = plot.style_linebr)
+plotshape(xL == 1, 'Long TP hit', shape.labeldown, location.abovebar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xL == -1, 'Long SL hit', shape.labeldown, location.abovebar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+plotshape(xS == 1, 'Short TP hit', shape.labelup, location.belowbar, color.new(buyCss, 35), text = 'TP', textcolor = color.white, size = size.tiny)
+plotshape(xS == -1, 'Short SL hit', shape.labelup, location.belowbar, color.new(sellCss, 35), text = 'SL', textcolor = color.white, size = size.tiny)
+
+plot(kLine, 'StochRSI K', display = display.data_window)
+plot(dLine, 'StochRSI D', display = display.data_window)
+plot(macdL, 'MACD', display = display.data_window)
+plot(hist, 'MACD hist', display = display.data_window)
+plot(rawSig, 'Raw signal (1 BUY / -1 SELL)', display = display.data_window)
+
+//-----------------------------------------------------------------------------}
+//ตาราง P/L
+//-----------------------------------------------------------------------------{
+fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+levelTxt(Book b) => (na(b.tp) ? '' : ' · TP ' + str.tostring(b.tp, format.mintick)) + (na(b.sl) ? '' : ' · SL ' + str.tostring(b.sl, format.mintick))
+
+if showTable and barstate.islast
+    tPos  = tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right
+    tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    var table t = table.new(tPos, 4, 18, bgcolor = color.new(#131722, 10), frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 17)
+    cfgTxt = fam + ' · StochRSI ' + str.tostring(rsiLen) + '/' + str.tostring(stLen) + '/' + str.tostring(kSm) + '/' + str.tostring(dSm) + ' โซน ' + str.tostring(zLo) + '/' + str.tostring(zHi) + ' · MACD ' + str.tostring(mFast) + '/' + str.tostring(mSlow) + '/' + str.tostring(mSig) + (fam == 'Combo' ? ' · ภายใน ' + str.tostring(win) + ' แท่ง' : '') + '\n' + (useGate ? 'กรอง EMA200' : 'BUY/SELL สลับ') + ' · ออก: ' + exitSel
+    table.cell(t, 0, 0, syminfo.ticker + ' · ' + timeframe.period + ' · StochRSI+MACD · ' + (isAuto ? (hiTf ? 'Auto 1h' : 'Auto 30m') : 'Manual'), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = cfgTxt)
+    table.merge_cells(t, 0, 0, 2, 0)
+    table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลรวม % ต่อไม้ (ไม่ทบต้น) แบบเดียวกับ rsi.pine · ไม่รวม funding')
+    table.cell(t, 0, 1, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 1, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, 1, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, 1, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+    names = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '1 ปี')
+    spans = array.from(1, 7, 30, 90, 365)
+    int row = 2
+    for i = 0 to 4
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            idx  = lastAtOrBefore(eqTime, nowT - spanMs)
+            chgL = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+            chgS = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+            chgB = chgL + chgS
+            chgO = oEqL + oEqS - (idx >= 0 ? oValB.get(idx) : 0.)
+            table.cell(t, 0, row, names.get(i), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด' + (showCmp ? '\nrsi.pine สองฝั่งช่วงเดียวกัน: ' + fmtPct(chgO) : ''))
+            table.cell(t, 1, row, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 2, row, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 3, row, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right, tooltip = showCmp ? 'rsi.pine: ' + fmtPct(chgO) : '')
+            row += 1
+
+    eqB      = eqL + eqS
+    days     = math.floor(totalMs / DAY_MS)
+    allLabel = 'ทั้งหมด · ' + (days >= 1 ? str.tostring(days) + ' วัน' : str.tostring(math.floor(totalMs / 3600000)) + ' ชม.')
+    allTip   = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)'
+    table.cell(t, 0, row, allLabel, text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band, tooltip = allTip)
+    table.cell(t, 1, row, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, row, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, row, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    row += 1
+
+    nL = bookL.n + (bookL.inPos ? 1 : 0)
+    nS = bookS.n + (bookS.inPos ? 1 : 0)
+    table.cell(t, 0, row, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ไม้ที่ปิดแล้ว + ไม้ที่ถืออยู่')
+    table.cell(t, 1, row, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    table.cell(t, 0, row, 'ปิดก่อนป้าย', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ไม้ที่ปิดด้วย TP / SL ก่อนป้ายตรงข้าม (นับรวมในแถวเทรดแล้ว)')
+    table.cell(t, 1, row, 'TP ' + str.tostring(bookL.nTp) + ' · SL ' + str.tostring(bookL.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, 'TP ' + str.tostring(bookS.nTp) + ' · SL ' + str.tostring(bookS.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, 'TP ' + str.tostring(bookL.nTp + bookS.nTp) + ' · SL ' + str.tostring(bookL.nSl + bookS.nSl), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    winL = bookL.wins + (bookL.priceWin(close) ? 1 : 0)
+    winS = bookS.wins + (bookS.priceWin(close) ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ชนะ = ราคาออกดีกว่าราคาเข้า · ไม่หัก fee · ไม้ที่ถืออยู่เทียบราคาล่าสุด')
+    table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    openL = bookL.pnlAt(close)
+    openS = bookS.pnlAt(close)
+    string st = ''
+    if bookL.inPos
+        st += '▲ ถือ Long · เข้า ' + str.tostring(bookL.entry, format.mintick) + levelTxt(bookL) + ' · ' + fmtPct(openL)
+    if bookS.inPos
+        st += (st == '' ? '' : '\n') + '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + levelTxt(bookS) + ' · ' + fmtPct(openS)
+    if st == ''
+        st := '○ ว่าง · รอป้ายถัดไป · K ' + str.tostring(kLine, '0.0') + ' · MACD ' + (macdL > 0 ? '> 0' : '< 0') + (useGate ? ' · ราคา' + (trendDir == 1 ? 'เหนือ' : 'ใต้') + ' EMA200' : '')
+    table.cell(t, 0, row, st, text_color = bookL.inPos ? pnlColor(openL) : bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+
+    if showCmp
+        oNL  = othL.n + (othL.inPos ? 1 : 0)
+        oNS  = othS.n + (othS.inPos ? 1 : 0)
+        oWin = othL.wins + othS.wins + (othL.priceWin(close) ? 1 : 0) + (othS.priceWin(close) ? 1 : 0)
+        oTip = 'Trendlines with Breaks [LuxAlgo] buysell-rsi.pine ค่าตั้งต้น (เส้นเทรนด์ · Auto exits) ช่วงเดียวกัน · ทั้งหมด'
+        dB   = eqB - (oEqL + oEqS)
+        table.cell(t, 0, row, 'เทียบ rsi.pine', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = oTip)
+        table.cell(t, 1, row, fmtPct(oEqL), text_color = pnlColor(oEqL), text_size = tSize, text_halign = text.align_right, tooltip = oTip)
+        table.cell(t, 2, row, fmtPct(oEqS), text_color = pnlColor(oEqS), text_size = tSize, text_halign = text.align_right, tooltip = oTip)
+        table.cell(t, 3, row, fmtPct(oEqL + oEqS), text_color = pnlColor(oEqL + oEqS), text_size = tSize, text_halign = text.align_right, tooltip = oTip)
+        row += 1
+        table.cell(t, 0, row, 'rsi.pine เทรด · Win', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = oTip)
+        table.cell(t, 1, row, str.tostring(oNL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(oNS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(oNL + oNS) + ' · ' + (oNL + oNS > 0 ? str.tostring(oWin * 100.0 / (oNL + oNS), '0.0') + '%' : '—'), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        row += 1
+        table.cell(t, 0, row, (dB >= 0 ? '✓ ดีกว่า rsi.pine ' : '✗ แย่กว่า rsi.pine ') + fmtPct(dB) + ' (สองฝั่ง · ทั้งหมด)', text_color = dB >= 0 ? buyCss : sellCss, text_size = tSize, text_halign = text.align_left)
+        table.merge_cells(t, 0, row, 3, row)
+        row += 1
+
+    if showDetail
+        ddL = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
+        ddS = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, row, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    if tfSec < 1800 or tfSec > 3600
+        table.cell(t, 0, row + 1, '⚠ ทดสอบแล้วที่ 30m และ 1h เท่านั้น', text_color = color.orange, text_size = tSize, text_halign = text.align_left)
+        table.merge_cells(t, 0, row + 1, 3, row + 1)
+
+//-----------------------------------------------------------------------------}
+//Alerts
+//-----------------------------------------------------------------------------{
+alertcondition(sigL == 1 or sigS == 1, 'BUY', 'BUY {{ticker}} ({{interval}}) @ {{close}}')
+alertcondition(sigS == -1 or sigL == -1, 'SELL', 'SELL {{ticker}} ({{interval}}) @ {{close}}')
+alertcondition(xL != 0 or xS != 0, 'TP/SL', 'TP/SL {{ticker}} ({{interval}})')
+if sigL == 1
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') | Long เข้า @ ' + str.tostring(close, format.mintick) + levelTxt(bookL), alert.freq_once_per_bar_close)
+if sigS == -1
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') | Short เข้า @ ' + str.tostring(close, format.mintick) + levelTxt(bookS), alert.freq_once_per_bar_close)
+if sigL == -1
+    alert('⛔ ปิด Long ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+if sigS == 1
+    alert('⛔ ปิด Short ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(close, format.mintick), alert.freq_once_per_bar_close)
+if xL != 0 or xS != 0
+    alert((xL == 1 or xS == 1 ? '🎯 TP ' : '🛑 SL ') + syminfo.ticker + ' (' + timeframe.period + ')', alert.freq_once_per_bar_close)
+//-----------------------------------------------------------------------------}
