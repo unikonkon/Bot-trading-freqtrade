@@ -1,0 +1,871 @@
+// RW6 IDM — บน 15m เบรกขึ้น (BOS) แล้วกลับมา CHoCH ลงภายใน K แท่ง = หลอกขึ้นจริงลง → Short ด้วย MSS + FVG บน 5m
+// ที่มา: คลิป Pwqo3viJHa0 (Friday sell · IDM ของ SMC) · ExWyBOWjAFU (สลับหน้าเทรดเมื่อ TF เล็กกลับทิศ)
+//   คลิปใช้ช่วง NY และเลี่ยงบ่ายลอนดอน → มีตัวกรองชั่วโมง UTC ให้เปิด (ทดสอบแล้วไม่ช่วย ค่าเริ่มต้นปิด)
+//
+// ค่าเริ่มต้นของไฟล์นี้ (เลือกจาก dev): {"h0":13,"h1":20,"inLen":5,"entry":"market","rr":3,"bias":50,"idmK":8,"idmLen":2,"hourOn":false,"trail":"none","partial":false,"tpMode":"rr","oppClose":false,"eod":false,"wick":true,"seasonal":true,"doji":0,"oneLoss":false,"costR":0.25}
+//   BTC / ETH / SOL ผลรวม % · dev +22.7 / +22.6 / -2.7 · test -27.3 / -4.4 / +0.6 (เทรด test 32 / 34 / 38 ไม้)
+//
+// ═══ เครื่องยนต์ร่วม (เหมือนกันทั้ง 8 ไฟล์ใน lib/riskway/ · ต่างกันแค่ค่าเริ่มต้น) ═══════════════════════
+//    แนวคิดหลักของช่อง Daytrade riskway: TF ใหญ่บอกทิศ/จุดสนใจ → TF เล็กหา MSS + FVG แล้วเข้า
+//    1. setup แต่ละแบบแค่ "เปิดสัญญาณรอ" (arm) ให้ฝั่ง Long หรือ Short ตามกฎของตัวเอง
+//    2. จุดเข้าเหมือนกันทุก setup: โครงสร้างย่อย (pivot "โครงสร้างย่อย" แท่ง) เบรกไปทางที่ arm ไว้ = MSS/BOS
+//       → ต้องมี FVG ทิศเดียวกันในขานั้น → ตั้ง Limit ที่ขอบ FVG (หรือเข้าตลาดที่ราคาปิด)
+//       SL = จุดต่ำสุด/สูงสุดของขา ± buffer × ATR14 · TP = RR / เป้าของ setup / ไม่มี (trail)
+//    3. ทางออกเลือกได้: ปิดครึ่งที่ 1R (คลิป 7FF_-JuEXfo) · trail ตาม FVG ใหม่ (คลิป 6-oQQfupMVs) / swing · ปิดสิ้นวัน UTC
+//    4. ตัวกรอง: ทิศ EMA 1D · ช่วงเวลา UTC · งดกลาง ธ.ค.–กลาง ม.ค. (คลิป ycrArHKfw6A) · วันก่อนเป็น doji
+//       · แพ้ 1 ไม้หยุดวันนั้น (คลิป mOTuz7gxBWM) · ข้ามไม้ที่ต้นทุน (fee 2 ขา + slippage) เกิน X R
+//    ทุกอย่างตัดสินเมื่อแท่งปิด · ข้อมูล HTF ใช้แท่งที่ปิดแล้วเท่านั้น (ไม่ repaint) · ออกแบบมาสำหรับกราฟ 5m
+//    บัญชี Long กับ Short แยกกัน ฝั่งละ 1 ไม้ · ผลรวม % ต่อไม้ ไม่ทบ · ไม่รวม funding
+//
+// ═══ ผลทดสอบของทั้ง 8 setup (ค่าเริ่มต้นของแต่ละไฟล์ · กราฟ 5m · fee 0.05%/ขา + slippage SL 0.05%) ═══
+//    เลือกค่าจาก dev = BTC/ETH/SOL 2024-10 → 2025-12 เท่านั้น · test = 2026-01 → 2026-10-04 (ไม่ได้ใช้เลือก)
+//    เหรียญอื่น = 27 เหรียญที่ไม่ได้ใช้เลือก (data-test/trendlines/tfp-lowtf 5m · 2026-03 → 2026-09)
+//    ตัวเลข = ผลรวม % ต่อไม้ BTC / ETH / SOL · เหรียญอื่น = median ต่อเหรียญ (จำนวนเหรียญที่บวก)
+//                            dev                  test                 เหรียญอื่น      test fee 0.10%
+//      RW1 CRT               +8 / +40 / +41       +7 / −30 / −6        −7.3 (6/27)    −9 / −1 / −19
+//      RW2 Turtle Soup       +34 / −14 / +34      −6 / −11 / −9        −8.2 (8/27)    0 / −12 / −11
+//      RW3 HTF-close MSS     −2 / +67 / +73       −2 / +35 / +15       −2.6 (9/27)    −5 / +45 / +12
+//      RW4 Breaker Box       −24 / +48 / +50      +3 / +11 / +13       +4.4 (14/27)   +3 / +27 / +12   ← นิ่งที่สุด
+//      RW5 AMD               +1 / +27 / +27       −1 / −5 / +4         +1.6 (17/27)   0 / 0 / −4       (เทรดน้อยมาก ~7 ไม้/เหรียญ)
+//      RW6 IDM Session       +23 / +23 / −3       −27 / −4 / +1        −3.6 (10/27)   −23 / −8 / −4
+//      RW7 OB Trap Fade      −31 / +55 / +55      −4 / −2 / −25        −5.6 (9/27)    −3 / +2 / −20
+//      RW8 Wedge             −30 / +26 / +39      +15 / +52 / −7       −5.8 (12/27)   +11 / +39 / −15
+//    • ไม่มี setup ไหนชนะชัดที่ 5m · RW4 เป็นตัวเดียวที่บวกทั้ง test 3 เหรียญ + median เหรียญอื่น + fee 0.10%
+//    • 7 ใน 8 ค่าที่ดีที่สุดเลือก "ทิศ EMA50 1D" (ตรงกับงานวิจัยก่อนหน้าใน repo: ตัวกรอง HTF คือส่วนที่ช่วย)
+//    • ผู้พูดในคลิปเทรด futures (ทอง/NASDAQ) ด้วยดุลยพินิจ ไม่ได้ backtest · ตัวเลขทุกตัวในไฟล์นี้ต้องกำหนดเอง
+//      (ขนาด pivot · wick % · อายุสัญญาณ) เพราะในคลิปไม่ได้ให้ค่าตายตัว · ผลย้อนหลังไม่รับประกันอนาคต
+
+//@version=6
+indicator('Riskway RW6 — IDM session reversal (15m fake break) → MSS+FVG backtest', 'RW6 IDM', overlay = true, max_labels_count = 500, max_bars_back = 1000)
+
+//------------------------------------------------------------------------------
+//Settings
+//-----------------------------------------------------------------------------{
+S_CRT  = 'CRT'
+S_TS   = 'Turtle Soup'
+S_HS   = 'HTF-close MSS'
+S_MB   = 'Breaker/Mitigation Box'
+S_AMD  = 'AMD (Asia range)'
+S_IDM  = 'IDM Session Reversal'
+S_TRAP = 'OB Trap Fade'
+S_WDG  = 'Wedge Break'
+EN_FVG = 'Limit ที่ FVG'
+EN_MKT = 'ตลาด (ปิดแท่ง)'
+TP_RR  = 'RR คงที่'
+TP_SET = 'เป้าของ setup'
+TP_NO  = 'ไม่มี TP (trail)'
+TR_NO  = 'ไม่ trail'
+TR_FVG = 'FVG'
+TR_SW  = 'Swing'
+
+setupIn  = input.string(S_IDM, 'Setup', options = [S_CRT, S_TS, S_HS, S_MB, S_AMD, S_IDM, S_TRAP, S_WDG], group = 'Setup', tooltip = 'CRT: แท่ง HTF ไส้เทียนกวาด high/low ของแท่งก่อน แล้วปิดกลับเข้ากรอบ → เทรดกลับ\nTurtle Soup: ไส้เทียนกวาด swing high/low แล้วปิดกลับ → เทรดกลับ\nHTF-close MSS: ทิศโครงสร้าง HTF (เบรกด้วยราคาปิด) → เข้าตามทิศ\nBreaker/Mitigation: หลังเบรกโครงสร้างใหญ่ รอราคาย้อนมาแตะระดับที่ถูกเบรก / FVG แรกของขา\nAMD: กรอบช่วงเอเชีย → กวาดกรอบ (manipulation) → เทรดกลับ\nIDM: TF 15m เบรกขึ้นแล้ว CHoCH ลงภายใน K แท่ง (หลอกขึ้นจริงลง) → Short (กลับกันสำหรับ Long)\nOB Trap: ขาขึ้นย้อนลงเกิน 50% ซ้ำ N ครั้งโดยไม่ทำ high ใหม่ → Short (กลับกัน)\nWedge: ลิ่มลง (high ลงชันกว่า low) ปิดเหนือเส้นบน → Long (ลิ่มขึ้นกลับกัน)\nทุก setup เข้าด้วย MSS + FVG บน TF กราฟ')
+armBars  = input.int(12, 'อายุสัญญาณ setup (แท่ง)', minval = 1, group = 'Setup', tooltip = 'หลัง setup เกิด รอ MSS ได้กี่แท่ง (CRT = จนจบแท่ง HTF · HTF-close = ตลอดที่ทิศยังเหมือนเดิม · AMD = ถึงชั่วโมงปิดหน้าต่าง)')
+
+crtTf    = input.string('240', 'TF แท่ง CRT', options = ['60', '240', 'D'], group = 'CRT')
+crtBody  = input.float(0.5, 'แท่งแรก: เนื้อเทียน ≥ (สัดส่วนของช่วง)', minval = 0, maxval = 1, step = 0.05, group = 'CRT', tooltip = '0 = ไม่กรอง · 0.5 = แท่ง imbalance เนื้อเทียนอย่างน้อยครึ่งแท่ง')
+crtWick  = input.float(0, 'แท่งที่สอง: ไส้ฝั่งกวาด ≥', minval = 0, maxval = 1, step = 0.05, group = 'CRT', tooltip = 'สัดส่วนไส้เทียนด้านที่กวาดเทียบช่วงแท่ง (คลิปพูด 60–75%) · 0 = ไม่กรอง')
+crtTgt   = input.string('เนื้อเทียน', 'เป้า CRT', options = ['เนื้อเทียน', 'ไส้เทียน'], group = 'CRT', tooltip = 'ผู้พูดใช้เนื้อเทียนอีกฝั่งของแท่งแรก (ใกล้กว่าไส้) · ใช้เมื่อ TP = เป้าของ setup')
+tsLen    = input.int(20, 'Turtle Soup: ขนาด swing (pivot ซ้าย/ขวา)', minval = 2, group = 'Turtle Soup')
+hsTf     = input.string('60', 'TF ทิศโครงสร้าง', options = ['15', '60', '240'], group = 'HTF-close MSS')
+hsLen    = input.int(3, 'ขนาด pivot บน HTF', minval = 1, group = 'HTF-close MSS')
+mbMode   = input.string('Breaker', 'โหมด', options = ['Breaker', 'Mitigation'], group = 'Breaker / Mitigation Box', tooltip = 'Breaker: รอแตะระดับ swing ที่ถูกเบรก ± ระยะ × ATR\nMitigation: รอแตะ FVG แรกของขาที่เบรก')
+swLen    = input.int(10, 'ขนาด swing ใหญ่ (Breaker / Trap / Wedge)', minval = 2, group = 'Breaker / Mitigation Box')
+mbTol    = input.float(0.25, 'Breaker: ระยะรอบระดับ × ATR', minval = 0, step = 0.05, group = 'Breaker / Mitigation Box')
+mbBars   = input.int(48, 'รอการย้อนแตะได้ (แท่ง)', minval = 1, group = 'Breaker / Mitigation Box')
+amdA0    = input.int(0, 'กรอบเอเชีย เริ่ม (ชม. UTC)', minval = 0, maxval = 23, group = 'AMD', inline = 'a')
+amdA1    = input.int(7, 'ถึง', minval = 1, maxval = 24, group = 'AMD', inline = 'a')
+amdW1    = input.int(20, 'หน้าต่างเทรดถึง (ชม. UTC)', minval = 1, maxval = 24, group = 'AMD', tooltip = 'หลังกรอบเอเชียจบ ราคากวาด high/low ของกรอบได้ถึงชั่วโมงนี้')
+amdMaxAtr = input.float(0, 'กรอบต้องแคบ ≤ × ATR 1D', minval = 0, step = 0.1, group = 'AMD', tooltip = '0 = ไม่กรอง · ช่วงสะสมต้อง "แคบ" ตามคลิป 958-Q4gpIWc')
+idmTf    = input.string('15', 'TF', options = ['15', '30', '60'], group = 'IDM Session Reversal', inline = 'i')
+idmLen   = input.int(2, 'pivot', minval = 1, group = 'IDM Session Reversal', inline = 'i')
+idmK     = input.int(8, 'CHoCH ภายใน (แท่ง HTF) หลังเบรกฝั่งตรงข้าม', minval = 1, group = 'IDM Session Reversal')
+trapN    = input.int(3, 'OB Trap: ย้อนเกิน 50% กี่ครั้ง', minval = 1, group = 'OB Trap Fade')
+wdgCloses = input.int(2, 'Wedge: ปิดนอกเส้นกี่แท่งติด', minval = 1, group = 'Wedge Break')
+
+inLen    = input.int(5, 'โครงสร้างย่อย (pivot ซ้าย/ขวา)', minval = 1, group = 'จุดเข้า (ทุก setup)', tooltip = 'MSS/BOS สำหรับจุดเข้า คิดบน TF กราฟ')
+wickIn   = input.bool(true, 'นับเบรกด้วยไส้เทียน', group = 'จุดเข้า (ทุก setup)', tooltip = 'ปิด = ต้องปิดแท่งผ่าน (ผู้พูดใช้แบบนี้ · คลิป Ep.1) · เปิด = ไส้เทียนแตะก็นับ')
+entryIn  = input.string(EN_MKT, 'วิธีเข้า', options = [EN_FVG, EN_MKT], group = 'จุดเข้า (ทุก setup)')
+needFvg  = input.bool(true, 'ต้องมี FVG ในขา', group = 'จุดเข้า (ทุก setup)')
+expBars  = input.int(12, 'Limit รอได้ (แท่ง)', minval = 1, group = 'จุดเข้า (ทุก setup)')
+slBuf    = input.float(0.1, 'SL buffer × ATR14', minval = 0, step = 0.05, group = 'จุดเข้า (ทุก setup)')
+
+tpMode   = input.string(TP_RR, 'TP', options = [TP_RR, TP_SET, TP_NO], group = 'ทางออก', tooltip = 'เป้าของ setup: CRT = เนื้อ/ไส้แท่งแรก · Turtle Soup = swing ฝั่งตรงข้าม · AMD = ขอบกรอบอีกฝั่ง · OB Trap = จุดเริ่มขา · ถ้าเป้าใกล้กว่า 1R หรือไม่มี ใช้ RR')
+rr       = input.float(3, 'RR', minval = 0.5, step = 0.5, group = 'ทางออก')
+partialIn = input.bool(false, 'ปิดครึ่งที่ 1R (SL เดิม)', group = 'ทางออก', tooltip = 'คลิป 7FF_-JuEXfo: ถึง +1R ปิดครึ่ง ที่เหลือ SL เดิม')
+trailIn  = input.string(TR_NO, 'Trailing SL', options = [TR_NO, TR_FVG, TR_SW], group = 'ทางออก', tooltip = 'FVG: เลื่อน SL ไปใต้ FVG ใหม่ทุกอัน (คลิป 6-oQQfupMVs) · Swing: ใต้ swing ย่อยใหม่')
+trailStartR = input.float(1, 'เริ่ม trail เมื่อกำไร ≥ (R)', minval = 0, step = 0.25, group = 'ทางออก')
+eodIn    = input.bool(false, 'ปิดไม้สิ้นวัน (00:00 UTC)', group = 'ทางออก')
+oppIn    = input.bool(false, 'สัญญาณฝั่งตรงข้ามปิดไม้', group = 'ทางออก')
+
+biasOn   = input.bool(true, 'เข้าตามทิศ EMA 1D เท่านั้น', group = 'ตัวกรอง', inline = 'b')
+biasLen  = input.int(50, 'EMA', minval = 2, group = 'ตัวกรอง', inline = 'b')
+hourOn   = input.bool(false, 'เข้าเฉพาะชั่วโมง (UTC)', group = 'ตัวกรอง', inline = 'h')
+h0       = input.int(13, '', minval = 0, maxval = 23, group = 'ตัวกรอง', inline = 'h')
+h1       = input.int(20, '–', minval = 1, maxval = 24, group = 'ตัวกรอง', inline = 'h')
+seasonal = input.bool(true, 'งด 15 ธ.ค. – 15 ม.ค.', group = 'ตัวกรอง')
+dojiMax  = input.float(0, 'งดวันที่แท่ง 1D ก่อนหน้าเนื้อ < (สัดส่วน)', minval = 0, maxval = 1, step = 0.05, group = 'ตัวกรอง', tooltip = '0 = ไม่กรอง · 0.25 = เมื่อวานเป็น doji/ไส้ยาว งดเข้าวันนี้')
+oneLoss  = input.bool(false, 'แพ้ 1 ไม้ หยุดวันนั้น', group = 'ตัวกรอง')
+maxDay   = input.int(0, 'ไม้สูงสุดต่อวัน (0 = ไม่จำกัด)', minval = 0, group = 'ตัวกรอง')
+costR    = input.float(0.25, 'ข้ามไม้ที่ต้นทุน > (R)', minval = 0, step = 0.05, group = 'ตัวกรอง', tooltip = 'ต้นทุน = fee 2 ขา + slippage เทียบระยะ SL · 0 = ไม่กรอง')
+
+showMode  = input.string('สองฝั่ง', 'ป้าย/แจ้งเตือนของ', options = ['สองฝั่ง', 'Long', 'Short'], group = 'การเทรด', tooltip = 'ตารางแสดงครบทั้ง Long / Short / สองฝั่งเสมอ')
+startTime = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'การเทรด')
+endTime   = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'การเทรด')
+feeIn     = input.float(0.05, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'การเทรด', tooltip = 'ค่าเริ่มต้น 0.05% = taker Binance USDT-M Futures (Short ต้องใช้ futures)')
+slipIn    = input.float(0.05, 'SL slippage %', minval = 0, maxval = 2, step = 0.01, group = 'การเทรด')
+capital   = input.float(1000, 'ทุน (แถวเป็นเงิน)', minval = 1, group = 'การเทรด')
+
+showTable  = input.bool(true, 'Show table', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Small', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+showArm    = input.bool(true, 'Show setup (arm)', group = 'Style', inline = 'st')
+showLevels = input.bool(true, 'Show TP / SL', group = 'Style', inline = 'st')
+buyCss     = input.color(#089981, 'BUY', group = 'Style', inline = 'c')
+sellCss    = input.color(#F23645, 'SELL', group = 'Style', inline = 'c')
+
+FEE   = feeIn
+SLIP  = slipIn / 100
+MINR  = costR > 0 ? (2 * FEE / 100 + SLIP) / costR : 0.
+DAYMS = 86400000
+A     = ta.atr(14)
+barsPerHour = 3600.0 / timeframe.in_seconds()
+
+//-----------------------------------------------------------------------------}
+//Structure — pivot = high[n] สูงสุดในหน้าต่าง 2n+1 (ยืนยันหลัง n แท่ง) · เบรกเมื่อปิด (หรือไส้) ผ่าน pivot ล่าสุดที่ยังไม่ถูกเบรก
+//คืน [เหตุการณ์ (+1 BOS ขึ้น · +2 MSS ขึ้น · −1 · −2), ทิศ, pivot high, pivot low, index ของ pivot high, index ของ pivot low, pivot high ใหม่, pivot low ใหม่]
+//-----------------------------------------------------------------------------{
+f_struct(int n, bool wk) =>
+    var float hiLv = na
+    var int   hiIx = -1
+    var bool  hiX  = true
+    var float loLv = na
+    var int   loIx = -1
+    var bool  loX  = true
+    var int   d    = 0
+    float hh = ta.highest(high, 2 * n + 1)
+    float ll = ta.lowest(low, 2 * n + 1)
+    bool nPH = false
+    bool nPL = false
+    if bar_index >= 2 * n
+        if high[n] == hh
+            hiLv := high[n]
+            hiIx := bar_index - n
+            hiX  := false
+            nPH  := true
+        if low[n] == ll
+            loLv := low[n]
+            loIx := bar_index - n
+            loX  := false
+            nPL  := true
+    int e = 0
+    if not hiX and (wk ? high > hiLv : close > hiLv)
+        e   := d == -1 ? 2 : 1
+        d   := 1
+        hiX := true
+    if not loX and (wk ? low < loLv : close < loLv)
+        e   := d == 1 ? -2 : -1
+        d   := -1
+        loX := true
+    [e, d, hiLv, loLv, hiIx, loIx, nPH, nPL]
+
+[itEv, itDir, itHi, itLo, itHiIx, itLoIx, itNPH, itNPL] = f_struct(inLen, wickIn)
+majLen = setupIn == S_TS ? tsLen : swLen
+[mjEv, mjDir, mjHi, mjLo, mjHiIx, mjLoIx, mjNPH, mjNPL] = f_struct(majLen, wickIn)
+
+// จุดต่ำสุด/สูงสุดของขา (ตั้งแต่ pivot ย่อยล่าสุด · ไม่เกิน 500 แท่ง) = ฐานของ SL
+legLo = ta.lowest(low, itLoIx >= 0 ? math.max(1, math.min(500, bar_index - itLoIx + 1)) : 1)
+legHi = ta.highest(high, itHiIx >= 0 ? math.max(1, math.min(500, bar_index - itHiIx + 1)) : 1)
+
+//-----------------------------------------------------------------------------}
+//HTF — แท่งที่ปิดแล้วเท่านั้น ([1] + lookahead = ไม่ repaint)
+//-----------------------------------------------------------------------------{
+htfDir(int n) =>
+    [e, d, a1, a2, a3, a4, a5, a6] = f_struct(n, false)
+    d[1]
+
+idmSigF(int n, int k) =>
+    [e, d, a1, a2, a3, a4, a5, a6] = f_struct(n, false)
+    var int lastUp = -100000
+    var int lastDn = -100000
+    int sg = 0
+    if e == -2 and bar_index - lastUp <= k
+        sg := -1
+    if e == 2 and bar_index - lastDn <= k
+        sg := 1
+    if e > 0
+        lastUp := bar_index
+    if e < 0
+        lastDn := bar_index
+    [sg[1], time[1]]
+
+emaDir(int len) =>
+    float seed = ta.sma(close, len)
+    var float e = na
+    e := na(e) ? seed : close * (2.0 / (len + 1)) + e * (1 - 2.0 / (len + 1))
+    int dd = na(e) ? 0 : close > e ? 1 : -1
+    dd[1]
+
+hsDir = nz(request.security(syminfo.tickerid, hsTf, htfDir(hsLen), lookahead = barmerge.lookahead_on))
+[idmSig, idmT] = request.security(syminfo.tickerid, idmTf, idmSigF(idmLen, idmK), lookahead = barmerge.lookahead_on)
+[cAo, cAh, cAl, cAc, cBo, cBh, cBl, cBc, cT] = request.security(syminfo.tickerid, crtTf, [open[2], high[2], low[2], close[2], open[1], high[1], low[1], close[1], time], lookahead = barmerge.lookahead_on)
+[dBias, dO, dH, dL, dC, dAtr] = request.security(syminfo.tickerid, 'D', [emaDir(biasLen), open[1], high[1], low[1], close[1], ta.atr(14)[1]], lookahead = barmerge.lookahead_on)
+crtBars = math.max(1, math.round(timeframe.in_seconds(crtTf) / timeframe.in_seconds()))
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+utcHr     = (hour(time, 'UTC') * 60 + minute(time, 'UTC')) / 60.0
+dayKey    = math.floor(time / DAYMS)
+lastOfDay = time_close % DAYMS == 0
+mon       = month(time, 'UTC')
+dom       = dayofmonth(time, 'UTC')
+
+//-----------------------------------------------------------------------------}
+//State
+//-----------------------------------------------------------------------------{
+type Ctx
+    int  day        = -1
+    int  dayTrades  = 0
+    bool dayLoss    = false
+    bool dayBlocked = false
+
+type Side
+    int    d
+    bool   arm      = false
+    int    armUntil = -1
+    float  armTgt   = na
+    bool   pend     = false
+    float  pLim     = na
+    float  pSl      = na
+    float  pTp      = na
+    int    pUntil   = -1
+    bool   inPos    = false
+    float  e        = na
+    float  sl       = na
+    float  tp       = na
+    float  risk     = 0.
+    bool   half     = false
+    float  halfPnl  = 0.
+    float  best     = 0.
+    int    i0       = -1
+    int    n        = 0
+    int    w        = 0
+    float  sum      = 0.
+    float  peak     = 0.
+    float  dd       = 0.
+    int    nTp      = 0
+    int    nSl      = 0
+    int    nOpp     = 0
+    int    nEod     = 0
+    int    openBar  = -1
+    int    exitBar  = -1
+    int    exitHow  = 0      // 1 TP · −1 SL · 0 สัญญาณตรงข้าม · 2 สิ้นวัน · 3 จบช่วง
+    float  exitPx   = na
+    float  exitPct  = na
+    int    armBar   = -1
+
+type Zone
+    bool  on    = false
+    int   i     = 0
+    float top   = na
+    float bot   = na
+    float inv   = na
+    int   until = 0
+
+type Trap
+    bool  on     = false
+    float hi     = na
+    float lo     = na
+    int   cnt    = 0
+    bool  inHalf = false
+
+var Ctx  g  = Ctx.new()
+var Side L  = Side.new(1)
+var Side Sh = Side.new(-1)
+var float bfTop = na
+var float bfBot = na
+var int   bfIx  = -1
+var float sfTop = na
+var float sfBot = na
+var int   sfIx  = -1
+
+method record(Side s, float px, int how) =>
+    float r = s.d * (px - s.e) / s.e
+    float p = (s.half ? 0.5 : 1.0) * (r * 100 - 2 * FEE) + (s.half ? s.halfPnl : 0.)
+    s.n       := s.n + 1
+    s.sum     := s.sum + p
+    s.w       := s.w + (p > 0 ? 1 : 0)
+    s.nTp     := s.nTp + (how == 1 ? 1 : 0)
+    s.nSl     := s.nSl + (how == -1 ? 1 : 0)
+    s.nOpp    := s.nOpp + (how == 0 ? 1 : 0)
+    s.nEod    := s.nEod + (how == 2 ? 1 : 0)
+    s.peak    := math.max(s.peak, s.sum)
+    s.dd      := math.max(s.dd, s.peak - s.sum)
+    s.exitBar := bar_index
+    s.exitHow := how
+    s.exitPx  := px
+    s.exitPct := p
+    s.inPos   := false
+    s.half    := false
+    if p < 0
+        g.dayLoss := true
+    s.n
+
+method openPos(Side s, float e, float sl, float tpLvl, bool intrabar) =>
+    float risk = s.d * (e - sl)
+    if risk > 0 and risk / e >= MINR
+        float tp = na
+        if tpMode == TP_RR
+            tp := e + s.d * rr * risk
+        else if tpMode == TP_SET
+            tp := not na(tpLvl) and s.d * (tpLvl - e) >= risk ? tpLvl : e + s.d * rr * risk
+        s.inPos   := true
+        s.e       := e
+        s.sl      := sl
+        s.tp      := tp
+        s.risk    := risk
+        s.i0      := bar_index
+        s.openBar := bar_index
+        s.half    := false
+        g.dayTrades := g.dayTrades + 1
+        // limit fill แล้วแตะ SL ในแท่งเดียวกัน = SL (ไม่รู้ลำดับราคาในแท่ง)
+        if intrabar and s.d * ((s.d == 1 ? low : high) - sl) <= 0
+            s.record(sl * (1 - s.d * SLIP), -1)
+    s.n
+
+// TP/SL ของไม้ที่เปิดก่อนแท่งนี้: ราคาเปิดกระโดดข้ามก่อน · แท่งเดียวแตะทั้งคู่นับ SL · ปิดครึ่งที่ 1R ก่อนเช็ค TP
+method doExit(Side s) =>
+    if s.inPos and s.i0 != bar_index
+        float adv = s.d == 1 ? low : high
+        float fav = s.d == 1 ? high : low
+        float r1  = s.e + s.d * s.risk
+        if s.d * (open - s.sl) <= 0
+            s.record(open * (1 - s.d * SLIP), -1)
+        else if not na(s.tp) and s.d * (open - s.tp) >= 0
+            s.record(open, 1)
+        else if s.d * (adv - s.sl) <= 0
+            s.record(s.sl * (1 - s.d * SLIP), -1)
+        else
+            if partialIn and not s.half and s.d * (fav - r1) >= 0
+                s.half    := true
+                s.halfPnl := 0.5 * (s.risk / s.e * 100 - 2 * FEE)
+            if not na(s.tp) and s.d * (fav - s.tp) >= 0
+                s.record(s.tp, 1)
+    s.n
+
+// Limit ที่รออยู่: หมดอายุ / มีไม้แล้ว = ยกเลิก · ราคาเปิดเลย SL = ยกเลิก · แตะ = fill
+method doFill(Side s) =>
+    if s.pend
+        if bar_index > s.pUntil or s.inPos
+            s.pend := false
+        else if s.d * (open - s.pSl) <= 0
+            s.pend := false
+        else if s.d == 1 ? low <= s.pLim : high >= s.pLim
+            float e = s.d == 1 ? math.min(open, s.pLim) : math.max(open, s.pLim)
+            s.pend := false
+            s.openPos(e, s.pSl, s.pTp, true)
+    s.n
+
+method doTrail(Side s) =>
+    if s.inPos and trailIn != TR_NO
+        float prog = s.d * ((s.d == 1 ? high : low) - s.e) / s.risk
+        s.best := math.max(s.i0 == bar_index ? 0. : s.best, prog)
+        if s.best >= trailStartR
+            float ns = na
+            if trailIn == TR_FVG
+                if s.d == 1 and bfIx == bar_index
+                    ns := bfBot - slBuf * A
+                if s.d == -1 and sfIx == bar_index
+                    ns := sfTop + slBuf * A
+            else
+                if s.d == 1 and itNPL
+                    ns := itLo - slBuf * A
+                if s.d == -1 and itNPH
+                    ns := itHi + slBuf * A
+            if not na(ns) and s.d * (ns - s.sl) > 0 and s.d * (close - ns) > 0
+                s.sl := ns
+    s.n
+
+method setArm(Side s, int until, float tgt) =>
+    s.arm      := true
+    s.armUntil := until
+    s.armTgt   := tgt
+    s.armBar   := bar_index
+    s.n
+
+// MSS/BOS ย่อยไปทางที่ arm ไว้ → ตัวกรอง → Limit ที่ FVG ของขา (หรือเข้าตลาด)
+method trig(Side s, Side o) =>
+    if s.arm and bar_index > s.armUntil
+        s.arm := false
+    bool fire = s.arm and (s.d == 1 ? itEv > 0 : itEv < 0)
+    if fire
+        if oppIn and o.inPos
+            o.record(close, 0)
+        int  ls = s.d == 1 ? itLoIx : itHiIx
+        bool ok = not s.inPos and inWindow and not lastOfDay and ls >= 0
+        if ok and biasOn and nz(dBias) != s.d
+            ok := false
+        if ok and hourOn and not (utcHr >= h0 and utcHr < h1)
+            ok := false
+        if ok and seasonal and ((mon == 12 and dom >= 15) or (mon == 1 and dom <= 15))
+            ok := false
+        if ok and (g.dayBlocked or (oneLoss and g.dayLoss) or (maxDay > 0 and g.dayTrades >= maxDay))
+            ok := false
+        if ok
+            float sl   = (s.d == 1 ? legLo : legHi) - s.d * slBuf * A
+            int   fIx  = s.d == 1 ? bfIx : sfIx
+            bool  hasF = fIx >= 0 and fIx >= ls
+            bool  placed = true
+            if entryIn == EN_FVG
+                if not hasF
+                    if needFvg
+                        placed := false
+                    else
+                        s.openPos(close, sl, s.armTgt, false)
+                else
+                    s.pend   := true
+                    s.pLim   := s.d == 1 ? bfTop : sfBot
+                    s.pSl    := sl
+                    s.pTp    := s.armTgt
+                    s.pUntil := bar_index + expBars
+            else
+                if needFvg and not hasF
+                    placed := false
+                else
+                    s.openPos(close, sl, s.armTgt, false)
+            if placed and setupIn != S_HS
+                s.arm := false
+    s.n
+
+method mtm(Side s) =>
+    float r = s.d * (close - s.e) / s.e * 100 - 2 * FEE
+    s.sum + (s.inPos ? (s.half ? 0.5 * r + s.halfPnl : r) : 0.)
+
+//-----------------------------------------------------------------------------}
+//Setup state
+//-----------------------------------------------------------------------------{
+var int   lastCrtT = -1
+var int   lastIdmT = -1
+var int   tsHiUsed = -1
+var int   tsLoUsed = -1
+var Zone  zL = Zone.new()
+var Zone  zS = Zone.new()
+var int   amdDay = -1
+var float amdHi = na
+var float amdLo = na
+var bool  amdSwH = false
+var bool  amdSwL = false
+var Trap  tU = Trap.new()
+var Trap  tD = Trap.new()
+var int   wh1x = -1
+var float wh1y = na
+var int   wh2x = -1
+var float wh2y = na
+var int   wl1x = -1
+var float wl1y = na
+var int   wl2x = -1
+var float wl2y = na
+var int   wcU = 0
+var int   wcD = 0
+var int   wDoneUh = -1
+var int   wDoneUl = -1
+var int   wDoneDh = -1
+var int   wDoneDl = -1
+
+mjHiPrev = mjHi[1]
+mjLoPrev = mjLo[1]
+
+// Breaker: ระยะรอบ swing ที่ถูกเบรก · Mitigation: FVG แรกของขาที่เบรก
+mbMake(Zone z, int dd) =>
+    float lvl = dd == 1 ? mjHiPrev : mjLoPrev
+    int   legStart = dd == 1 ? mjLoIx : mjHiIx
+    float top = na
+    float bot = na
+    if mbMode == 'Breaker'
+        top := lvl + mbTol * A
+        bot := lvl - mbTol * A
+    else
+        int st = math.max(legStart + 2, 2, bar_index - 900)
+        if st <= bar_index
+            for j = st to bar_index
+                int off = bar_index - j
+                if dd == 1 and low[off] > high[off + 2]
+                    top := low[off]
+                    bot := high[off + 2]
+                    break
+                if dd == -1 and high[off] < low[off + 2]
+                    bot := high[off]
+                    top := low[off + 2]
+                    break
+    z.on    := not na(top)
+    z.i     := bar_index
+    z.top   := top
+    z.bot   := bot
+    z.inv   := dd == 1 ? mjLo : mjHi
+    z.until := bar_index + mbBars
+    z.on
+
+mbStep(Zone z, Side s) =>
+    if z.on
+        if bar_index > z.until or s.d * (close - z.inv) < 0
+            z.on := false
+        else if bar_index > z.i and (s.d == 1 ? low <= z.top : high >= z.bot)
+            s.setArm(bar_index + armBars, na)
+            z.on := false
+    z.on
+
+//-----------------------------------------------------------------------------}
+//Main — ตัดสินเมื่อแท่งปิด
+//-----------------------------------------------------------------------------{
+if barstate.isconfirmed
+    if dayKey != g.day
+        g.day        := dayKey
+        g.dayTrades  := 0
+        g.dayLoss    := false
+        g.dayBlocked := false
+        if dojiMax > 0 and not na(dH) and dH - dL > 0 and math.abs(dC - dO) / (dH - dL) < dojiMax
+            g.dayBlocked := true
+    // 1. ทางออก · 2. Limit fill
+    L.doExit()
+    Sh.doExit()
+    L.doFill()
+    Sh.doFill()
+    // 3. FVG ล่าสุด
+    if bar_index >= 2
+        if low > high[2]
+            bfTop := low
+            bfBot := high[2]
+            bfIx  := bar_index
+        if high < low[2]
+            sfBot := high
+            sfTop := low[2]
+            sfIx  := bar_index
+    // 4. trailing (มีผลแท่งถัดไป)
+    L.doTrail()
+    Sh.doTrail()
+    // 5. setup arm
+    if setupIn == S_CRT
+        if cT != lastCrtT
+            lastCrtT := cT
+            L.arm  := false
+            Sh.arm := false
+            float rgA = cAh - cAl
+            float rgB = cBh - cBl
+            if not na(cAo) and not na(cBo) and rgA > 0 and rgB > 0 and math.abs(cAc - cAo) / rgA >= crtBody
+                float upW = (cBh - math.max(cBo, cBc)) / rgB
+                float dnW = (math.min(cBo, cBc) - cBl) / rgB
+                if cBh > cAh and cBc < cAh and cBc > cAl and upW >= crtWick
+                    Sh.setArm(bar_index + crtBars - 1, crtTgt == 'เนื้อเทียน' ? math.min(cAo, cAc) : cAl)
+                if cBl < cAl and cBc > cAl and cBc < cAh and dnW >= crtWick
+                    L.setArm(bar_index + crtBars - 1, crtTgt == 'เนื้อเทียน' ? math.max(cAo, cAc) : cAh)
+    else if setupIn == S_TS
+        if mjHiIx >= 0 and mjHiIx != tsHiUsed and high > mjHi and close < mjHi
+            tsHiUsed := mjHiIx
+            Sh.setArm(bar_index + armBars, mjLo)
+        if mjLoIx >= 0 and mjLoIx != tsLoUsed and low < mjLo and close > mjLo
+            tsLoUsed := mjLoIx
+            L.setArm(bar_index + armBars, mjHi)
+    else if setupIn == S_HS
+        if hsDir == 1
+            L.setArm(bar_index, na)
+        else
+            L.arm := false
+        if hsDir == -1
+            Sh.setArm(bar_index, na)
+        else
+            Sh.arm := false
+    else if setupIn == S_MB
+        if mjEv > 0
+            mbMake(zL, 1)
+        if mjEv < 0
+            mbMake(zS, -1)
+        mbStep(zL, L)
+        mbStep(zS, Sh)
+    else if setupIn == S_AMD
+        if dayKey != amdDay
+            amdDay := dayKey
+            amdHi  := na
+            amdLo  := na
+            amdSwH := false
+            amdSwL := false
+        if utcHr >= amdA0 and utcHr < amdA1
+            amdHi := na(amdHi) ? high : math.max(amdHi, high)
+            amdLo := na(amdLo) ? low : math.min(amdLo, low)
+        else if utcHr >= amdA1 and utcHr < amdW1 and not na(amdHi)
+            bool tight = amdMaxAtr <= 0 or (not na(dAtr) and amdHi - amdLo <= amdMaxAtr * dAtr)
+            if tight
+                int until = bar_index + math.round((amdW1 - utcHr) * barsPerHour)
+                if not amdSwH and high > amdHi
+                    amdSwH := true
+                    Sh.setArm(until, amdLo)
+                if not amdSwL and low < amdLo
+                    amdSwL := true
+                    L.setArm(until, amdHi)
+    else if setupIn == S_IDM
+        if idmT != lastIdmT
+            lastIdmT := idmT
+            if nz(idmSig) == 1
+                L.setArm(bar_index + armBars, na)
+            if nz(idmSig) == -1
+                Sh.setArm(bar_index + armBars, na)
+    else if setupIn == S_TRAP
+        if mjEv > 0
+            tU.on := true
+            tU.hi := high
+            tU.lo := mjLo
+            tU.cnt := 0
+            tU.inHalf := false
+        if mjEv < 0
+            tD.on := true
+            tD.lo := low
+            tD.hi := mjHi
+            tD.cnt := 0
+            tD.inHalf := false
+        if tU.on
+            if close < tU.lo
+                tU.on := false
+            else if high > tU.hi
+                if tU.cnt > 0
+                    tU.on := false
+                else
+                    tU.hi := high
+            else
+                float mid = (tU.hi + tU.lo) / 2
+                if not tU.inHalf and low <= mid
+                    tU.inHalf := true
+                    tU.cnt := tU.cnt + 1
+                    if tU.cnt >= trapN
+                        Sh.setArm(bar_index + armBars, tU.lo)
+                        tU.on := false
+                else if tU.inHalf and close > mid
+                    tU.inHalf := false
+        if tD.on
+            if close > tD.hi
+                tD.on := false
+            else if low < tD.lo
+                if tD.cnt > 0
+                    tD.on := false
+                else
+                    tD.lo := low
+            else
+                float mid = (tD.hi + tD.lo) / 2
+                if not tD.inHalf and high >= mid
+                    tD.inHalf := true
+                    tD.cnt := tD.cnt + 1
+                    if tD.cnt >= trapN
+                        L.setArm(bar_index + armBars, tD.hi)
+                        tD.on := false
+                else if tD.inHalf and close < mid
+                    tD.inHalf := false
+    else if setupIn == S_WDG
+        if mjNPH
+            wh1x := wh2x
+            wh1y := wh2y
+            wh2x := mjHiIx
+            wh2y := mjHi
+        if mjNPL
+            wl1x := wl2x
+            wl1y := wl2y
+            wl2x := mjLoIx
+            wl2y := mjLo
+        if wh1x >= 0 and wl1x >= 0
+            float sH = (wh2y - wh1y) / (wh2x - wh1x)
+            float sL = (wl2y - wl1y) / (wl2x - wl1x)
+            float upLine = wh2y + sH * (bar_index - wh2x)
+            float loLine = wl2y + sL * (bar_index - wl2x)
+            // ลิ่มลง: high ลงชันกว่า low → ปิดเหนือเส้นบนติดกัน N แท่ง = Long
+            if sH < 0 and sL < 0 and sH < sL and not (wDoneUh == wh2x and wDoneUl == wl2x)
+                if close > upLine
+                    wcU := wcU + 1
+                    if wcU >= wdgCloses
+                        wDoneUh := wh2x
+                        wDoneUl := wl2x
+                        L.setArm(bar_index + armBars, na)
+                        wcU := 0
+                else
+                    wcU := 0
+            // ลิ่มขึ้น: low ขึ้นชันกว่า high → ปิดใต้เส้นล่าง = Short
+            if sH > 0 and sL > 0 and sL > sH and not (wDoneDh == wh2x and wDoneDl == wl2x)
+                if close < loLine
+                    wcD := wcD + 1
+                    if wcD >= wdgCloses
+                        wDoneDh := wh2x
+                        wDoneDl := wl2x
+                        Sh.setArm(bar_index + armBars, na)
+                        wcD := 0
+                else
+                    wcD := 0
+    // 6. จุดเข้า
+    L.trig(Sh)
+    Sh.trig(L)
+    // 7. ปิดสิ้นวัน · จบช่วง backtest
+    if eodIn and lastOfDay
+        if L.inPos
+            L.record(close, 2)
+        if Sh.inPos
+            Sh.record(close, 2)
+        L.pend  := false
+        Sh.pend := false
+    if lastWindowBar
+        if L.inPos
+            L.record(close, 3)
+        if Sh.inPos
+            Sh.record(close, 3)
+
+//-----------------------------------------------------------------------------}
+//Equity รายแท่ง (หากำไรรายช่วง)
+//-----------------------------------------------------------------------------{
+var array<int>   eqT = array.new<int>()
+var array<float> eqL = array.new<float>()
+var array<float> eqS = array.new<float>()
+if barstate.isconfirmed and inWindow
+    eqT.push(time_close)
+    eqL.push(L.mtm())
+    eqS.push(Sh.mtm())
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//-----------------------------------------------------------------------------}
+//Plots · labels · alerts
+//-----------------------------------------------------------------------------{
+showL = showMode != 'Short'
+showS = showMode != 'Long'
+plotshape(showArm and showL and L.armBar == bar_index, 'Setup Long', shape.diamond, location.belowbar, color.new(buyCss, 50), size = size.tiny)
+plotshape(showArm and showS and Sh.armBar == bar_index, 'Setup Short', shape.diamond, location.abovebar, color.new(sellCss, 50), size = size.tiny)
+plot(showLevels and showL and L.pend ? L.pLim : na, 'Long limit', color = color.new(buyCss, 60), style = plot.style_linebr)
+plot(showLevels and showS and Sh.pend ? Sh.pLim : na, 'Short limit', color = color.new(sellCss, 60), style = plot.style_linebr)
+plot(showLevels and showL and L.inPos ? L.tp : na, 'Long TP', color = color.new(buyCss, 30), style = plot.style_linebr)
+plot(showLevels and showL and L.inPos ? L.sl : na, 'Long SL', color = color.new(sellCss, 30), style = plot.style_linebr)
+plot(showLevels and showS and Sh.inPos ? Sh.tp : na, 'Short TP', color = color.new(buyCss, 30), style = plot.style_linebr)
+plot(showLevels and showS and Sh.inPos ? Sh.sl : na, 'Short SL', color = color.new(sellCss, 30), style = plot.style_linebr)
+
+exitName(int x) => x == 1 ? 'TP' : x == -1 ? 'SL' : x == 0 ? 'สัญญาณตรงข้าม' : x == 2 ? 'สิ้นวัน' : 'จบช่วง'
+fmtP(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+tpTxt(float x) => na(x) ? '—' : str.tostring(x, format.mintick)
+
+entryLabel(Side s) =>
+    if s.openBar == bar_index and s.i0 == bar_index
+        bool up = s.d == 1
+        label.new(bar_index, up ? low : high, (up ? 'BUY ' : 'SELL ') + setupIn, color = up ? buyCss : sellCss, textcolor = color.white, style = up ? label.style_label_up : label.style_label_down, yloc = up ? yloc.belowbar : yloc.abovebar, size = size.small, tooltip = 'เข้า ' + str.tostring(s.e, format.mintick) + ' · SL ' + str.tostring(s.sl, format.mintick) + ' · TP ' + tpTxt(s.tp))
+    s.n
+exitLabel(Side s) =>
+    if s.exitBar == bar_index and s.exitHow != 3
+        label.new(bar_index, s.exitPx, exitName(s.exitHow) + ' ' + fmtP(s.exitPct), color = color.new(color.gray, 100), textcolor = s.exitPct > 0 ? buyCss : sellCss, style = label.style_label_left, size = size.tiny)
+    s.n
+if showL
+    entryLabel(L)
+    exitLabel(L)
+if showS
+    entryLabel(Sh)
+    exitLabel(Sh)
+
+entL = showL and L.openBar == bar_index and L.i0 == bar_index
+entS = showS and Sh.openBar == bar_index and Sh.i0 == bar_index
+exL  = showL and L.exitBar == bar_index and L.exitHow != 3
+exS  = showS and Sh.exitBar == bar_index and Sh.exitHow != 3
+alertcondition(entL, 'BUY', 'BUY {{ticker}} ({{interval}}) | RW6 IDM Long @ {{close}}')
+alertcondition(entS, 'SELL', 'SELL {{ticker}} ({{interval}}) | RW6 IDM Short @ {{close}}')
+alertcondition(exL or exS, 'EXIT', 'EXIT {{ticker}} ({{interval}}) | ปิดไม้ RW6 IDM')
+if entL
+    alert('🟢 BUY ' + setupIn + ' ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(L.e, format.mintick) + ' · SL ' + str.tostring(L.sl, format.mintick) + ' · TP ' + tpTxt(L.tp), alert.freq_once_per_bar_close)
+if entS
+    alert('🔴 SELL ' + setupIn + ' ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(Sh.e, format.mintick) + ' · SL ' + str.tostring(Sh.sl, format.mintick) + ' · TP ' + tpTxt(Sh.tp), alert.freq_once_per_bar_close)
+if exL
+    alert('⏹ ปิด Long ' + syminfo.ticker + ' (' + timeframe.period + ') · ' + exitName(L.exitHow) + ' @ ' + str.tostring(L.exitPx, format.mintick) + ' · ' + fmtP(L.exitPct), alert.freq_once_per_bar_close)
+if exS
+    alert('⏹ ปิด Short ' + syminfo.ticker + ' (' + timeframe.period + ') · ' + exitName(Sh.exitHow) + ' @ ' + str.tostring(Sh.exitPx, format.mintick) + ' · ' + fmtP(Sh.exitPct), alert.freq_once_per_bar_close)
+
+//-----------------------------------------------------------------------------}
+//ตาราง
+//-----------------------------------------------------------------------------{
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+fmtU(float x) => (x > 0 ? '+' : '') + str.tostring(x, '#,##0.00')
+nAll(Side s) => s.n + (s.inPos ? 1 : 0)
+winAll(Side s) => s.w + (s.inPos and s.mtm() - s.sum > 0 ? 1 : 0)
+wrTxt(int w, int n) => n > 0 ? str.tostring(w * 100.0 / n, '0.0') + '%' : '—'
+xt(Side s) => 'TP ' + str.tostring(s.nTp) + ' SL ' + str.tostring(s.nSl) + ' ตรงข้าม ' + str.tostring(s.nOpp) + ' วัน ' + str.tostring(s.nEod)
+posTxt(Side s) => s.inPos ? (s.d == 1 ? '▲ ' : '▼ ') + fmtP(s.mtm() - s.sum) : s.pend ? 'รอ limit' : s.arm ? 'รอ MSS' : 'ว่าง'
+
+TSIZE = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+var table t = table.new(tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right, 4, 24, bgcolor = color.new(#131722, 10), frame_color = color.new(color.white, 85), frame_width = 1)
+cellL(int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, 0, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_left, tooltip = tip, bgcolor = bgc)
+cellR(int col, int r, string s, color c = color.white, string tip = '', color bgc = na) =>
+    table.cell(t, col, r, s, text_color = c, text_size = TSIZE, text_halign = text.align_right, tooltip = tip, bgcolor = bgc)
+row3(int r, string name, float a, float b, string tip = '', bool money = false) =>
+    cellL(r, name, color.white, tip)
+    cellR(1, r, money ? fmtU(a) : fmtP(a), pnlColor(a))
+    cellR(2, r, money ? fmtU(b) : fmtP(b), pnlColor(b))
+    cellR(3, r, money ? fmtU(a + b) : fmtP(a + b), pnlColor(a + b))
+
+if showTable and barstate.islast
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    table.clear(t, 0, 0, 3, 23)
+    exitTxt = (tpMode == TP_RR ? 'RR ' + str.tostring(rr) : tpMode == TP_SET ? 'เป้า setup' : 'ไม่มี TP') + (partialIn ? ' · ครึ่งที่ 1R' : '') + (trailIn != TR_NO ? ' · trail ' + trailIn : '') + (eodIn ? ' · สิ้นวัน' : '')
+    headTip = 'จุดเข้า: MSS ย่อย (pivot ' + str.tostring(inLen) + ') + ' + (needFvg ? 'FVG ' : '') + '· ' + entryIn + '\nออก: ' + exitTxt + (oppIn ? ' · สัญญาณตรงข้าม' : '') + '\nตัวกรอง: ' + (biasOn ? 'EMA' + str.tostring(biasLen) + ' 1D · ' : '') + (hourOn ? str.tostring(h0) + '–' + str.tostring(h1) + ' UTC · ' : '') + (seasonal ? 'งดปีใหม่ · ' : '') + (dojiMax > 0 ? 'doji 1D · ' : '') + (oneLoss ? 'แพ้ 1 หยุด · ' : '') + 'ต้นทุน ≤ ' + str.tostring(costR) + 'R'
+    cellL(0, syminfo.ticker + ' · ' + timeframe.period + ' · ' + setupIn + ' · ' + exitTxt, tip = headTip)
+    table.merge_cells(t, 0, 0, 2, 0)
+    cellR(3, 0, 'fee ' + str.tostring(feeIn, '0.00') + '%', muted, 'ค่าธรรมเนียมต่อขา · ผลรวม % ต่อไม้ ไม่ทบ · ไม่รวม funding')
+    cellL(1, 'ช่วง', muted)
+    cellR(1, 1, '▲ Long', muted)
+    cellR(2, 1, '▼ Short', muted, 'ต้องใช้ Futures')
+    cellR(3, 1, '⇅ สองฝั่ง', muted, 'Long + Short')
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    names   = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '6 เดือน', '1 ปี')
+    spans   = array.from(1, 7, 30, 90, 180, 365)
+    curL = L.mtm()
+    curS = Sh.mtm()
+    int row = 2
+    for i = 0 to 5
+        spanMs = spans.get(i) * DAYMS
+        if spanMs <= totalMs
+            idx = lastAtOrBefore(eqT, nowT - spanMs)
+            row3(row, names.get(i), curL - (idx >= 0 ? eqL.get(idx) : 0.), curS - (idx >= 0 ? eqS.get(idx) : 0.), 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด')
+            row += 1
+    days = math.floor(totalMs / DAYMS)
+    cellL(row, 'ทั้งหมด · ' + str.tostring(days) + ' วัน', color.white, str.format_time(fromT, 'dd MMM yyyy', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy', 'Asia/Bangkok'), band)
+    cellR(1, row, fmtP(curL), pnlColor(curL), bgc = band)
+    cellR(2, row, fmtP(curS), pnlColor(curS), bgc = band)
+    cellR(3, row, fmtP(curL + curS), pnlColor(curL + curS), bgc = band)
+    row += 1
+    row3(row, 'เป็นเงิน (ทุน ' + str.tostring(capital, '#,##0') + ')', curL * capital / 100, curS * capital / 100, 'ผลรวม % × ทุน / 100 = ลงไม้ละเต็มทุน ไม่ทบ (USDT)', true)
+    row += 1
+    cellL(row, 'เทรด · Win rate', muted, 'ไม้ที่ปิดแล้ว + ถืออยู่ · ชนะ = กำไรหลังหัก fee')
+    cellR(1, row, str.tostring(nAll(L)) + ' · ' + wrTxt(winAll(L), nAll(L)), muted)
+    cellR(2, row, str.tostring(nAll(Sh)) + ' · ' + wrTxt(winAll(Sh), nAll(Sh)), muted)
+    cellR(3, row, str.tostring(nAll(L) + nAll(Sh)) + ' · ' + wrTxt(winAll(L) + winAll(Sh), nAll(L) + nAll(Sh)), muted)
+    row += 1
+    cellL(row, 'ปิดด้วย', muted)
+    cellR(1, row, xt(L), muted)
+    cellR(2, row, xt(Sh), muted)
+    cellR(3, row, 'TP ' + str.tostring(L.nTp + Sh.nTp) + ' SL ' + str.tostring(L.nSl + Sh.nSl), muted)
+    row += 1
+    cellL(row, 'Drawdown', muted, 'ลดลงมากสุดจากจุดสูงสุดของผลรวม % (นับที่ไม้ปิด)')
+    cellR(1, row, str.tostring(L.dd, '0.00') + '%', muted)
+    cellR(2, row, str.tostring(Sh.dd, '0.00') + '%', muted)
+    cellR(3, row, '—', muted)
+    row += 1
+    cellL(row, 'ทิศ EMA' + str.tostring(biasLen) + ' 1D: ' + (dBias == 1 ? '▲ ขาขึ้น' : dBias == -1 ? '▼ ขาลง' : '—') + (biasOn ? ' (ใช้กรอง)' : ' (ไม่ได้ใช้)'), dBias == 1 ? buyCss : dBias == -1 ? sellCss : muted)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    cellL(row, 'สถานะ: Long ' + posTxt(L) + ' · Short ' + posTxt(Sh), muted, 'รอ MSS = setup เกิดแล้ว รอโครงสร้างย่อยเบรก · รอ limit = ตั้ง limit ที่ FVG แล้ว')
+    table.merge_cells(t, 0, row, 3, row)
+
+//-----------------------------------------------------------------------------}
