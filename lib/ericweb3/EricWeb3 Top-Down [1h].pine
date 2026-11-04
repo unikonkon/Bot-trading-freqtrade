@@ -1,0 +1,659 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+//
+// EricWeb3 Top-Down [1h]
+// สังเคราะห์วิธีอ่านกราฟจาก EricWeb3 6 คลิป (youtube ความรู้/EricWeb3):
+//    2026-10-16 LIVE POI สำคัญ !! เข้าแผน DCA BTC        2026-10-26 LIVE สิ้นเดือนนี้ศึกหนัก BTC
+//    2026-10-20 อ่านกราฟเป็นใน 1 นาที (Shorts)             2026-10-28 LIVE BTC รับแรงกระแทก FOMC คืนนี้!
+//    2026-10-22 LIVE Wave 2 or B แต่ BTC เตรียมลง         2026-11-03 LIVE BTC 76,000 ขาลงมาก่อนเลือกตั้ง
+// โครงตาราง backtest แบบเดียวกับ lib/art-of-investing/AOI Momentum 3C [4h 1D].pine
+//
+// ═══ วิธีของผู้พูด (ซ้ำกันทุกตอน) ═══════════════════════════════════════════════════════════
+//    เครื่องมือบนกราฟ: EMA Cross 50/200 · FVG/iFVG (Nephew_Sam_) · RSI Divergence · Stoch · Fibonacci · Elliott Wave
+//    1) ภาพใหญ่ก่อน (1W / 1D / 4h): HH+HL = ขาขึ้น · LH+LL = ขาลง · หลุด HL / ยอดเดิม = เทรนด์เปลี่ยน (BMS / MSS)
+//       "4h เกิด Dead Cross แล้ว + หลุด EMA50 ของ Day" = ฝั่งขาย (10-26) · เส้น "invalid" = Swing ที่ห้ามผ่าน
+//    2) โซน (POI): Fibo 0.5–0.618 ของขาล่าสุด ("Golden pocket") ซ้อนกับ FVG ของ Day · ลึกสุด 0.786–0.886
+//       ขาลง → รอเด้งเข้าโซนแล้ว "เด้งเซลล์" · ขาขึ้น → รอย่อเข้าโซนแล้วซื้อ · "ห้ามเอามือไปรับมีด / อย่าสวนเทรนด์"
+//    3) จุดเข้า 1h (หรือต่ำกว่า): ราคาเข้าโซน → เบรคโครงสร้างย่อย (MSS) → มี FVG → เข้าตอน retest FVG
+//    4) SL ที่เส้น invalid (จุดเริ่มขา / Swing เดิม) หรือแคบลงที่จุดกลับตัว · RR ≥ 2:1 · ถึงเป้าแรกกันหน้าทุน
+//    5) ไม่เทรดตอนไซด์เวย์ · เคลียร์ไม้ก่อน FOMC / ข่าวใหญ่
+//    สิ่งที่เขียนเป็นกฎไม่ได้ (ใช้ประกอบเอง): นับคลื่น Elliott, Divergence, Wedge/Trendline, ข่าว, DXY/ทอง,
+//       วัฏจักร 4 ปี, แผน DCA กล่อง A/B/C (Spot)
+//
+// ═══ สัญญาณ (ทุกอย่างตัดสินเมื่อปิดแท่ง · ค่า 4h / 1D / 1W ใช้แท่งที่ปิดแล้วเท่านั้น ไม่ repaint) ═════════════
+//    ขา Fibo  = Swing Low → Swing High ล่าสุด (Long) ที่ยืนยันด้วย pivot · ขาต้องยาว ≥ 3 ATR(14)
+//    โซน      = Fibo 0.5 ของขานั้น (ระดับที่ราคาต้องย่อมาแตะ) · ย่อเกินจุดเริ่มขา = ขาเสีย (invalid)
+//    BUY      : ภาพใหญ่ขาขึ้น (4h EMA50 > EMA200 และ 1D ปิดเหนือ EMA50) · Swing pivot 20
+//               ย่อแตะ 0.5 → ปิดแท่งเหนือ Swing High ย่อย (pivot 3) ที่เกิดหลังยอด = MSS → ซื้อที่ราคาปิด
+//               SL = จุดเริ่มขา − 0.2 ATR · TP = 2.5R · ปิดก่อนถ้าภาพใหญ่กลับเป็นขาลง (ทั้งสองตัวลง)
+//    SHORT    : ภาพใหญ่ขาลง (1D ปิดใต้ EMA50 และ EMA50 < EMA200) · Swing pivot 10 · ขา ≥ 5 ATR
+//               เด้งแตะ 0.5 → MSS ลง → ตั้ง Limit ที่ขอบ FVG ขาลงที่เกิดใน 2 แท่งล่าสุด (retest) รอ 6 แท่ง
+//               SL = จุดเริ่มขา + 0.2 ATR · TP = 1.5R · ปิดก่อนถ้าภาพใหญ่กลับเป็นขาขึ้น
+//    ชน SL และ TP แท่งเดียวกัน = นับ SL · ราคาเปิด gap ผ่าน = ใช้ราคาเปิด
+//
+// ═══ ผลทดสอบ (2026-11-03 · JS replica ของไฟล์นี้) ═════════════════════════════════════════
+//    Binance Spot 1h 81 เหรียญ (5 ชุด tl-20260928) · fee 0.10%/ขา · ผลรวม % ต่อไม้ ไม่ทบต้น · มัธยฐานต่อเหรียญ
+//    ทดสอบ ~2,900 ค่า: ตัวกรองภาพใหญ่ 12 แบบ × วิธีเข้า 3 แบบ (Limit ที่โซน / MSS / MSS+FVG) × pivot × SL × RR × Fibo
+//    เลือกจากค่าที่ดีทั้ง 2 ช่วง: A = 2020-01 → 2023-08 · B = 2023-09 → 2026-09-27 · ตรวจ C = 2026-09-27 → 2026-11-03 (ข้อมูลใหม่)
+//                     A (3.7 ปี)          B (3.1 ปี)          ไม้ต่อเหรียญ A / B
+//      Long        +141 (85% เหรียญบวก)   +45 (79%)            30 / 26
+//      Short       +15                    +11                  19 / 23
+//      สองฝั่ง     +172                   +57
+//    รายปี Long / Short: 2020 +15/0 · 2021 +126/0 · 2022 −32/+21 · 2023 +35/−2 · 2024 +29/0 · 2025 −30/+6 · 2026 0/−2
+//    ทุกชุดเหรียญ Long บวกทั้ง A และ B (B: +65 / +110 / +34 / +27 / +16)
+//    BTCUSDT: Long +203 (80 ไม้ ชนะ 39%) · Short −86 (24 ไม้) · 365 วันล่าสุด Long −22 · Short −19
+//    ETHUSDT: Long +249 · Short −113 · SOLUSDT: Long +628 · Short +39
+//    ข้อมูลใหม่ C (ตลาดลงแรง): Long 49 ไม้ เฉลี่ย −8.7%/ไม้ ชนะ 4% · Short 50 ไม้ เฉลี่ย +2.7%/ไม้ ชนะ 66%
+//    ข้อสังเกต
+//      • ตัวกรองภาพใหญ่คือส่วนที่ทำกำไร: ไม่กรองเลย Short ขาดทุนหนักในปี 2020–21
+//      • SL ที่จุดเริ่มขา (เส้น invalid ตามผู้พูด) ดีกว่า SL แคบที่จุดกลับตัวเกือบทุกแบบ — แต่ไม้ที่แพ้จะเสียมาก (altcoin SL 5–15%)
+//      • ปิดเมื่อภาพใหญ่กลับฝั่งช่วย Long ทุกค่า · เพิ่มตัวกรอง 1W EMA50 / 1D EMA200 / PW High-Low ไม่ช่วย
+//      • Long ขาดทุนในปีขาลง (2022, 2025) แม้มีตัวกรอง — เด้งในตลาดหมีผ่านตัวกรอง 4h ได้
+//      • Short มี edge น้อย และติดลบบน BTC / ETH / BNB — เลือก "ฝั่งที่เทรด = Long" ถ้าต้องการเฉพาะฝั่งที่ทดสอบแล้วแข็งกว่า
+//      • ข้อมูลชุด tl-20260928 เคยใช้ในงานวิจัยก่อนหน้า (คนละกลยุทธ์) · ผลเป็นตัวบ่งชี้ ไม่ใช่การยืนยัน
+//
+// ═══ ตาราง ═══════════════════════════════════════════════════════════════════════════════
+//    Long / Short แยกบัญชี · สองฝั่ง = Long + Short · ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง
+//    Win rate = ผลก่อนหัก fee > 0 · ไม้ที่ถืออยู่เทียบราคาล่าสุด
+
+//@version=5
+indicator('EricWeb3 Top-Down [1h]', 'EW3 TD', overlay = true, precision = 6, max_labels_count = 500, max_boxes_count = 200, max_lines_count = 200)
+
+//****************************************************************************//
+// Inputs
+
+autoIn   = input.bool(true, 'ใช้ค่า Auto (แยก Long / Short ตามผลทดสอบ)', group = 'ตั้งค่าหลัก', tooltip = 'Long: ภาพใหญ่ 4h EMA50/200 + 1D EMA50 · MSS · pivot 20 · RR 2.5\nShort: ภาพใหญ่ 1D ราคา/EMA50/EMA200 เรียงลง · MSS + FVG retest · pivot 10 · ขา ≥ 5 ATR · RR 1.5\nทั้งสองฝั่ง: Fibo 0.5 · SL จุดเริ่มขา · ปิดเมื่อภาพใหญ่กลับฝั่ง\nปิดเพื่อใช้ค่าด้านล่างกับทั้งสองฝั่ง')
+sideIn   = input.string('Long + Short', 'ฝั่งที่เทรด', options = ['Long + Short', 'Long', 'Short'], group = 'ตั้งค่าหลัก', tooltip = 'ตารางคำนวณเฉพาะฝั่งที่เลือก · Short ต้องใช้ Futures (ไม่รวม funding)\nทดสอบแล้ว Short มี edge น้อยและติดลบบน BTC / ETH')
+
+biasIn   = input.string('4h EMA50/200 Cross + 1D ราคา vs EMA50', 'ภาพใหญ่: ตัวตัดสินฝั่ง', options = ['ไม่ใช้ (เล่นสองฝั่ง)', '4h EMA50/200 Cross + 1D ราคา vs EMA50', '1D ราคา vs EMA50', '1D ราคา vs EMA200', '1D ราคา+EMA50+EMA200 เรียงกัน', '1D EMA50/200 Cross', '4h EMA50/200 Cross', '1W ราคา vs EMA50', '1D โครงสร้าง (pivot 3)', '1D โครงสร้าง (pivot 5)', '4h โครงสร้าง (pivot 5)', 'PW High/Low (ปิด Day เหนือ/ใต้ สัปดาห์ก่อน)', '1D EMA50 + 1W EMA50'], group = 'ค่ากำหนดเอง (เมื่อปิด Auto)', tooltip = 'ขาขึ้น = เข้าได้เฉพาะ Long · ขาลง = เฉพาะ Short · ตัวกรองแบบรวม (+) ต้องตรงกันทุกตัว ไม่ตรง = ไม่เข้า\nโครงสร้าง = ปิดเหนือ Swing High ล่าสุด → ขาขึ้น / ปิดใต้ Swing Low ล่าสุด → ขาลง (BMS)\nPW = ปิด Day เหนือ High / ใต้ Low ของสัปดาห์ก่อน (ผู้พูด: PW High คุมขาลง)')
+trigIn   = input.string('MSS (ปิดแท่งเบรคโครงสร้างย่อย)', 'วิธีเข้า', options = ['Limit ที่โซน Fibo', 'MSS (ปิดแท่งเบรคโครงสร้างย่อย)', 'MSS + FVG retest'], group = 'ค่ากำหนดเอง (เมื่อปิด Auto)', tooltip = 'Limit ที่โซน = ตั้ง Limit ที่ Fibo ทันทีที่ขาใหม่ยืนยัน (ไม่รอ confirm)\nMSS = ราคาเข้าโซนแล้วปิดแท่งผ่าน Swing ย่อยกลับทางเทรนด์ → เข้าที่ราคาปิด\nMSS + FVG = หลัง MSS ตั้ง Limit ที่ขอบ FVG ของ 2 แท่งล่าสุด (ไม่มี FVG = ไม่เข้า)')
+majIn    = input.int(20, 'Swing ใหญ่ (pivot)', minval = 2, group = 'ค่ากำหนดเอง (เมื่อปิด Auto)', tooltip = 'ขาที่ใช้ลาก Fibo = Swing Low → Swing High ล่าสุด (Long) ที่ยืนยันด้วย pivot ขนาดนี้')
+legAtrIn = input.float(3, 'ขาต้องยาว ≥ ATR ×', minval = 0, step = 0.5, group = 'ค่ากำหนดเอง (เมื่อปิด Auto)', tooltip = 'ตัดขาเล็กที่เป็น noise')
+rrIn     = input.float(2.5, 'RR', minval = 0.5, step = 0.5, group = 'ค่ากำหนดเอง (เมื่อปิด Auto)', tooltip = 'ผู้พูด: RR อย่างน้อย 2:1')
+bxIn     = input.bool(true, 'ปิดเมื่อภาพใหญ่กลับฝั่ง', group = 'ค่ากำหนดเอง (เมื่อปิด Auto)')
+
+minIn    = input.int(3, 'Swing ย่อย (pivot) สำหรับ MSS', minval = 1, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+f1In     = input.float(0.5, 'โซน Fibo: ราคาต้องย่อถึง', minval = 0.1, maxval = 0.95, step = 0.001, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)', tooltip = 'ผู้พูดใช้ 0.5–0.618 · ทดสอบแล้ว 0.5 ดีกว่า 0.618 · Limit ตั้งที่ระดับนี้')
+f2In     = input.float(0.618, 'โซน Fibo: ขอบล่างของกล่อง (แสดงผล)', minval = 0.1, maxval = 0.95, step = 0.001, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+slIn     = input.string('จุดเริ่มขา (เส้น invalid)', 'Stop Loss', options = ['จุดเริ่มขา (เส้น invalid)', 'จุดกลับตัวของการย่อ', 'Fibo 0.786'], group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)', tooltip = 'จุดเริ่มขา = Fibo 1.0 (เส้น invalid ของผู้พูด) · ทดสอบแล้วดีที่สุด\nจุดกลับตัว = Low/High สุดของการย่อ (MSS เท่านั้น)\nFibo 0.786 = ใช้กับ Limit ที่โซนเท่านั้น')
+slBuf    = input.float(0.2, 'เผื่อ SL (ATR ×)', minval = 0, step = 0.1, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+expIn    = input.int(100, 'ขาหมดอายุหลัง (แท่ง)', minval = 5, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+fvgWait  = input.int(6, 'MSS + FVG: รอ retest (แท่ง)', minval = 1, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+partIn   = input.int(0, 'แบ่งปิดที่ 1R (%, 0 = ไม่แบ่ง)', minval = 0, maxval = 99, group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)', tooltip = 'ผู้พูด: ถึงเป้าแรกแล้วกันหน้าทุน · ทดสอบแล้วแบ่ง 50% + ทุน ไม่ช่วย')
+beIn     = input.bool(true, 'หลังแบ่งปิด เลื่อน SL ที่ทุน', group = 'รายละเอียด (ใช้ทั้ง Auto และกำหนดเอง)')
+
+showZone = input.bool(true, 'กล่องโซน Fibo ของขาล่าสุด', group = 'แสดงผล')
+showEma  = input.bool(true, 'EMA 50 / 200 ของ 1D', group = 'แสดงผล', tooltip = 'ผู้พูดใช้อินดิเคเตอร์ EMA Cross 50/200 · แดง = EMA50 · น้ำเงิน = EMA200')
+showBg   = input.bool(true, 'พื้นหลังตามภาพใหญ่', group = 'แสดงผล', tooltip = 'เขียว = Long เข้าได้ · แดง = Short เข้าได้')
+showLv   = input.bool(true, 'เส้น SL / TP / Limit ของไม้ที่ถือ', group = 'แสดงผล')
+showMss  = input.bool(true, 'จุด MSS', group = 'แสดงผล')
+
+startTime  = input.time(timestamp('01 Jan 2020 00:00 +0700'), 'Backtest From', group = 'Backtest')
+endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง) — ไม้ค้างปิดที่ราคาปิดแท่งนี้')
+feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest')
+showTable  = input.bool(true, 'Show P/L table', group = 'Table')
+showDetail = input.bool(false, 'Show Drawdown + เหตุผลการออก', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+buyCss     = input.color(#089981, 'Long', group = 'Table', inline = 'sig')
+sellCss    = input.color(#F23645, 'Short', group = 'Table', inline = 'sig')
+
+//****************************************************************************//
+// Presets — Auto แยกฝั่ง (ผลทดสอบในหัวไฟล์)
+
+TRIG_ZONE = 'Limit ที่โซน Fibo'
+TRIG_MSS  = 'MSS (ปิดแท่งเบรคโครงสร้างย่อย)'
+TRIG_FVG  = 'MSS + FVG retest'
+FREE      = 'ไม่ใช้ (เล่นสองฝั่ง)'
+
+string biasL  = autoIn ? '4h EMA50/200 Cross + 1D ราคา vs EMA50' : biasIn
+string biasS  = autoIn ? '1D ราคา+EMA50+EMA200 เรียงกัน' : biasIn
+string trigL  = autoIn ? TRIG_MSS : trigIn
+string trigS  = autoIn ? TRIG_FVG : trigIn
+int    pL     = autoIn ? 20 : majIn
+int    pS     = autoIn ? 10 : majIn
+float  legL   = autoIn ? 3. : legAtrIn
+float  legS   = autoIn ? 5. : legAtrIn
+float  rrL    = autoIn ? 2.5 : rrIn
+float  rrS    = autoIn ? 1.5 : rrIn
+bool   bxL    = autoIn ? true : bxIn
+bool   bxS    = autoIn ? true : bxIn
+float  part   = partIn / 100.
+bool   tradeL = sideIn != 'Short'
+bool   tradeS = sideIn != 'Long'
+bool   isRecTF = timeframe.in_seconds() == 3600
+
+//****************************************************************************//
+// ภาพใหญ่ — ทุกค่ามาจากแท่ง HTF ที่ปิดแล้ว ([1] + lookahead_on)
+
+structF(simple int p) =>
+    ph = ta.highest(high, 2 * p + 1) == high[p] ? high[p] : na
+    pl = ta.lowest(low, 2 * p + 1) == low[p] ? low[p] : na
+    var float lh = na
+    var float ll = na
+    var int   st = 0
+    if not na(ph)
+        lh := ph
+    if not na(pl)
+        ll := pl
+    if not na(lh) and close > lh
+        st := 1
+        lh := na
+    else if not na(ll) and close < ll
+        st := -1
+        ll := na
+    st
+
+// PW: ปิด Day เหนือ High / ใต้ Low ของสัปดาห์ก่อน (ค้างสถานะ)
+pwF() =>
+    var float cwH = na
+    var float cwL = na
+    var float pwH = na
+    var float pwL = na
+    var int   st  = 0
+    if ta.change(time('W')) != 0
+        pwH := cwH
+        pwL := cwL
+        cwH := high
+        cwL := low
+    else
+        cwH := math.max(nz(cwH, high), high)
+        cwL := math.min(nz(cwL, low), low)
+    if not na(pwH) and close > pwH
+        st := 1
+    else if not na(pwL) and close < pwL
+        st := -1
+    [st, pwH, pwL]
+
+dFeed() =>
+    [pst, pwHi, pwLo] = pwF()
+    [close[1], ta.ema(close, 50)[1], ta.ema(close, 200)[1], structF(3)[1], structF(5)[1], pst[1], pwHi[1], pwLo[1]]
+wFeed() =>
+    [close[1], ta.ema(close, 50)[1]]
+h4Feed() =>
+    [ta.ema(close, 50)[1], ta.ema(close, 200)[1], structF(5)[1]]
+
+[dC, dE50, dE200, dMs3, dMs5, dPw, dPwH, dPwL] = request.security(syminfo.tickerid, '1D', dFeed(), lookahead = barmerge.lookahead_on)
+[wC, wE50] = request.security(syminfo.tickerid, '1W', wFeed(), lookahead = barmerge.lookahead_on)
+[hE50, hE200, hMs5] = request.security(syminfo.tickerid, '240', h4Feed(), lookahead = barmerge.lookahead_on)
+
+sgn(bool up, bool dn) => up ? 1 : dn ? -1 : 0
+both(int a, int b) => a == b ? a : 0
+bD50   = na(dE50) ? 0 : sgn(dC > dE50, dC <= dE50)
+bD200  = na(dE200) ? 0 : sgn(dC > dE200, dC <= dE200)
+bD5020 = na(dE200) ? 0 : sgn(dC > dE50 and dE50 > dE200, dC < dE50 and dE50 < dE200)
+bDx    = na(dE200) ? 0 : sgn(dE50 > dE200, dE50 <= dE200)
+bH4x   = na(hE200) ? 0 : sgn(hE50 > hE200, hE50 <= hE200)
+bW50   = na(wE50) ? 0 : sgn(wC > wE50, wC <= wE50)
+
+biasOf(string m) =>
+    m == '4h EMA50/200 Cross + 1D ราคา vs EMA50' ? both(bH4x, bD50) : m == '1D ราคา vs EMA50' ? bD50 : m == '1D ราคา vs EMA200' ? bD200 : m == '1D ราคา+EMA50+EMA200 เรียงกัน' ? bD5020 : m == '1D EMA50/200 Cross' ? bDx : m == '4h EMA50/200 Cross' ? bH4x : m == '1W ราคา vs EMA50' ? bW50 : m == '1D โครงสร้าง (pivot 3)' ? nz(dMs3) : m == '1D โครงสร้าง (pivot 5)' ? nz(dMs5) : m == '4h โครงสร้าง (pivot 5)' ? nz(hMs5) : m == 'PW High/Low (ปิด Day เหนือ/ใต้ สัปดาห์ก่อน)' ? nz(dPw) : m == '1D EMA50 + 1W EMA50' ? both(bD50, bW50) : 0
+
+vBiasL = biasOf(biasL)
+vBiasS = biasOf(biasS)
+okL    = biasL == FREE or vBiasL > 0
+okS    = biasS == FREE or vBiasS < 0
+
+//****************************************************************************//
+// 1h: Swing ใหญ่ (ขา Fibo, แยกขนาดตามฝั่ง) · Swing ย่อย (MSS) · ATR
+
+atr1  = ta.atr(14)
+phL   = ta.highest(high, 2 * pL + 1) == high[pL] ? high[pL] : na
+plL   = ta.lowest(low, 2 * pL + 1) == low[pL] ? low[pL] : na
+loL   = ta.lowest(low, pL)
+phS   = ta.highest(high, 2 * pS + 1) == high[pS] ? high[pS] : na
+plS   = ta.lowest(low, 2 * pS + 1) == low[pS] ? low[pS] : na
+hiS   = ta.highest(high, pS)
+minPH = ta.highest(high, 2 * minIn + 1) == high[minIn] ? high[minIn] : na
+minPL = ta.lowest(low, 2 * minIn + 1) == low[minIn] ? low[minIn] : na
+fvgUp0 = low > high[2]
+fvgUp1 = low[1] > high[3]
+fvgDn0 = high < low[2]
+fvgDn1 = high[1] < low[3]
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+live          = barstate.isconfirmed and inWindow
+
+var int windowStartT = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+
+//****************************************************************************//
+// Books — Long และ Short แยกบัญชี (ตรรกะเดียวกัน กลับด้าน · ค่าตั้งแยกฝั่ง)
+
+type Book
+    int    s
+    string trig
+    int    P
+    float  legAtr
+    float  rr
+    bool   bx
+    // ขาล่าสุด (Long: Swing Low → Swing High)
+    bool   legOn = false
+    float  H = na
+    float  L = na
+    float  z1 = na
+    float  z2 = na
+    float  x = na
+    int    hb = na
+    int    born = na
+    bool   touched = false
+    float  lastOpp = na
+    int    lastOppBar = na
+    float  lastMin = na
+    int    lastMinBar = na
+    // Limit ที่รอ
+    bool   pendOn = false
+    float  pLvl = na
+    float  pSl = na
+    float  pH = na
+    int    pExp = na
+    // ไม้ที่ถือ
+    bool   inPos = false
+    float  e = na
+    float  sl = na
+    float  tp = na
+    float  tp1 = na
+    float  left = 1.
+    float  acc = 0.
+    int    bi = na
+    // สถิติ
+    int    n = 0
+    int    wins = 0
+    float  sum = 0.
+    float  peak = 0.
+    float  dd = 0.
+    int    exSL = 0
+    int    exTP = 0
+    int    exBx = 0
+    int    nPart = 0
+
+method grossAt(Book b, float px) =>
+    b.inPos ? b.acc + b.left * b.s * (px - b.e) / b.e * 100 : 0.
+
+method pnlAt(Book b, float px) =>
+    b.inPos ? b.grossAt(px) - 2 * feeInput : 0.
+
+var Book bookL = Book.new(s = 1, trig = trigL, P = pL, legAtr = legL, rr = rrL, bx = bxL)
+var Book bookS = Book.new(s = -1, trig = trigS, P = pS, legAtr = legS, rr = rrS, bx = bxS)
+var Book bookB = Book.new(s = 0)
+
+method record(Book b, float pnl, bool win) =>
+    b.n    := b.n + 1
+    b.sum  := b.sum + pnl
+    b.wins := b.wins + (win ? 1 : 0)
+    b.peak := math.max(b.peak, b.sum)
+    b.dd   := math.max(b.dd, b.peak - b.sum)
+
+// why: 1 SL · 2 TP · 3 ภาพใหญ่กลับ / จบช่วง
+finish(Book b, float px, int why) =>
+    if b.inPos
+        float g   = b.grossAt(px)
+        float pnl = g - 2 * feeInput
+        b.record(pnl, g > 0)
+        bookB.record(pnl, g > 0)
+        b.exSL  := b.exSL + (why == 1 ? 1 : 0)
+        b.exTP  := b.exTP + (why == 2 ? 1 : 0)
+        b.exBx  := b.exBx + (why == 3 ? 1 : 0)
+        b.inPos := false
+
+// เปิดไม้ · คืน false ถ้า SL ห่างไม่ถึง 0.1%
+openPos(Book b, float e, float sl) =>
+    s = b.s
+    R = s * (e - sl)
+    bool ok = R > 0 and R / e >= 0.001
+    if ok
+        b.inPos := true
+        b.e     := e
+        b.sl    := sl
+        b.tp    := e + s * b.rr * R
+        b.tp1   := part > 0 ? e + s * R : na
+        b.left  := 1.
+        b.acc   := 0.
+        b.bi    := bar_index
+    ok
+
+// ตรวจไม้ที่เปิดก่อนแท่งนี้ · คืน [why ปิด, แบ่งปิดแท่งนี้]
+manage(Book b, int biasV) =>
+    int  why = 0
+    bool prt = false
+    if b.inPos
+        s = b.s
+        if s > 0 ? low <= b.sl : high >= b.sl
+            finish(b, s > 0 ? math.min(b.sl, open) : math.max(b.sl, open), 1)
+            why := 1
+        else
+            if not na(b.tp1) and (s > 0 ? high >= b.tp1 : low <= b.tp1)
+                float q = s > 0 ? math.max(b.tp1, open) : math.min(b.tp1, open)
+                b.acc   := b.acc + part * s * (q - b.e) / b.e * 100
+                b.left  := b.left - part
+                b.tp1   := na
+                b.nPart := b.nPart + 1
+                prt     := true
+                if beIn
+                    b.sl := b.e
+            if s > 0 ? high >= b.tp : low <= b.tp
+                finish(b, s > 0 ? math.max(b.tp, open) : math.min(b.tp, open), 2)
+                why := 2
+            else if b.bx and biasV == -s
+                finish(b, close, 3)
+                why := 3
+    [why, prt]
+
+// ทั้งแท่ง: ไม้ที่ถือ → Limit ที่รอ → Swing ใหม่ → การย่อ / MSS · คืน [why, part, เข้าแท่งนี้, ขาใหม่แท่งนี้, MSS แท่งนี้]
+stepBook(Book b, bool allowed, int biasV, bool okBias, float pOrig, float pEnd, float xNow, bool fvg0, bool fvg1) =>
+    s = b.s
+    [w0, prt] = manage(b, biasV)
+    int  why     = w0
+    bool entered = false
+    bool newLeg  = false
+    bool mss     = false
+    // Limit ที่รอ
+    if b.pendOn
+        bool touch = s > 0 ? low <= b.pLvl : high >= b.pLvl
+        bool slHit = s > 0 ? low <= b.pSl : high >= b.pSl
+        if touch and not b.inPos
+            float e = s > 0 ? math.min(b.pLvl, open) : math.max(b.pLvl, open)
+            if (s > 0 ? e > b.pSl : e < b.pSl) and allowed
+                if openPos(b, e, b.pSl)
+                    entered := true
+                    if slHit
+                        finish(b, b.pSl, 1)
+                        why := 1
+            b.pendOn := false
+            b.legOn  := false
+        else if slHit or bar_index > b.pExp
+            b.pendOn := false
+    // Swing ที่ยืนยันแท่งนี้
+    float mEnd = s > 0 ? minPH : minPL
+    if not na(pOrig)
+        b.lastOpp    := pOrig
+        b.lastOppBar := bar_index - b.P
+    if not na(mEnd)
+        b.lastMin    := mEnd
+        b.lastMinBar := bar_index - minIn
+    if not na(pEnd) and not na(b.lastOpp) and b.lastOppBar < bar_index - b.P
+        float rng = s * (pEnd - b.lastOpp)
+        if rng > 0 and rng >= b.legAtr * atr1
+            b.legOn   := true
+            b.H       := pEnd
+            b.L       := b.lastOpp
+            b.hb      := bar_index - b.P
+            b.born    := bar_index
+            b.touched := false
+            b.x       := xNow
+            b.z1      := pEnd - s * f1In * rng
+            b.z2      := pEnd - s * f2In * rng
+            newLeg    := true
+            if b.trig == TRIG_ZONE and not b.inPos and okBias
+                b.pendOn := true
+                b.pLvl   := b.z1
+                b.pSl    := slIn == 'Fibo 0.786' ? pEnd - s * 0.786 * rng - s * slBuf * atr1 : b.L - s * slBuf * atr1
+                b.pH     := pEnd
+                b.pExp   := bar_index + expIn
+    // การย่อ → MSS
+    if b.legOn and not b.inPos and b.trig != TRIG_ZONE
+        if bar_index > b.born
+            b.x := s > 0 ? math.min(b.x, low) : math.max(b.x, high)
+        if s > 0 ? b.x < b.L : b.x > b.L
+            b.legOn  := false
+            b.pendOn := false
+        else if bar_index - b.born > expIn
+            b.legOn := false
+        else
+            if not b.touched and (s > 0 ? b.x <= b.z1 : b.x >= b.z1)
+                b.touched := true
+            if b.touched and not b.pendOn and not na(b.lastMin) and b.lastMinBar > b.hb and (s > 0 ? close > b.lastMin : close < b.lastMin)
+                if not okBias or not allowed
+                    b.lastMin := na
+                else
+                    mss := true
+                    float sl = slIn == 'จุดกลับตัวของการย่อ' ? b.x - s * slBuf * atr1 : b.L - s * slBuf * atr1
+                    if b.trig == TRIG_MSS
+                        if openPos(b, close, sl)
+                            entered := true
+                        b.legOn   := false
+                        b.lastMin := na
+                    else
+                        float lvl = fvg0 ? (s > 0 ? low : high) : fvg1 ? (s > 0 ? low[1] : high[1]) : na
+                        if not na(lvl)
+                            b.pendOn := true
+                            b.pLvl   := lvl
+                            b.pSl    := sl
+                            b.pH     := b.H
+                            b.pExp   := bar_index + fvgWait
+                        b.lastMin := na
+    [why, prt, entered, newLeg, mss]
+
+int  exL = 0
+int  exS = 0
+bool prL = false
+bool prS = false
+bool inL = false
+bool inS = false
+bool nlL = false
+bool nlS = false
+bool msL = false
+bool msS = false
+if barstate.isconfirmed
+    [a1, a2, a3, a4, a5] = stepBook(bookL, live and tradeL, vBiasL, okL, plL, phL, loL, fvgUp0, fvgUp1)
+    [b1, b2, b3, b4, b5] = stepBook(bookS, live and tradeS, vBiasS, okS, phS, plS, hiS, fvgDn0, fvgDn1)
+    exL := a1
+    prL := a2
+    inL := a3
+    nlL := a4
+    msL := a5
+    exS := b1
+    prS := b2
+    inS := b3
+    nlS := b4
+    msS := b5
+
+if lastWindowBar and barstate.isconfirmed
+    finish(bookL, close, 3)
+    finish(bookS, close, 3)
+
+eqL = bookL.sum + bookL.pnlAt(close)
+eqS = bookS.sum + bookS.pnlAt(close)
+
+var array<int>   eqTime = array.new<int>()
+var array<float> eqValL = array.new<float>()
+var array<float> eqValS = array.new<float>()
+if barstate.isconfirmed
+    eqTime.push(time_close)
+    eqValL.push(eqL)
+    eqValS.push(eqS)
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//****************************************************************************//
+// Plots
+
+plot(showEma ? dE50 : na, '1D EMA50', color.new(#F23645, 20), 2)
+plot(showEma ? dE200 : na, '1D EMA200', color.new(#2962FF, 20), 2)
+bgcolor(showBg and tradeL and vBiasL > 0 and biasL != FREE ? color.new(buyCss, 93) : showBg and tradeS and vBiasS < 0 and biasS != FREE ? color.new(sellCss, 93) : na, title = 'ภาพใหญ่')
+
+plot(showLv and bookL.inPos ? bookL.sl : na, 'Long SL', color.new(sellCss, 30), 1, plot.style_linebr)
+plot(showLv and bookL.inPos ? bookL.tp : na, 'Long TP', color.new(buyCss, 30), 1, plot.style_linebr)
+plot(showLv and bookS.inPos ? bookS.sl : na, 'Short SL', color.new(sellCss, 30), 1, plot.style_linebr)
+plot(showLv and bookS.inPos ? bookS.tp : na, 'Short TP', color.new(buyCss, 30), 1, plot.style_linebr)
+plot(showLv and bookL.pendOn ? bookL.pLvl : na, 'Long Limit', color.new(buyCss, 0), 1, plot.style_cross)
+plot(showLv and bookS.pendOn ? bookS.pLvl : na, 'Short Limit', color.new(sellCss, 0), 1, plot.style_cross)
+
+// กล่องโซน Fibo ของขาล่าสุด (เฉพาะฝั่งที่ภาพใหญ่อนุญาต)
+var box zoneL = na
+var box zoneS = na
+zoneTxt = 'Fibo ' + str.tostring(f1In) + '–' + str.tostring(f2In)
+if showZone and barstate.isconfirmed
+    if nlL and tradeL and okL
+        box.delete(zoneL)
+        zoneL := box.new(bookL.hb, bookL.z1, bar_index + 5, bookL.z2, border_color = color.new(buyCss, 40), bgcolor = color.new(buyCss, 85), text = zoneTxt, text_color = buyCss, text_size = size.tiny, text_halign = text.align_right)
+    if nlS and tradeS and okS
+        box.delete(zoneS)
+        zoneS := box.new(bookS.hb, bookS.z1, bar_index + 5, bookS.z2, border_color = color.new(sellCss, 40), bgcolor = color.new(sellCss, 85), text = zoneTxt, text_color = sellCss, text_size = size.tiny, text_halign = text.align_right)
+    if bookL.legOn or bookL.pendOn
+        box.set_right(zoneL, bar_index + 5)
+    if bookS.legOn or bookS.pendOn
+        box.set_right(zoneS, bar_index + 5)
+
+whyText(int w) => w == 1 ? 'SL' : w == 2 ? 'TP' : 'ภาพใหญ่กลับ'
+fmtP(float x) => str.tostring(x, format.mintick)
+
+if inL
+    label.new(bar_index, low, 'BUY', style = label.style_label_up, color = buyCss, textcolor = color.white, size = size.small, tooltip = 'Long เข้า ' + fmtP(bookL.e) + '\nSL ' + fmtP(bookL.sl) + '\nTP ' + fmtP(bookL.tp) + '\nภาพใหญ่: ' + biasL)
+if inS
+    label.new(bar_index, high, 'SHORT', style = label.style_label_down, color = sellCss, textcolor = color.white, size = size.small, tooltip = 'Short เข้า ' + fmtP(bookS.e) + '\nSL ' + fmtP(bookS.sl) + '\nTP ' + fmtP(bookS.tp) + '\nภาพใหญ่: ' + biasS)
+if exL > 0
+    label.new(bar_index, high, 'SELL\n' + whyText(exL), style = label.style_label_down, color = color.new(exL == 2 ? buyCss : sellCss, 30), textcolor = color.white, size = size.tiny, tooltip = 'ปิด Long · ' + whyText(exL))
+if exS > 0
+    label.new(bar_index, low, 'COVER\n' + whyText(exS), style = label.style_label_up, color = color.new(exS == 2 ? buyCss : sellCss, 30), textcolor = color.white, size = size.tiny, tooltip = 'ปิด Short · ' + whyText(exS))
+if prL
+    label.new(bar_index, high, '1R', style = label.style_label_down, color = color.new(buyCss, 50), textcolor = color.white, size = size.tiny, tooltip = 'Long แบ่งปิด ' + str.tostring(partIn) + '%')
+if prS
+    label.new(bar_index, low, '1R', style = label.style_label_up, color = color.new(buyCss, 50), textcolor = color.white, size = size.tiny, tooltip = 'Short แบ่งปิด ' + str.tostring(partIn) + '%')
+plotshape(showMss and msL and tradeL, 'MSS ขึ้น', shape.diamond, location.belowbar, color.new(buyCss, 40), size = size.tiny)
+plotshape(showMss and msS and tradeS, 'MSS ลง', shape.diamond, location.abovebar, color.new(sellCss, 40), size = size.tiny)
+
+plot(inL ? 1 : exL > 0 ? -1 : 0, 'Long signal (1 BUY / -1 SELL)', display = display.data_window)
+plot(inS ? -1 : exS > 0 ? 1 : 0, 'Short signal (-1 SHORT / 1 COVER)', display = display.data_window)
+
+//****************************************************************************//
+// ตารางกำไร/ขาดทุน
+
+fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+biasTxt(int v) => v > 0 ? '▲' : v < 0 ? '▼' : '—'
+trigShort(string t) => t == TRIG_ZONE ? 'Limit โซน' : t == TRIG_MSS ? 'MSS' : 'MSS+FVG'
+
+if showTable and barstate.islast
+    tPos  = tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right
+    tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+    bg    = color.new(#131722, 10)
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    var table t = table.new(tPos, 4, 22, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 21)
+
+    table.cell(t, 0, 0, 'EW3 Top-Down · ' + syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, 0, 2, 0)
+    table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลรวม % ต่อไม้ (ไม่ทบต้น) · ไม่รวม funding')
+    setTxt = 'L ' + trigShort(trigL) + ' P' + str.tostring(pL) + ' RR' + str.tostring(rrL) + ' · S ' + trigShort(trigS) + ' P' + str.tostring(pS) + ' RR' + str.tostring(rrS) + ' · Fibo ' + str.tostring(f1In)
+    table.cell(t, 0, 1, setTxt, text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = (autoIn ? 'ค่า Auto แยกฝั่ง' : 'ค่ากำหนดเอง') + '\nLong ภาพใหญ่: ' + biasL + '\nShort ภาพใหญ่: ' + biasS + '\nSL: ' + slIn + ' · ปิดเมื่อภาพใหญ่กลับ: L ' + (bxL ? 'ใช่' : 'ไม่') + ' / S ' + (bxS ? 'ใช่' : 'ไม่'))
+    table.merge_cells(t, 0, 1, 2, 1)
+    table.cell(t, 3, 1, isRecTF ? '✓ 1h' : '⚠ ใช้ 1h', text_color = isRecTF ? buyCss : color.orange, text_size = tSize, text_halign = text.align_right, tooltip = 'ทดสอบและตั้งค่าไว้สำหรับกราฟ 1 ชั่วโมง')
+    table.cell(t, 0, 2, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 2, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด · SELL ปิด')
+    table.cell(t, 2, 2, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SHORT เปิด · COVER ปิด (Futures)')
+    table.cell(t, 3, 2, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+    names = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '1 ปี')
+    spans = array.from(1, 7, 30, 90, 365)
+    int row = 3
+    for i = 0 to 4
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            idx  = lastAtOrBefore(eqTime, nowT - spanMs)
+            chgL = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+            chgS = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+            chgB = chgL + chgS
+            table.cell(t, 0, row, names.get(i), text_color = color.white, text_size = tSize, text_halign = text.align_left)
+            table.cell(t, 1, row, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 2, row, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 3, row, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
+            row += 1
+
+    eqB  = eqL + eqS
+    days = math.floor(totalMs / DAY_MS)
+    table.cell(t, 0, row, 'ทั้งหมด · ' + str.tostring(days) + ' วัน', text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band, tooltip = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)')
+    table.cell(t, 1, row, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, row, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, row, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    row += 1
+
+    nL = bookL.n + (bookL.inPos ? 1 : 0)
+    nS = bookS.n + (bookS.inPos ? 1 : 0)
+    table.cell(t, 0, row, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, row, str.tostring(nL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(nL + nS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+    winL = bookL.wins + (bookL.inPos and bookL.grossAt(close) > 0 ? 1 : 0)
+    winS = bookS.wins + (bookS.inPos and bookS.grossAt(close) > 0 ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ชนะ = ผลก่อนหัก fee > 0 · ไม้ที่ถืออยู่เทียบราคาล่าสุด · RR 2.5 ต้องชนะ ≥ ~30% ถึงคุ้มทุน')
+    table.cell(t, 1, row, nL > 0 ? str.tostring(winL * 100.0 / nL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, nS > 0 ? str.tostring(winS * 100.0 / nS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, nL + nS > 0 ? str.tostring((winL + winS) * 100.0 / (nL + nS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    openL = bookL.pnlAt(close)
+    openS = bookS.pnlAt(close)
+    txtL = bookL.inPos ? '▲ ถือ Long · เข้า ' + fmtP(bookL.e) + ' · ' + fmtPct(openL) + ' · SL ' + fmtP(bookL.sl) + ' · TP ' + fmtP(bookL.tp) : bookL.pendOn ? '▲ รอ Limit Long ที่ ' + fmtP(bookL.pLvl) + ' · SL ' + fmtP(bookL.pSl) : bookL.legOn and okL ? '▲ รอย่อถึง ' + fmtP(bookL.z1) + (bookL.touched ? ' (แตะแล้ว · รอ MSS)' : '') + ' · invalid ' + fmtP(bookL.L) : '▲ Long ว่าง'
+    txtS = bookS.inPos ? '▼ ถือ Short · เข้า ' + fmtP(bookS.e) + ' · ' + fmtPct(openS) + ' · SL ' + fmtP(bookS.sl) + ' · TP ' + fmtP(bookS.tp) : bookS.pendOn ? '▼ รอ Limit Short ที่ ' + fmtP(bookS.pLvl) + ' · SL ' + fmtP(bookS.pSl) : bookS.legOn and okS ? '▼ รอเด้งถึง ' + fmtP(bookS.z1) + (bookS.touched ? ' (แตะแล้ว · รอ MSS)' : '') + ' · invalid ' + fmtP(bookS.L) : '▼ Short ว่าง'
+    table.cell(t, 0, row, txtL, text_color = bookL.inPos ? pnlColor(openL) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, txtS, text_color = bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    // แดชบอร์ดภาพใหญ่
+    sideNow = okL and tradeL and not (okS and tradeS) ? 'ภาพใหญ่: ฝั่งซื้อ (เข้าได้เฉพาะ Long)' : okS and tradeS and not (okL and tradeL) ? 'ภาพใหญ่: ฝั่งขาย (เข้าได้เฉพาะ Short)' : okL and okS ? 'ภาพใหญ่: เล่นได้สองฝั่ง' : 'ภาพใหญ่: ไม่ชัด — รอ (ไม่เข้าทั้งสองฝั่ง)'
+    table.cell(t, 0, row, sideNow, text_color = okL and not okS ? buyCss : okS and not okL ? sellCss : color.orange, text_size = tSize, text_halign = text.align_left, tooltip = 'Long ใช้: ' + biasL + '\nShort ใช้: ' + biasS + '\nแท่ง HTF ที่ปิดแล้วเท่านั้น')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, '1W EMA50 ' + biasTxt(bW50) + ' · 1D EMA50 ' + biasTxt(bD50) + ' · 1D 50/200 ' + biasTxt(bDx) + ' · 4h 50/200 ' + biasTxt(bH4x), text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = '▲ = ราคา/เส้นเร็วอยู่เหนือ · ▼ = อยู่ใต้')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, '1D โครงสร้าง ' + biasTxt(nz(dMs3)) + ' · 4h โครงสร้าง ' + biasTxt(nz(hMs5)) + ' · PW ' + biasTxt(nz(dPw)) + ' (H ' + fmtP(dPwH) + ' / L ' + fmtP(dPwL) + ')', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'โครงสร้าง = ทิศของการเบรค Swing ล่าสุด (BMS) · PW = ปิด Day เทียบ High/Low สัปดาห์ก่อน\nข้อมูลประกอบ ไม่ได้ใช้กรองในค่า Auto')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+
+    if showDetail
+        ddL = math.max(bookL.dd, math.max(bookL.peak, eqL) - eqL)
+        ddS = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, row, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        row += 1
+        table.cell(t, 0, row, 'ออก SL / TP / ภาพใหญ่', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, str.tostring(bookL.exSL) + '/' + str.tostring(bookL.exTP) + '/' + str.tostring(bookL.exBx), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(bookS.exSL) + '/' + str.tostring(bookS.exTP) + '/' + str.tostring(bookS.exBx), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(bookL.exSL + bookS.exSL) + '/' + str.tostring(bookL.exTP + bookS.exTP) + '/' + str.tostring(bookL.exBx + bookS.exBx), text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+//****************************************************************************//
+// Alerts
+
+alertcondition(inL, title = 'BUY (Long เข้า)', message = 'BUY {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(exL > 0, title = 'SELL (ปิด Long)', message = 'SELL {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(inS, title = 'SHORT (Short เข้า)', message = 'SHORT {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(exS > 0, title = 'COVER (ปิด Short)', message = 'COVER {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(msL or msS, title = 'MSS ในโซน Fibo', message = 'MSS {{exchange}}:{{ticker}} @ {{close}}')
+
+if inL
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + fmtP(bookL.e) + ' · SL ' + fmtP(bookL.sl) + ' · TP ' + fmtP(bookL.tp), alert.freq_once_per_bar_close)
+if exL > 0
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') ปิด Long · ' + whyText(exL), alert.freq_once_per_bar_close)
+if inS
+    alert('🔻 SHORT ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + fmtP(bookS.e) + ' · SL ' + fmtP(bookS.sl) + ' · TP ' + fmtP(bookS.tp), alert.freq_once_per_bar_close)
+if exS > 0
+    alert('🔺 COVER ' + syminfo.ticker + ' (' + timeframe.period + ') ปิด Short · ' + whyText(exS), alert.freq_once_per_bar_close)
+if msS and bookS.pendOn
+    alert('⏳ ' + syminfo.ticker + ' (' + timeframe.period + ') MSS ลง · ตั้ง Limit Short ที่ ' + fmtP(bookS.pLvl), alert.freq_once_per_bar_close)
+if msL and bookL.pendOn
+    alert('⏳ ' + syminfo.ticker + ' (' + timeframe.period + ') MSS ขึ้น · ตั้ง Limit Long ที่ ' + fmtP(bookL.pLvl), alert.freq_once_per_bar_close)
