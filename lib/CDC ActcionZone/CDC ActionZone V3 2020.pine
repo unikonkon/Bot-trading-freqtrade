@@ -1,0 +1,812 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © piriya33
+// Added Labels and alert conditions and other quality of life feature
+// Updated compatability with pine script v4
+// Based on improvements from "Kitti-Playbook Action Zone V.4.2.0.3 for Stock Market"
+//
+// ═══ Playbook (2026-11-04) ═══════════════════════════════════════════════════════════════
+// เพิ่มรูปแบบเข้า/ออกจากโซนสีของ CDC + ตาราง backtest (Long / Short / สองฝั่ง) เทียบกับ CDC เดิม
+// โซนสี / เส้น / ป้ายช่วยอ่าน / StochRSI ของต้นฉบับยังอยู่ครบ
+//
+//    จุดเข้า (Long · Short กลับด้าน)
+//      แท่งเขียวแรก (Classic) = Green แรก ขณะที่แนวโน้มก่อนหน้าเป็น bearish (CDC เดิม)
+//      ทุกแท่งเขียวใหม่       = Green แรกทุกครั้ง รวมการกลับเขียวหลังย่อ (เหลือง/ส้ม)
+//      ปิดเหนือ 2 เส้นครั้งแรก = ราคาปิดเหนือ Fast และ Slow ครั้งแรก (ฟ้าเข้ม หรือ เขียว) — เข้าเร็วกว่า
+//      ย่อแล้วกลับเขียว       = แท่งก่อนเป็นเหลือง/ส้ม แล้วแท่งนี้เขียว
+//      StochRSI ตัดขึ้น (ใต้ 30) = สัญญาณ momentum ของต้นฉบับ ขณะแนวโน้มเป็น bullish
+//    จุดออก: แท่งแดงแรก (Classic) · ปิดใต้ 2 เส้น · ปิดใต้ Slow · ปิดใต้ Fast · ATR Trailing 3× (จากราคาปิดสูงสุด)
+//            + SL = Low ต่ำสุด 20 แท่ง (Short: High) · เป้า R · ชน SL และเป้าแท่งเดียวกัน = นับ SL
+//    ตัวกรอง: CDC TF ถัดไป (Fast > Slow) · CDC 1D · ราคาเหนือ EMA200 · ค่า HTF ใช้แท่งที่ปิดแล้ว (ไม่ repaint)
+//
+//    Auto ตาม TF (ค่าที่ทดสอบแล้วดีกว่า CDC เดิม)
+//      1h : EMA 21/55 · L แท่งเขียวแรก + CDC 1D เขียว → ออกแท่งแดงแรก
+//                     · S แท่งแดงแรก + ใต้ EMA200 → ออกแท่งเขียวแรก · SL 20 แท่ง · เป้า 3R
+//      4h : EMA 12/26 · L ทุกแท่งเขียวใหม่ + เหนือ EMA200 → ออกแท่งแดงแรก
+//                     · S แท่งแดงแรก + ใต้ EMA200 → ออกแท่งเขียวแรก · SL 20 แท่ง · เป้า 3R
+//      1D : EMA 12/26 · L แท่งเขียวแรก → ออกแท่งแดงแรก · SL 20 แท่ง · เป้า 3R
+//                     · S ทุกแท่งแดงใหม่ → ATR Trailing 3× · SL 20 แท่ง · เป้า 3R
+//      TF อื่น = CDC เดิม (ไม่ได้ทดสอบ)
+//
+// ═══ ผลทดสอบ (JS replica: data-test/trendlines/cdc-research/) ════════════════════════════════
+//    Binance Spot 81 เหรียญ · fee 0.10%/ขา · ผลรวม % ต่อไม้ ไม่ทบต้น · ทดสอบ ~5,400 แบบ (6 จุดเข้า × 5 จุดออก
+//    × SL/เป้า × EMA 12/26, 8/21, 21/55 × ตัวกรอง) · เลือกจาก A = 2020-01→2023-08 และ B = 2023-09→2026-09-27
+//    C = 2026-09-27→2026-11-03 ไม่ได้ใช้เลือก · มัธยฐานต่อเหรียญ A / B / C (เหรียญที่บวก A/B)
+//      1h L  เดิม +29 / −63 / −28 (54/31)    → ใหม่ +121 / +49 / −17 (69/59)
+//      1h S  เดิม −196 / −109 / −4 (6/12)    → ใหม่ +33 / +23 / +5 (50/46)
+//      4h L  เดิม +238 / +47 / −12 (71/52)   → ใหม่ +236 / +74 / −7 (73/60)
+//      4h S  เดิม −13 / −2 / +5 (38/40)      → ใหม่ +60 / +32 / +5 (66/53)
+//      1D L  เดิม +156 / +20 / 0 (62/50)     → ใหม่ +114 / +58 / 0 (70/65)
+//      1D S  เดิม +54 / +27 / +12 (62/50)    → ใหม่ +66 / +50 / +13 (63/57)
+//    รายปี (มัธยฐาน) — ใหม่ขาดทุนน้อยลงชัดเจนในปีขาลง แต่ Long ยังติดลบในปีขาลง
+//      4h L  2022 −54 → −20 · 2025 −77 → −33 · 2026 −29 → −16   (ปีขาขึ้นใกล้เดิม: 2021 +188 → +181)
+//      1h L  2022 −107 → −15 · 2025 −88 → −24 · 2026 −64 → −10
+//      1D L  2022 −49 → −37 · 2025 −41 → −36 · 2026 −11 → −3    (2020 +122 → +97 · 2021 +66 → +86)
+//    อ้างอิงตรวจ Pine · BINANCE From 2025-01-01 07:00 +0700 → 2026-11-03 (ใหม่ L / S · CDC เดิม L / S)
+//      BTCUSDT 1D  +2.5% n13 / +8.0% n13      · เดิม +5.4% n13 / +18.8% n13   ← 1D BTC เดิมดีกว่า
+//      BTCUSDT 4h  −0.7% n45 / −39.1% n52     · เดิม −60.1% n83 / −53.1% n83
+//      BTCUSDT 1h  −45.3% n75 / −27.4% n104   · เดิม −78.7% n283 / −75.2% n284
+//      ETHUSDT 4h  +31.5% n46 / −12.4% n43    · เดิม −44.9% n80 / −46.2% n80
+//    ข้อสังเกต: 1h ทุกแบบที่ไม่มีตัวกรองขาดทุน · ออกที่ Fast EMA แย่สุด · 1h/4h ทุกแบบปี 2026 ยังขาดทุนฝั่ง Long
+//    ทุกชุดข้อมูลเคยใช้ในงานวิจัยก่อนหน้า ผลจึงเป็นตัวบ่งชี้ ไม่ใช่การยืนยัน
+//
+// ═══ โหมดถือยาว: ขาขึ้นแรง → ซื้อถือ (B&H) · ไม่ใช่ขาขึ้นแรง → เทรดตาม CDC ════════════════════════
+//    ทำไม: CDC แพ้ B&H เฉพาะเหรียญ/ช่วงที่ขึ้นแรงต่อเนื่อง (เข้าช้า ออกช้า ขายแล้วซื้อคืนแพงกว่า หลายสิบครั้ง)
+//          แต่ชนะ B&H ในเหรียญส่วนใหญ่ที่ลงหนัก (ค่ากลาง B&H 81 เหรียญตั้งแต่ 2023 = −68%)
+//    ขาขึ้นแรง = ผลตอบแทน 365 วัน > 0 และราคาปิด Day ≥ 85% ของ High 365 วัน (แท่ง Day ที่ปิดแล้ว)
+//      → ถือ Long ตลอด (ไม่ขายตาม CDC · ไม่มี SL/เป้า) · ไม่เปิด Short และปิด Short ที่ถืออยู่
+//      → ราคาลงเกิน 15% จาก High 1 ปี = ออกจากโหมด: ถ้า CDC ยังถือ Long ก็ถือต่อตามกฎ CDC ไม่งั้นขายที่ราคาปิด
+//    ทดสอบตัวจับขาขึ้นแรง 14 แบบ (1W CDC เขียว, 1W MACD, EMA200 + golden cross, ผลตอบแทน 12 เดือน, ใกล้ High 1 ปี
+//      70–90%, แบบผสม) · แบบที่ใช้ทำกำไรเพิ่มในขาขึ้นโดยแทบไม่เสียในช่วงขาลง · ค่าที่วัด = Long ทบต้น ค่ากลางต่อเหรียญ
+//                     ตั้งแต่ 2020 (25 เหรียญ)   ตั้งแต่ 2023 (81)    ตั้งแต่ 2025 (81)
+//      1D  ไม่มีโหมด      +167%                   +32%                 −35%
+//      1D  มีโหมด         +816%                   +34%                 −33%    (L+S รวม 2023→ +138 → +163)
+//      4h  ไม่มี / มี     +711% / +760%           0% / +1%             −40% / −40%
+//      1h  ไม่มี / มี     —                       −10% / −3%           −34% / −33%
+//    รายเหรียญไม่ได้ดีขึ้นทุกตัว (ทบต้น · ตั้งแต่ 2023 · B&H ในวงเล็บ)
+//      1D BTC +133% → +191% (+362%) · SOL +134% → +345% (+821%) · ETH +206% → +136% (+88%) ← ETH แย่ลง
+//      1h BTC −10% → +88% (+366%) · 4h BTC +200% → +175% · 4h ETH +61% → +5%
+//    เหรียญที่ขึ้นแรงต่อเนื่องจะเข้าใกล้ B&H มากขึ้นแต่ยังไม่เท่า เพราะโหมดเริ่มหลังราคาขึ้นมาแล้วระยะหนึ่ง และออกเมื่อลง 15%
+//
+// ═══ ตาราง ═══════════════════════════════════════════════════════════════════════════════
+//    แถว "ทบต้น" = กำไรทบไม้ต่อไม้ (เทียบ B&H ได้ตรง) · แถว "ซื้อถือ (B&H)" = ซื้อแท่งแรกของช่วง ถือถึงล่าสุด
+//    Long / Short แยกบัญชี · สองฝั่ง = Long + Short · ผลของช่วง = equity ตอนนี้ − equity เมื่อต้นช่วง
+//    แถว "CDC เดิม" = CDC ต้นฉบับ (EMA ตามช่อง Fast/Slow, เข้าแท่งเขียวแรก ออกแท่งแดงแรก) ช่วงเดียวกัน
+//    Win rate = ผลก่อนหัก fee > 0 · ไม้ที่ถืออยู่เทียบราคาล่าสุด
+
+//@version=5
+indicator('CDC ActionZone V3 2020', overlay=true, precision=6, max_labels_count=500)
+//****************************************************************************//
+// CDC Action Zone is based on a simple EMA crossover
+// between [default] EMA12 and EMA26
+// The zones are defined by the relative position of
+// price in relation to the two EMA lines
+// Different zones can be use to activate / deactivate
+// other trading strategies
+// The strategy can also be used on its own with
+// acceptable result, buy on the first green candle
+// and sell on the first red candle
+//****************************************************************************//
+//****************************************************************************//
+// Define User Input Variables
+
+xsrc = input.source(title='Source Data', defval=close)
+xprd1 = input.int(title='Fast EMA period', defval=12)
+xprd2 = input.int(title='Slow EMA period', defval=26)
+xsmooth = input.int(title='Smoothing period (1 = no smoothing)', defval=1)
+fillSW = input.bool(title='Paint Bar Colors', defval=true)
+fastSW = input.bool(title='Show fast moving average line', defval=true)
+slowSW = input.bool(title='Show slow moving average line', defval=true)
+labelSwitch = input.bool(title='Turn on assistive text', defval=true)
+plotSigsw = input.bool(title='Plot Buy/Sell Signals? (CDC เดิม)', defval=false)
+plotRibsw = input.bool(title='Plot Buy/Sell Ribbon', defval=false)
+plotRibbonPos = input.string(title='Ribbon Position', options=['Top', 'Bottom'], defval='Top')
+
+xfixtf = input.bool(title='** Use Fixed time frame Mode (advanced) **', defval=false)
+xtf = input.timeframe(title='** Fix chart to which time frame ? **)', defval='D')
+
+plotSig2sw = input.bool(title='Plot momentum based Buy/Sell Signals? ', defval=false)
+plotSig2lv = input.int(title='Set signal threshold (higher = stricter)', defval=1, minval=0, maxval=1)
+
+// ── Playbook ──────────────────────────────────────────────────────────────────
+G_P = 'Playbook'
+G_L = 'Playbook ▲ Long (กำหนดเอง)'
+G_S = 'Playbook ▼ Short (กำหนดเอง · กลับด้าน)'
+M_AUTO = 'Auto ตาม TF'
+M_CLS  = 'CDC เดิม'
+M_CUST = 'กำหนดเอง'
+E_G1  = 'แท่งเขียวแรก (Classic)'
+E_G   = 'ทุกแท่งเขียวใหม่'
+E_B   = 'ปิดเหนือ 2 เส้นครั้งแรก'
+E_PB  = 'ย่อแล้วกลับเขียว'
+E_ST1 = 'StochRSI ตัดขึ้น'
+E_ST2 = 'StochRSI ตัดขึ้นใต้ 30'
+X_RED  = 'แท่งแดงแรก (Classic)'
+X_BOTH = 'ปิดใต้ 2 เส้น'
+X_SLOW = 'ปิดใต้ Slow EMA'
+X_FAST = 'ปิดใต้ Fast EMA'
+X_ATR  = 'ATR Trailing 3×'
+F_NONE = 'ไม่ใช้'
+F_NEXT = 'CDC TF ถัดไป'
+F_D    = 'CDC 1D'
+F_E200 = 'EMA200'
+ENTS  = array.from(E_G1, E_G, E_B, E_PB, E_ST1, E_ST2)
+
+modeIn  = input.string(M_AUTO, 'โหมด', options = [M_AUTO, M_CLS, M_CUST], group = G_P, tooltip = 'Auto: 1h / 4h / 1D ใช้ค่าที่ทดสอบแล้ว (ดูหัวไฟล์) · TF อื่นใช้ CDC เดิม\nAuto บน 1h เปลี่ยน EMA เป็น 21/55 (โซนสีเปลี่ยนตาม)\nCDC เดิม: เข้าแท่งเขียวแรก ออกแท่งแดงแรก (Short กลับด้าน)\nกำหนดเอง: ใช้ค่าด้านล่าง')
+showIn  = input.string('Long + Short', 'ฝั่งที่แสดงป้าย', options = ['Long + Short', 'Long', 'Short'], group = G_P, tooltip = 'ตารางคำนวณทั้งสองฝั่งเสมอ · Short ต้องใช้ Futures')
+entLIn  = input.string(E_G1, 'จุดเข้า', options = [E_G1, E_G, E_B, E_PB, E_ST1, E_ST2], group = G_L)
+exLIn   = input.string(X_RED, 'จุดออก', options = [X_RED, X_BOTH, X_SLOW, X_FAST, X_ATR], group = G_L)
+filtLIn = input.string(F_NONE, 'ตัวกรอง', options = [F_NONE, F_NEXT, F_D, F_E200], group = G_L, tooltip = 'CDC TF ถัดไป: 1h→4h · 4h→1D · 1D→1W (Fast > Slow ของแท่งที่ปิดแล้ว)')
+slLIn   = input.bool(false, 'SL = Low ต่ำสุด 20 แท่ง', group = G_L)
+tpLIn   = input.float(0, 'เป้า (R, 0 = ไม่ใช้ · ต้องมี SL)', minval = 0, step = 0.5, group = G_L)
+entSIn  = input.string(E_G1, 'จุดเข้า', options = [E_G1, E_G, E_B, E_PB, E_ST1, E_ST2], group = G_S, tooltip = 'กลับด้าน: เขียว ↔ แดง · เหนือ ↔ ใต้ · StochRSI ตัดลง (เหนือ 70)')
+exSIn   = input.string(X_RED, 'จุดออก', options = [X_RED, X_BOTH, X_SLOW, X_FAST, X_ATR], group = G_S, tooltip = 'กลับด้าน: แท่งแดงแรก = แท่งเขียวแรก · ปิดใต้ = ปิดเหนือ')
+filtSIn = input.string(F_NONE, 'ตัวกรอง', options = [F_NONE, F_NEXT, F_D, F_E200], group = G_S)
+slSIn   = input.bool(false, 'SL = High สูงสุด 20 แท่ง', group = G_S)
+tpSIn   = input.float(0, 'เป้า (R, 0 = ไม่ใช้ · ต้องมี SL)', minval = 0, step = 0.5, group = G_S)
+showLevels = input.bool(true, 'เส้น SL / เป้า ของไม้ที่ถือ', group = G_P)
+
+G_R = 'โหมดถือยาว (ขาขึ้นแรง → B&H)'
+regOn    = input.bool(true, 'ใช้โหมดถือยาว', group = G_R, tooltip = 'ขาขึ้นแรง = ผลตอบแทน 1 ปี > 0 และราคาปิด Day ≥ 85% ของ High 1 ปี (แท่ง Day ที่ปิดแล้ว)\nระหว่างขาขึ้นแรง: ถือ Long ตลอด ไม่ขายตามสัญญาณ CDC · ไม่เปิด Short และปิด Short ที่ถืออยู่\nพ้นขาขึ้นแรง (ราคาลงเกิน 15% จาก High 1 ปี): กลับไปเทรดตาม CDC — ถ้า CDC ยังถือ Long อยู่ก็ถือต่อตามกฎ CDC')
+regHiPct = input.float(85, 'ราคา ≥ % ของ High 1 ปี', minval = 50, maxval = 100, step = 1, group = G_R, tooltip = 'ทดสอบ 70 / 75 / 80 / 85 / 90 → 85 สมดุลที่สุด')
+regLen   = input.int(365, 'ย้อนหลัง (แท่ง Day)', minval = 50, group = G_R)
+showReg  = input.bool(true, 'พื้นหลังเขียวเมื่ออยู่ในโหมดถือยาว', group = G_R)
+
+startTime  = input.time(timestamp('01 Jan 2017 00:00 +0700'), 'Backtest From', group = 'Backtest')
+endTime    = input.time(timestamp('31 Dec 2099 00:00 +0700'), 'Backtest To', group = 'Backtest', tooltip = 'แท่งสุดท้ายของช่วง (เวลาเปิดแท่ง) — ไม้ค้างปิดที่ราคาปิดแท่งนี้')
+feeInput   = input.float(0.10, 'Fee per side %', minval = 0, maxval = 5, step = 0.01, group = 'Backtest')
+showTable  = input.bool(true, 'Show P/L table', group = 'Table')
+showDetail = input.bool(false, 'Show Drawdown + เหตุผลการออก', group = 'Table')
+tablePosIn = input.string('Top Right', 'Position', options = ['Top Right', 'Top Left', 'Bottom Right', 'Bottom Left'], group = 'Table', inline = 'tbl')
+tableSize  = input.string('Normal', 'Size', options = ['Small', 'Normal', 'Large'], group = 'Table', inline = 'tbl')
+buyCss     = input.color(#089981, 'Long', group = 'Table', inline = 'sig')
+sellCss    = input.color(#F23645, 'Short', group = 'Table', inline = 'sig')
+
+// ── Presets ───────────────────────────────────────────────────────────────────
+chartSec = timeframe.in_seconds()
+is1h     = chartSec == 3600
+is4h     = chartSec == 14400
+is1d     = chartSec == 86400
+isAuto   = modeIn == M_AUTO
+autoTF   = isAuto and (is1h or is4h or is1d)
+isCls    = modeIn == M_CLS or (isAuto and not autoTF)
+
+prdF = autoTF and is1h ? 21 : xprd1
+prdS = autoTF and is1h ? 55 : xprd2
+
+string entL  = isCls ? E_G1 : autoTF ? (is4h ? E_G : E_G1) : entLIn
+string exL   = isCls ? X_RED : autoTF ? X_RED : exLIn
+string filtL = isCls ? F_NONE : autoTF ? (is1h ? F_D : is4h ? F_E200 : F_NONE) : filtLIn
+bool   slL   = isCls ? false : autoTF ? is1d : slLIn
+float  tpL   = isCls ? 0. : autoTF ? (is1d ? 3. : 0.) : tpLIn
+string entS  = isCls ? E_G1 : autoTF ? (is1d ? E_G : E_G1) : entSIn
+string exS   = isCls ? X_RED : autoTF ? (is1d ? X_ATR : X_RED) : exSIn
+string filtS = isCls ? F_NONE : autoTF ? (is1d ? F_NONE : F_E200) : filtSIn
+bool   slS   = isCls ? false : autoTF ? true : slSIn
+float  tpS   = isCls ? 0. : autoTF ? 3. : tpSIn
+
+showL = showIn != 'Short'
+showS = showIn != 'Long'
+
+//****************************************************************************//
+//Calculate Indicators
+
+f_secureSecurity(_symbol, _res, _src) => request.security(_symbol, _res, _src[1], lookahead = barmerge.lookahead_on) // Using f_secureSecurity to avoid repainting
+
+xPrice = ta.ema(xsrc, xsmooth)
+
+
+FastMA = xfixtf ?
+ ta.ema(f_secureSecurity(syminfo.tickerid, xtf, ta.ema(xsrc, prdF)), xsmooth)
+ :
+ ta.ema(xPrice, prdF)
+
+
+SlowMA = xfixtf ?
+ ta.ema(f_secureSecurity(syminfo.tickerid, xtf, ta.ema(xsrc, prdS)), xsmooth)
+ :
+ ta.ema(xPrice, prdS)
+
+Bull = FastMA > SlowMA
+Bear = FastMA < SlowMA
+
+//****************************************************************************//
+// Define Color Zones
+
+Green = Bull and xPrice > FastMA  // Buy
+Blue = Bear and xPrice > FastMA and xPrice > SlowMA  //Pre Buy 2
+LBlue = Bear and xPrice > FastMA and xPrice < SlowMA  //Pre Buy 1
+
+Red = Bear and xPrice < FastMA  // Sell
+Orange = Bull and xPrice < FastMA and xPrice < SlowMA  // Pre Sell 2
+Yellow = Bull and xPrice < FastMA and xPrice > SlowMA  // Pre Sell 1
+
+//****************************************************************************//
+// Display color on chart
+
+
+bColor = Green ? color.green :
+ Blue ? color.blue :
+ LBlue ? color.aqua :
+ Red ? color.red :
+ Orange ? color.orange :
+ Yellow ? color.yellow :
+ color.black
+barcolor(color=fillSW ? bColor : na)
+
+//****************************************************************************//
+// Display MA lines
+
+FastL = plot(fastSW ? FastMA : na, 'Fast EMA', color=color.new(color.red, 0), style = xfixtf ? plot.style_stepline : plot.style_line)
+SlowL = plot(slowSW ? SlowMA : na, 'Slow EMA', color=color.new(color.blue, 0), style = xfixtf ? plot.style_stepline : plot.style_line)
+fillcolor = Bull ? color.new(color.green,90) : Bear ? color.new(color.red,90) : color.new(color.black,90) // fillcolor = Bull ? color.green : Bear ? color.red : color.black
+fill(FastL, SlowL, fillcolor) // fill(FastL, SlowL, fillcolor, transp=90)
+
+//****************************************************************************//
+// Define Buy and Sell condition
+// This is only for thebasic usage of CDC Actionzone (EMA Crossover)
+// ie. Buy on first green bar and sell on first red bar
+
+buycond = Green and Green[1] == 0
+sellcond = Red and Red[1] == 0
+
+bullish = ta.barssince(buycond) < ta.barssince(sellcond)
+bearish = ta.barssince(sellcond) < ta.barssince(buycond)
+
+buy = bearish[1] and buycond
+sell = bullish[1] and sellcond
+
+bColor_BullBear = bullish ? color.green : bearish ? color.red : color.black
+
+//****************************************************************************//
+// Plot Buy and Sell point on chart
+
+plotshape(plotSigsw ? buy : na,
+ style=shape.circle,
+ title='Buy Signal',
+ location=location.belowbar,
+ color=color.new(color.green, 0))
+plotshape(plotSigsw ? sell : na,
+ style=shape.circle,
+ title='Sell Signal',
+ location=location.abovebar,
+ color=color.new(color.red, 0))
+
+// Display Buy/Sell Ribbon
+
+
+plotshape(plotRibsw ? plotRibbonPos == 'Top' ? close : na : na,
+ style=shape.square,
+ title='Buy/Sell Ribbon',
+ location=location.top,
+ color=bColor_BullBear)
+
+plotshape(plotRibsw ? plotRibbonPos == 'Bottom' ? close : na : na,
+ style=shape.square,
+ title='Buy/Sell Ribbon',
+ location=location.bottom,
+ color=bColor_BullBear)
+
+
+//****************************************************************************//
+// Label
+
+labelstyle = close > SlowMA ? label.style_label_down : label.style_label_up
+labelyloc = close > SlowMA ? yloc.abovebar : yloc.belowbar
+labeltcolor = buy ? color.black :
+ sell ? color.white :
+ close > close[1] ? color.green :
+ color.red
+labelbgcolor = buy ? color.green : sell ? color.red : color.silver
+labeltext = buy ? 'BUY next bar\n' : sell ? 'SELL next bar\n' : ' '
+trendText = bullish ? 'bullish' : bearish ? 'bearish' : 'sideways'
+
+
+l1 = label.new(bar_index, na,
+ text=labeltext + syminfo.ticker + ' ' + str.tostring(close) + ' ' + syminfo.currency + '\n currently in a ' + trendText + ' trend \n',
+ color=labelbgcolor,
+ textcolor=labeltcolor,
+ yloc=labelyloc,
+ style=labelstyle)
+
+label.delete(labelSwitch ? l1[1] : l1)
+
+// Momentum Signal using StochRSI
+
+// Adds a momentum based signal following trends to the script
+// Default is hidden, only use with caution
+// Parameters for STOCH RSI is hard-coded to avoid cluttering the input screen further
+// If you need to change anything, make a copy of the code and change it.
+// Inputs are commented out, to enable them comment out the hard coded variables first!
+
+// fixed inputs //
+
+smoothK = 3
+smoothD = 3
+RSIlen = 14
+STOlen = 14
+SRsrc = close
+OSlevel = 30
+OBlevel = 70
+
+// calculations //
+rsi1 = ta.rsi(SRsrc, RSIlen)
+k = ta.sma(ta.stoch(rsi1, rsi1, rsi1, STOlen), smoothK)
+d = ta.sma(k, smoothD)
+
+crossover_1 = ta.crossover(k, d)
+crossover_2 = ta.crossover(k, d)
+iff_1 = d > OSlevel and crossover_2 ?
+ 1 : 0
+iff_2 = d < OSlevel and crossover_1 ?
+ 2 : iff_1
+storsiBuySig = bullish ? iff_2 : 0
+
+crossunder_1 = ta.crossunder(k, d)
+crossunder_2 = ta.crossunder(k, d)
+iff_3 = d < OBlevel and crossunder_2 ?
+ 1 : 0
+iff_4 = d > OBlevel and crossunder_1 ?
+ 2 : iff_3
+storsiSellSig = bearish ? iff_4 : 0
+
+plotshape(plotSig2sw ? storsiBuySig > plotSig2lv ? storsiBuySig : na : na,
+ 'Buy more signals', style=shape.triangleup,
+  location=location.belowbar, color=color.new(color.teal, 0))
+plotshape(plotSig2sw ? storsiSellSig > plotSig2lv ? storsiSellSig : na : na,
+ 'Sell more signals', style=shape.triangledown,
+  location=location.abovebar, color=color.new(color.orange, 0))
+
+
+//****************************************************************************//
+// Playbook: สัญญาณ
+
+// แนวโน้มแบบบอท: เงื่อนไขไหน (เขียวแรก / แดงแรก) เกิดล่าสุด
+var int trendSt = 0
+if buycond
+    trendSt := 1
+else if sellcond
+    trendSt := -1
+
+aboveBoth = xPrice > FastMA and xPrice > SlowMA
+belowBoth = xPrice < FastMA and xPrice < SlowMA
+dipL      = Bull and xPrice < FastMA    // เหลือง / ส้ม
+dipS      = Bear and xPrice > FastMA    // ฟ้าอ่อน / ฟ้า
+noCross   = FastMA != SlowMA
+
+sigL = array.from(buycond and trendSt[1] == -1, buycond, aboveBoth and not aboveBoth[1] and noCross, Green and dipL[1], trendSt == 1 and crossover_1, trendSt == 1 and crossover_1 and d < OSlevel)
+sigS = array.from(sellcond and trendSt[1] == 1, sellcond, belowBoth and not belowBoth[1] and noCross, Red and dipS[1], trendSt == -1 and crossunder_1, trendSt == -1 and crossunder_1 and d > OBlevel)
+entL_ok = sigL.get(ENTS.indexof(entL))
+entS_ok = sigS.get(ENTS.indexof(entS))
+
+exRule(string m, int s) =>
+    m == X_RED ? (s > 0 ? Red : Green) : m == X_BOTH ? (s > 0 ? belowBoth : aboveBoth) : m == X_SLOW ? (s > 0 ? xPrice < SlowMA : xPrice > SlowMA) : m == X_FAST ? (s > 0 ? xPrice < FastMA : xPrice > FastMA) : false
+exNowL = exRule(exL, 1)
+exNowS = exRule(exS, -1)
+
+// ตัวกรอง (HTF = แท่งที่ปิดแล้ว)
+htfNext = chartSec < 3600 ? '60' : chartSec < 14400 ? '240' : chartSec < 86400 ? 'D' : chartSec < 604800 ? 'W' : 'M'
+[nF, nS] = request.security(syminfo.tickerid, htfNext, [ta.ema(close, prdF)[1], ta.ema(close, prdS)[1]], lookahead = barmerge.lookahead_on)
+[dF, dS] = request.security(syminfo.tickerid, 'D', [ta.ema(close, prdF)[1], ta.ema(close, prdS)[1]], lookahead = barmerge.lookahead_on)
+dOk  = chartSec < 86400
+e200 = ta.ema(close, 200)
+filtOk(string m, int s) =>
+    m == F_NEXT ? (s > 0 ? nF > nS : nF < nS) : m == F_D ? dOk and (s > 0 ? dF > dS : dF < dS) : m == F_E200 ? (s > 0 ? close > e200 : close < e200) : true
+rawL = entL_ok and filtOk(filtL, 1)
+rawS = entS_ok and filtOk(filtS, -1)
+
+// โหมดถือยาว: แท่ง Day ที่ปิดแล้ว · ผลตอบแทน regLen วัน > 0 และราคา ≥ regHiPct% ของ High regLen วัน
+regFeed() =>
+    hi = ta.highest(high, regLen)
+    c1 = close > close[regLen] and close >= regHiPct / 100.0 * hi
+    [c1[1], (close / hi * 100)[1], ((close / close[regLen] - 1) * 100)[1]]
+[regRaw, regPos, regRet] = request.security(syminfo.tickerid, 'D', regFeed(), lookahead = barmerge.lookahead_on)
+reg = regOn and regRaw
+
+atrV = ta.atr(14)
+loN  = ta.lowest(low, 20)
+hiN  = ta.highest(high, 20)
+
+// CDC เดิม (ใช้เทียบในตาราง): EMA ตามช่อง Fast/Slow · เข้าแท่งเขียวแรก ออกแท่งแดงแรก (Short กลับด้าน)
+cF     = ta.ema(xPrice, xprd1)
+cS     = ta.ema(xPrice, xprd2)
+cGreen = cF > cS and xPrice > cF
+cRed   = cF < cS and xPrice < cF
+cBuy1  = cGreen and not cGreen[1]
+cSell1 = cRed and not cRed[1]
+var int cTrend = 0
+if cBuy1
+    cTrend := 1
+else if cSell1
+    cTrend := -1
+cEntL = cBuy1 and cTrend[1] == -1
+cEntS = cSell1 and cTrend[1] == 1
+
+inWindow      = time >= startTime and time <= endTime
+lastWindowBar = time <= endTime and time_close > endTime
+live          = barstate.isconfirmed and inWindow
+
+var int windowStartT = na
+var float bhStart = na
+var float bhEnd = na
+if inWindow and na(windowStartT)
+    windowStartT := time
+    bhStart := close
+if inWindow
+    bhEnd := close
+
+//****************************************************************************//
+// Books
+
+type Book
+    int   side
+    bool  inPos  = false
+    float entry  = na
+    float sl     = na
+    float tp     = na
+    float ext    = na
+    float lastPx = na
+    float comp   = 1.
+    int   n      = 0
+    int   wins   = 0
+    float sum    = 0.
+    float peak   = 0.
+    float dd     = 0.
+    int   exSL   = 0
+    int   exTP   = 0
+    int   exRule = 0
+
+method grossAt(Book b, float px) =>
+    b.inPos ? b.side * (px - b.entry) / b.entry * 100 : 0.
+
+method pnlAt(Book b, float px) =>
+    b.inPos ? b.grossAt(px) - 2 * feeInput : 0.
+
+// ผลทบต้น % (ไม้ที่ถืออยู่คิดที่ px)
+method compAt(Book b, float px) =>
+    (b.comp * (1 + b.pnlAt(px) / 100) - 1) * 100
+
+method record(Book b, float pnl, bool win) =>
+    b.n    := b.n + 1
+    b.comp := b.comp * (1 + pnl / 100)
+    b.sum  := b.sum + pnl
+    b.wins := b.wins + (win ? 1 : 0)
+    b.peak := math.max(b.peak, b.sum)
+    b.dd   := math.max(b.dd, b.peak - b.sum)
+
+var Book bookL = Book.new(side = 1)     // Long ตามกฎ CDC (ใช้ภายใน)
+var Book bookH = Book.new(side = 1)     // Long ที่แสดง = ถือเมื่อโหมดถือยาว หรือ bookL ถือ
+var Book bookS = Book.new(side = -1)
+var Book bookB = Book.new(side = 0)
+var Book cdcB  = Book.new(side = 0)
+var Book clsL  = Book.new(side = 1)
+var Book clsS  = Book.new(side = -1)
+var Book clsB  = Book.new(side = 0)
+
+// why: 1 SL · 2 เป้า · 3 กฎออก · 4 จบช่วง · 5 เข้าโหมดถือยาว (ปิด Short) · 6 หมดโหมดถือยาว
+finish(Book b, Book both, float px, int why) =>
+    if b.inPos
+        b.lastPx := px
+        float g   = b.grossAt(px)
+        float pnl = g - 2 * feeInput
+        b.record(pnl, g > 0)
+        both.record(pnl, g > 0)
+        b.exSL   := b.exSL + (why == 1 ? 1 : 0)
+        b.exTP   := b.exTP + (why == 2 ? 1 : 0)
+        b.exRule := b.exRule + (why == 3 ? 1 : 0)
+        b.inPos  := false
+
+// ตรวจไม้ที่เปิดก่อนแท่งนี้: SL → เป้า → กฎออก (ATR trailing ใช้ราคาปิดสูงสุดตั้งแต่เข้า)
+step(Book b, Book both, bool exitNow, bool useAtr, bool forceExit) =>
+    int why = 0
+    if b.inPos
+        s = b.side
+        if not na(b.sl) and (s > 0 ? low <= b.sl : high >= b.sl)
+            why := 1
+            finish(b, both, s > 0 ? math.min(b.sl, open) : math.max(b.sl, open), 1)
+        else if not na(b.tp) and (s > 0 ? high >= b.tp : low <= b.tp)
+            why := 2
+            finish(b, both, s > 0 ? math.max(b.tp, open) : math.min(b.tp, open), 2)
+        else
+            bool ex = exitNow
+            if useAtr
+                b.ext := s > 0 ? math.max(b.ext, close) : math.min(b.ext, close)
+                ex := s > 0 ? close < b.ext - 3 * atrV : close > b.ext + 3 * atrV
+            if ex
+                why := 3
+                finish(b, both, close, 3)
+            else if forceExit
+                why := 5
+                finish(b, both, close, 5)
+    why
+
+openAt(Book b, bool useSl, float lvl, float tpR) =>
+    s = b.side
+    float stop = useSl ? lvl : na
+    if not na(stop) and math.abs(close - stop) / close < 0.001
+        stop := na
+    b.inPos := true
+    b.entry := close
+    b.sl    := stop
+    b.tp    := tpR > 0 and not na(stop) ? close + s * tpR * math.abs(close - stop) : na
+    b.ext   := close
+
+int  exLw = 0
+int  exSw = 0
+int  exH  = 0
+bool sigLo = false
+bool sigSo = false
+bool sigH  = false
+bool hReg  = false
+if live
+    exLw := step(bookL, cdcB, exNowL, exL == X_ATR, false)
+    exSw := step(bookS, bookB, exNowS, exS == X_ATR, reg)
+    // ไม่เปิดไม้ใหม่ในแท่งที่ฝั่งนั้นเพิ่งปิด · โหมดถือยาว = ไม่เปิด Short
+    if rawL and not bookL.inPos and exLw == 0 and not lastWindowBar
+        openAt(bookL, slL, loN, tpL)
+        sigLo := true
+    if rawS and not reg and not bookS.inPos and exSw == 0 and not lastWindowBar
+        openAt(bookS, slS, hiN, tpS)
+        sigSo := true
+    // Long ที่แสดง: ถือเมื่อโหมดถือยาว หรือ CDC ถือ · ออกตามราคาที่ CDC ออก (SL/เป้า) ถ้าไม่อยู่ในโหมดถือยาว
+    want = reg or bookL.inPos
+    if not bookH.inPos and want and not lastWindowBar
+        openAt(bookH, false, na, 0.)
+        sigH := true
+        hReg := reg and not sigLo
+    else if bookH.inPos and not want
+        byCdc = exLw > 0
+        exH := byCdc ? exLw : 6
+        finish(bookH, bookB, byCdc ? bookL.lastPx : close, exH)
+    // CDC เดิม
+    c1 = step(clsL, clsB, cRed, false, false)
+    c2 = step(clsS, clsB, cGreen, false, false)
+    if cEntL and not clsL.inPos and c1 == 0 and not lastWindowBar
+        openAt(clsL, false, na, 0.)
+    if cEntS and not clsS.inPos and c2 == 0 and not lastWindowBar
+        openAt(clsS, false, na, 0.)
+
+if lastWindowBar and barstate.isconfirmed
+    finish(bookL, cdcB, close, 4)
+    finish(bookH, bookB, close, 4)
+    finish(bookS, bookB, close, 4)
+    finish(clsL, clsB, close, 4)
+    finish(clsS, clsB, close, 4)
+
+eqL = bookH.sum + bookH.pnlAt(close)
+eqS = bookS.sum + bookS.pnlAt(close)
+eqCL = clsL.sum + clsL.pnlAt(close)
+eqCS = clsS.sum + clsS.pnlAt(close)
+
+var array<int>   eqTime = array.new<int>()
+var array<float> eqValL = array.new<float>()
+var array<float> eqValS = array.new<float>()
+if barstate.isconfirmed
+    eqTime.push(time_close)
+    eqValL.push(eqL)
+    eqValS.push(eqS)
+
+lastAtOrBefore(array<int> a, int t) =>
+    int lo  = 0
+    int hi  = a.size() - 1
+    int ans = -1
+    while lo <= hi
+        int mid = math.floor((lo + hi) / 2)
+        if a.get(mid) <= t
+            ans := mid
+            lo  := mid + 1
+        else
+            hi  := mid - 1
+    ans
+
+//****************************************************************************//
+// Playbook: ป้าย / เส้น
+
+plot(showLevels and bookL.inPos and not reg ? bookL.sl : na, 'Long SL', color.new(sellCss, 30), 1, plot.style_linebr)
+plot(showLevels and bookL.inPos and not reg ? bookL.tp : na, 'Long เป้า', color.new(buyCss, 30), 1, plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.sl : na, 'Short SL', color.new(sellCss, 30), 1, plot.style_linebr)
+plot(showLevels and bookS.inPos ? bookS.tp : na, 'Short เป้า', color.new(buyCss, 30), 1, plot.style_linebr)
+plot(filtL == F_E200 or filtS == F_E200 ? e200 : na, 'EMA200 (ตัวกรอง)', color.new(color.white, 40), 1)
+
+bgcolor(showReg and reg ? color.new(buyCss, 90) : na, title = 'โหมดถือยาว')
+
+whyText(int w, string ex) => w == 1 ? 'SL' : w == 2 ? 'เป้า' : w == 4 ? 'จบช่วง' : w == 5 ? 'ขาขึ้นแรง' : w == 6 ? 'หมดโหมดถือ' : ex
+
+if showL and exH > 0
+    label.new(bar_index, high, 'SELL\n' + whyText(exH, exL), style = label.style_label_down, color = color.new(sellCss, 20), textcolor = color.white, size = size.small, tooltip = 'ปิด Long · ' + whyText(exH, exL))
+if showL and sigH
+    label.new(bar_index, low, hReg ? 'BUY\nถือยาว' : 'BUY', style = label.style_label_up, color = buyCss, textcolor = color.white, size = size.small, tooltip = (hReg ? 'เข้าโหมดถือยาว: ผลตอบแทน 1 ปี ' + str.tostring(regRet, '0') + '% · ราคา ' + str.tostring(regPos, '0') + '% ของ High 1 ปี' : entL + (filtL != F_NONE ? ' · ' + filtL : '')) + '\nเข้า ' + str.tostring(close, format.mintick) + (hReg or na(bookL.sl) ? '' : '\nSL ' + str.tostring(bookL.sl, format.mintick)) + (hReg or na(bookL.tp) ? '' : '\nเป้า ' + str.tostring(bookL.tp, format.mintick)))
+if showS and exSw > 0
+    label.new(bar_index, low, 'COVER\n' + whyText(exSw, exS), style = label.style_label_up, color = color.new(buyCss, 20), textcolor = color.white, size = size.small, tooltip = 'ปิด Short · ' + whyText(exSw, exS))
+if showS and sigSo
+    label.new(bar_index, high, 'SHORT', style = label.style_label_down, color = sellCss, textcolor = color.white, size = size.small, tooltip = entS + ' (กลับด้าน)' + (filtS != F_NONE ? ' · ' + filtS : '') + '\nเข้า ' + str.tostring(close, format.mintick) + (na(bookS.sl) ? '' : '\nSL ' + str.tostring(bookS.sl, format.mintick)) + (na(bookS.tp) ? '' : '\nเป้า ' + str.tostring(bookS.tp, format.mintick)))
+
+plot(sigH ? 1 : exH > 0 ? -1 : 0, 'Long signal (1 BUY / -1 SELL)', display = display.data_window)
+plot(sigSo ? -1 : exSw > 0 ? 1 : 0, 'Short signal (-1 SHORT / 1 COVER)', display = display.data_window)
+
+//****************************************************************************//
+// ตารางกำไร/ขาดทุน
+
+fmtPct(float x) => (x > 0 ? '+' : '') + str.tostring(x, '0.00') + '%'
+pnlColor(float x) => x > 0.005 ? buyCss : x < -0.005 ? sellCss : color.gray
+shortEnt(string e) => e == E_G1 ? 'เขียวแรก' : e == E_G ? 'ทุกเขียว' : e == E_B ? 'เหนือ 2 เส้น' : e == E_PB ? 'ย่อ→เขียว' : e == E_ST1 ? 'StochRSI' : 'StochRSI<30'
+shortEx(string x) => x == X_RED ? 'แดงแรก' : x == X_BOTH ? 'ใต้ 2 เส้น' : x == X_SLOW ? 'ใต้ Slow' : x == X_FAST ? 'ใต้ Fast' : 'ATR 3×'
+sideTxt(string e, string x, string f, bool sl, float tp) =>
+    shortEnt(e) + (f != F_NONE ? '+' + f : '') + '→' + shortEx(x) + (sl ? ' SL20' : '') + (sl and tp > 0 ? ' ' + str.tostring(tp) + 'R' : '')
+
+if showTable and barstate.islast
+    tPos  = tablePosIn == 'Top Left' ? position.top_left : tablePosIn == 'Bottom Right' ? position.bottom_right : tablePosIn == 'Bottom Left' ? position.bottom_left : position.top_right
+    tSize = tableSize == 'Small' ? size.small : tableSize == 'Large' ? size.large : size.normal
+    bg    = color.new(#131722, 10)
+    muted = color.new(color.white, 45)
+    band  = color.new(color.white, 92)
+    var table t = table.new(tPos, 4, 24, bgcolor = bg, frame_color = color.new(color.white, 85), frame_width = 1)
+    table.clear(t, 0, 0, 3, 23)
+
+    modeTxt = isCls ? 'CDC เดิม' : autoTF ? 'Auto ' + timeframe.period : 'กำหนดเอง'
+    table.cell(t, 0, 0, 'CDC Playbook · ' + syminfo.ticker + ' · ' + timeframe.period, text_color = color.white, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, 0, 2, 0)
+    table.cell(t, 3, 0, 'fee ' + str.tostring(feeInput, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'ค่าธรรมเนียมต่อขา · ผลรวม % ต่อไม้ (ไม่ทบต้น) · ไม่รวม funding')
+    table.cell(t, 0, 1, 'EMA ' + str.tostring(prdF) + '/' + str.tostring(prdS) + ' · L ' + sideTxt(entL, exL, filtL, slL, tpL) + ' | S ' + sideTxt(entS, exS, filtS, slS, tpS), text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'Long: ' + entL + ' · ' + filtL + ' · ' + exL + '\nShort (กลับด้าน): ' + entS + ' · ' + filtS + ' · ' + exS)
+    table.merge_cells(t, 0, 1, 2, 1)
+    table.cell(t, 3, 1, modeTxt, text_color = autoTF ? buyCss : color.orange, text_size = tSize, text_halign = text.align_right, tooltip = 'Auto ทดสอบแล้วบน 1h / 4h / 1D · TF อื่นใช้ CDC เดิม')
+    table.cell(t, 0, 2, 'ช่วง', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, 2, '▲ Long', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'BUY เปิด · SELL ปิด' + (regOn ? '\nรวมโหมดถือยาว (ขาขึ้นแรง = ถือไม่ขายตาม CDC)' : ''))
+    table.cell(t, 2, 2, '▼ Short', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'SHORT เปิด · COVER ปิด (Futures · ไม่รวม funding)')
+    table.cell(t, 3, 2, '⇅ สองฝั่ง', text_color = muted, text_size = tSize, text_halign = text.align_right, tooltip = 'Long + Short (บัญชีแยกกัน อาจถือพร้อมกันได้)')
+
+    nowT    = math.min(time_close, timenow)
+    fromT   = nz(windowStartT, nowT)
+    totalMs = nowT - fromT
+    DAY_MS  = 86400000
+
+    names = array.from('1 วัน', '1 สัปดาห์', '1 เดือน', '3 เดือน', '1 ปี')
+    spans = array.from(1, 7, 30, 90, 365)
+    int row = 3
+    for i = 0 to 4
+        spanMs = spans.get(i) * DAY_MS
+        if spanMs <= totalMs
+            refT = nowT - spanMs
+            idx  = lastAtOrBefore(eqTime, refT)
+            chgL = eqL - (idx >= 0 ? eqValL.get(idx) : 0.)
+            chgS = eqS - (idx >= 0 ? eqValS.get(idx) : 0.)
+            chgB = chgL + chgS
+            table.cell(t, 0, row, names.get(i), text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ย้อน ' + str.tostring(spans.get(i)) + ' วันจากแท่งล่าสุด')
+            table.cell(t, 1, row, fmtPct(chgL), text_color = pnlColor(chgL), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 2, row, fmtPct(chgS), text_color = pnlColor(chgS), text_size = tSize, text_halign = text.align_right)
+            table.cell(t, 3, row, fmtPct(chgB), text_color = pnlColor(chgB), text_size = tSize, text_halign = text.align_right)
+            row += 1
+
+    eqB      = eqL + eqS
+    days     = math.floor(totalMs / DAY_MS)
+    allLabel = 'ทั้งหมด · ' + (days >= 1 ? str.tostring(days) + ' วัน' : str.tostring(math.floor(totalMs / 3600000)) + ' ชม.')
+    allTip   = str.format_time(fromT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' → ' + str.format_time(nowT, 'dd MMM yyyy HH:mm', 'Asia/Bangkok') + ' (เวลาไทย)'
+    table.cell(t, 0, row, allLabel, text_color = color.white, text_size = tSize, text_halign = text.align_left, bgcolor = band, tooltip = allTip)
+    table.cell(t, 1, row, fmtPct(eqL), text_color = pnlColor(eqL), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 2, row, fmtPct(eqS), text_color = pnlColor(eqS), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    table.cell(t, 3, row, fmtPct(eqB), text_color = pnlColor(eqB), text_size = tSize, text_halign = text.align_right, bgcolor = band)
+    row += 1
+
+    eqCB = eqCL + eqCS
+    nCL  = clsL.n + (clsL.inPos ? 1 : 0)
+    nCS  = clsS.n + (clsS.inPos ? 1 : 0)
+    table.cell(t, 0, row, 'CDC เดิม (ทั้งหมด)', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'CDC ต้นฉบับ EMA ' + str.tostring(xprd1) + '/' + str.tostring(xprd2) + ' · เข้าแท่งเขียวแรก ออกแท่งแดงแรก · ช่วงเดียวกัน\nเทรด L ' + str.tostring(nCL) + ' · S ' + str.tostring(nCS))
+    table.cell(t, 1, row, fmtPct(eqCL), text_color = pnlColor(eqCL), text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, fmtPct(eqCS), text_color = pnlColor(eqCS), text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, fmtPct(eqCB), text_color = pnlColor(eqCB), text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    cmpL = bookH.compAt(close)
+    cmpS = bookS.compAt(close)
+    cmpB = ((1 + cmpL / 100) + (1 + cmpS / 100)) / 2 * 100 - 100
+    table.cell(t, 0, row, 'ทบต้น (ทั้งหมด)', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ใช้กำไรทบไม้ต่อไม้ (เทียบกับ B&H ได้ตรง) · แถว "ทั้งหมด" ด้านบน = ผลรวม % ต่อไม้ ไม่ทบต้น\nสองฝั่ง = แบ่งทุนครึ่งต่อฝั่ง')
+    table.cell(t, 1, row, fmtPct(cmpL), text_color = pnlColor(cmpL), text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, fmtPct(cmpS), text_color = pnlColor(cmpS), text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, fmtPct(cmpB), text_color = pnlColor(cmpB), text_size = tSize, text_halign = text.align_right)
+    row += 1
+    bhPct = na(bhStart) ? 0. : (bhEnd / bhStart - 1) * 100
+    table.cell(t, 0, row, 'ซื้อถือ (B&H)', text_color = muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ซื้อที่ราคาปิดแท่งแรกของช่วง ถือถึงแท่งล่าสุด (ไม่หัก fee)')
+    table.cell(t, 1, row, fmtPct(bhPct), text_color = pnlColor(bhPct), text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, cmpL >= bhPct ? '✓ Long ชนะ B&H' : 'Long แพ้ B&H', text_color = cmpL >= bhPct ? buyCss : muted, text_size = tSize, text_halign = text.align_right)
+    table.merge_cells(t, 2, row, 3, row)
+    row += 1
+
+    tradesL = bookH.n + (bookH.inPos ? 1 : 0)
+    tradesS = bookS.n + (bookS.inPos ? 1 : 0)
+    table.cell(t, 0, row, 'เทรด', text_color = muted, text_size = tSize, text_halign = text.align_left)
+    table.cell(t, 1, row, str.tostring(tradesL), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, str.tostring(tradesS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, str.tostring(tradesL + tradesS), text_color = muted, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    openL = bookH.pnlAt(close)
+    openS = bookS.pnlAt(close)
+    winL  = bookH.wins + (bookH.inPos and bookH.grossAt(close) > 0 ? 1 : 0)
+    winS  = bookS.wins + (bookS.inPos and bookS.grossAt(close) > 0 ? 1 : 0)
+    table.cell(t, 0, row, 'Win rate', text_color = color.white, text_size = tSize, text_halign = text.align_left, tooltip = 'ชนะ = ผลก่อนหัก fee > 0 · ไม้ที่ถืออยู่เทียบราคาล่าสุด')
+    table.cell(t, 1, row, tradesL > 0 ? str.tostring(winL * 100.0 / tradesL, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 2, row, tradesS > 0 ? str.tostring(winS * 100.0 / tradesS, '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    table.cell(t, 3, row, tradesL + tradesS > 0 ? str.tostring((winL + winS) * 100.0 / (tradesL + tradesS), '0.0') + '%' : '—', text_color = color.white, text_size = tSize, text_halign = text.align_right)
+    row += 1
+
+    zoneTxt = Green ? 'เขียว (Buy)' : Blue ? 'ฟ้าเข้ม (Pre Buy 2)' : LBlue ? 'ฟ้าอ่อน (Pre Buy 1)' : Red ? 'แดง (Sell)' : Orange ? 'ส้ม (Pre Sell 2)' : Yellow ? 'เหลือง (Pre Sell 1)' : '—'
+    txtL = bookH.inPos ? '▲ ถือ Long · เข้า ' + str.tostring(bookH.entry, format.mintick) + ' · ' + fmtPct(openL) + (reg ? ' · ถือยาว' : na(bookL.sl) ? '' : ' · SL ' + str.tostring(bookL.sl, format.mintick)) : '▲ Long ว่าง' + (filtL != F_NONE ? ' · ' + filtL + (filtOk(filtL, 1) ? ' ผ่าน' : ' ไม่ผ่าน') : '')
+    txtS = bookS.inPos ? '▼ ถือ Short · เข้า ' + str.tostring(bookS.entry, format.mintick) + ' · ' + fmtPct(openS) + (na(bookS.sl) ? '' : ' · SL ' + str.tostring(bookS.sl, format.mintick)) : '▼ Short ว่าง' + (filtS != F_NONE ? ' · ' + filtS + (filtOk(filtS, -1) ? ' ผ่าน' : ' ไม่ผ่าน') : '')
+    table.cell(t, 0, row, txtL, text_color = bookH.inPos ? pnlColor(openL) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, txtS, text_color = bookS.inPos ? pnlColor(openS) : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, regOn ? ('โหมด: ' + (reg ? 'ถือยาว (ขาขึ้นแรง)' : 'เทรดตาม CDC') + ' · ราคา ' + str.tostring(regPos, '0') + '% ของ High 1 ปี · 1 ปี ' + (regRet > 0 ? '+' : '') + str.tostring(regRet, '0') + '%') : 'โหมดถือยาว: ปิด', text_color = reg ? buyCss : muted, text_size = tSize, text_halign = text.align_left, tooltip = 'ขาขึ้นแรง = ผลตอบแทน 1 ปี > 0 และราคา ≥ ' + str.tostring(regHiPct) + '% ของ High 1 ปี (แท่ง Day ที่ปิดแล้ว)')
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+    table.cell(t, 0, row, 'โซนตอนนี้: ' + zoneTxt + ' · แนวโน้ม ' + (trendSt > 0 ? 'bullish' : trendSt < 0 ? 'bearish' : '—'), text_color = Green or Blue or LBlue ? buyCss : Red or Orange or Yellow ? sellCss : muted, text_size = tSize, text_halign = text.align_left)
+    table.merge_cells(t, 0, row, 3, row)
+    row += 1
+
+    if showDetail
+        ddL = math.max(bookH.dd, math.max(bookH.peak, eqL) - eqL)
+        ddS = math.max(bookS.dd, math.max(bookS.peak, eqS) - eqS)
+        ddB = math.max(bookB.dd, math.max(bookB.peak, eqB) - eqB)
+        table.cell(t, 0, row, 'Drawdown', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, str.tostring(ddL, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(ddS, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(ddB, '0.00') + '%', text_color = muted, text_size = tSize, text_halign = text.align_right)
+        row += 1
+        table.cell(t, 0, row, 'CDC ออกด้วย SL / เป้า / กฎ', text_color = muted, text_size = tSize, text_halign = text.align_left)
+        table.cell(t, 1, row, str.tostring(bookL.exSL) + '/' + str.tostring(bookL.exTP) + '/' + str.tostring(bookL.exRule), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 2, row, str.tostring(bookS.exSL) + '/' + str.tostring(bookS.exTP) + '/' + str.tostring(bookS.exRule), text_color = muted, text_size = tSize, text_halign = text.align_right)
+        table.cell(t, 3, row, str.tostring(bookL.exSL + bookS.exSL) + '/' + str.tostring(bookL.exTP + bookS.exTP) + '/' + str.tostring(bookL.exRule + bookS.exRule), text_color = muted, text_size = tSize, text_halign = text.align_right)
+
+//****************************************************************************//
+// Alert conditions
+
+alertcondition(buy,
+ title='*Buy Alert',
+ message='Buy {{exchange}}:{{ticker}}')
+
+alertcondition(sell,
+ title='*Sell Alert',
+ message='Sell {{exchange}}:{{ticker}}')
+
+alertcondition(bullish,
+ title='is Bullish')
+
+alertcondition(bearish,
+ title='is Bearish')
+
+alertcondition(Green,
+ title='is Green')
+
+alertcondition(Blue,
+ title='is Blue (Strong Rally)')
+
+alertcondition(LBlue,
+ title='is Light Blue (Rally)')
+
+alertcondition(Red,
+ title='is Red')
+
+alertcondition(Orange,
+ title='is Orange (Strong Dip)')
+
+alertcondition(Yellow,
+ title='is Yellow (Dip)')
+
+alertcondition(sigH, title = 'Playbook BUY (เปิด Long)', message = 'BUY {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(exH > 0, title = 'Playbook SELL (ปิด Long)', message = 'SELL {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(sigSo, title = 'Playbook SHORT (เปิด Short)', message = 'SHORT {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(exSw > 0, title = 'Playbook COVER (ปิด Short)', message = 'COVER {{exchange}}:{{ticker}} @ {{close}}')
+alertcondition(reg and not reg[1], title = 'เข้าโหมดถือยาว (ขาขึ้นแรง)', message = '{{exchange}}:{{ticker}} เข้าโหมดถือยาว')
+alertcondition(not reg and reg[1], title = 'ออกโหมดถือยาว', message = '{{exchange}}:{{ticker}} ออกโหมดถือยาว กลับไปเทรดตาม CDC')
+
+if showL and sigH
+    alert('🟢 BUY ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(close, format.mintick) + (hReg ? ' · ถือยาว' : '') + (hReg or na(bookL.sl) ? '' : ' · SL ' + str.tostring(bookL.sl, format.mintick)), alert.freq_once_per_bar_close)
+if showL and exH > 0
+    alert('🔴 SELL ' + syminfo.ticker + ' (' + timeframe.period + ') ปิด Long · ' + whyText(exH, exL), alert.freq_once_per_bar_close)
+if showS and sigSo
+    alert('🔻 SHORT ' + syminfo.ticker + ' (' + timeframe.period + ') @ ' + str.tostring(close, format.mintick) + (na(bookS.sl) ? '' : ' · SL ' + str.tostring(bookS.sl, format.mintick)), alert.freq_once_per_bar_close)
+if showS and exSw > 0
+    alert('🔺 COVER ' + syminfo.ticker + ' (' + timeframe.period + ') ปิด Short · ' + whyText(exSw, exS), alert.freq_once_per_bar_close)
+
+//****************************************************************************//
